@@ -139,11 +139,19 @@ Fabrika kodları: `AGR` `ANK` `BUR` `ELZ` `ERC` `ERG` `ESK` `ILG` `KRS` `KAS`
 
 ### Rol değiştirici
 
-`DEMO_MODE=true` iken panelin üst çubuğunda **Rol Değiştir** ve **Genel
-Müdürlük** menüleri çıkar. Şifre sormadan tek tıkla başka bir unvana geçersiniz;
-9 adımlı süreci baştan sona göstermek için tasarlanmıştır. Canlıya geçerken
-`DEMO_MODE=false` yapıldığında bu menüler tamamen kaybolur ve sunucu tarafında
-rol değiştirme reddedilir.
+`DEMO_MODE=true` iken panelin üst çubuğunda **Rol değiştir** menüsü çıkar.
+Menü iki sekmelidir:
+
+- **Fabrika** — önce fabrika seçersiniz, sonra o fabrikanın 12 unvanı listelenir
+- **Genel Müdürlük** — Genel Müdür Yardımcısı, 5 Daire Başkanı ve Sistem Yöneticisi
+
+Menü, oturumdaki kullanıcının kadrosuyla açılır: fabrika personeliyseniz kendi
+fabrikanız seçili gelir, Genel Müdürlük kullanıcısıysanız o sekme açılır. Şifre
+sormadan tek tıkla geçiş yaparsınız; 11 adımlı süreci baştan sona göstermek için
+tasarlanmıştır.
+
+Canlıya geçerken `DEMO_MODE=false` yapıldığında bu menü tamamen kaybolur ve
+sunucu tarafında rol değiştirme reddedilir.
 
 ---
 

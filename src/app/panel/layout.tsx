@@ -6,8 +6,7 @@ import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { currentUser, demoAccounts, type DemoAccount } from "@/server/auth";
 import { isDemoMode } from "@/server/settings";
 import { logoutAction } from "@/app/giris/actions";
-import RoleSwitcher from "@/components/role-switcher";
-import GmSwitcher from "@/components/gm-switcher";
+import RoleSwitcher, { type FactoryGroup } from "@/components/role-switcher";
 import { PanelNav } from "@/components/panel-nav";
 import { FlashMessage } from "@/components/flash";
 
@@ -51,7 +50,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   ) ?? 0;
 
   const demo = isDemoMode();
-  let factoryAccounts: { id: number; short_name: string; accounts: DemoAccount[] }[] = [];
+  let factoryAccounts: FactoryGroup[] = [];
   let gmAccounts: DemoAccount[] = [];
   if (demo) {
     const factories = all<{ id: number; short_name: string }>(
@@ -84,12 +83,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <span className="block text-sm font-medium text-ink-800">{user.full_name}</span>
               <span className="block text-xs text-ink-500">{user.title}</span>
             </div>
-            {demo && factoryAccounts.length > 0 && (
-              <RoleSwitcher factories={factoryAccounts} currentUserId={user.id}
-                            currentLabel={`${user.title}${user.factory_name ? ` — ${user.factory_name}` : ""}`} />
-            )}
-            {demo && gmAccounts.length > 0 && (
-              <GmSwitcher accounts={gmAccounts} currentUserId={user.id} />
+            {demo && (factoryAccounts.length > 0 || gmAccounts.length > 0) && (
+              <RoleSwitcher
+                factories={factoryAccounts}
+                gmAccounts={gmAccounts}
+                currentUserId={user.id}
+                currentLabel={`${user.title}${user.factory_name ? ` — ${user.factory_name}` : ""}`}
+                currentFactoryId={user.factory_id}
+                isGm={gm}
+              />
             )}
             <form action={logoutAction}>
               <button type="submit" className="btn btn-secondary btn-sm">Çıkış</button>
