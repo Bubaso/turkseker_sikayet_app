@@ -69,10 +69,11 @@ if (korumali.some((r) => r.test(dizin))) {
     "      cd turkseker_sikayet_app\n",
   );
 }
+// Geçici dosya oluşturmadan denetlenir: dosya oluşturup silmek, antivirüs
+// tutamağı yüzünden silme başarısız olduğunda "yazılamıyor" diye yanlış teşhis
+// koyar ve artık dosya bırakırdı.
 try {
-  const deneme = path.join(dizin, ".yazma-denemesi.tmp");
-  fs.writeFileSync(deneme, "x");
-  fs.rmSync(deneme);
+  fs.accessSync(dizin, fs.constants.W_OK);
   ok(`${dizin} — yazma izni var`);
 } catch {
   dur(`${dizin} dizinine yazılamıyor. Projeyi kullanıcı klasörünüze taşıyın.`);

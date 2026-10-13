@@ -27,6 +27,27 @@ const ALLOWED: Record<string, string> = {
 
 export const ACCEPT_ATTR = ".jpg,.jpeg,.png,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx";
 
+/**
+ * Uzantıdan MIME türü. Windows'ta tarayıcılar dosya türünü içerikten değil
+ * kayıt defterinden (HKEY_CLASSES_ROOT\.<uzantı>\Content Type) okur; Office
+ * kurulu olmayan ya da kurumsal imajla gelen makinelerde .docx/.xlsx için
+ * "application/x-zip-compressed" veya boş dizge dönebilir. Bu durumda yalnızca
+ * MIME'a bakmak, dosya seçme diyaloğunun kabul ettiği belgeyi yükleme adımında
+ * reddederdi — ki ıslak imzalı tutanak taramaları tam olarak bu türlerdir.
+ */
+const EXT_TO_MIME: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".heic": "image/heic",
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+
 export function uploadDir(): string {
   return path.resolve(env("UPLOAD_DIR", "./data/uploads"));
 }
@@ -49,12 +70,15 @@ export async function storeFile(file: File): Promise<StoredFile> {
   if (file.size > maxMb * 1024 * 1024) {
     throw new Error(`"${file.name}" dosyası ${maxMb} MB sınırını aşıyor.`);
   }
-  const ext = ALLOWED[file.type];
-  if (!ext) {
+  // Önce tarayıcının bildirdiği MIME, güvenilmezse dosya uzantısı esas alınır.
+  const uzanti = path.extname(file.name).toLowerCase();
+  const mime = ALLOWED[file.type] ? file.type : EXT_TO_MIME[uzanti];
+  if (!mime) {
     throw new Error(
       `"${file.name}" türü desteklenmiyor. İzin verilen türler: JPG, PNG, WEBP, PDF, Word, Excel.`,
     );
   }
+  const ext = ALLOWED[mime] ?? uzanti;
 
   const dir = uploadDir();
   await fs.mkdir(dir, { recursive: true });
@@ -64,7 +88,7 @@ export async function storeFile(file: File): Promise<StoredFile> {
   return {
     fileName: file.name.slice(0, 180),
     storedName,
-    mime: file.type,
+    mime,
     size: file.size,
   };
 }

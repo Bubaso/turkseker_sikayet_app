@@ -396,10 +396,19 @@ tanımlıdır**; Diyanet İşleri Başkanlığının resmî ilanından sonra
    değiştirin** (Tanımlar → Ayarlar).
 
 8. **Yedekleme kurun.** Yedeklenmesi gerekenler: `data/sikayet.db` ve
-   `data/uploads/`. SQLite için tutarlı yedek:
+   `data/uploads/` klasörü.
+
+   Dosyayı doğrudan kopyalamak güvenli değildir: WAL kipinde yazılmamış veri
+   `-wal` dosyasında bekler. Tutarlı yedek için uygulamanın kendi Node'uyla
+   gelen SQLite kullanılır (ek araç kurulumu gerekmez):
+
    ```bash
-   sqlite3 data/sikayet.db ".backup 'yedek/sikayet-$(date +%F).db'"
+   node --disable-warning=ExperimentalWarning -e "const{DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('data/sikayet.db');d.exec(`VACUUM INTO 'yedek-sikayet.db'`);d.close();console.log('yedek alindi')"
    ```
+
+   Windows'ta aynı komut Komut İstemi'nde de çalışır. Zamanlanmış yedek için bu
+   satırı bir `.bat` dosyasına koyup Görev Zamanlayıcı ile günlük çalıştırın;
+   `data/uploads/` klasörünü de standart dosya yedeklemesine dâhil edin.
 
 9. **HTTPS arkasında yayına alın.** Oturum çerezi `NODE_ENV=production` iken
    `Secure` olarak işaretlenir; uygulamanın HTTPS üzerinden sunulması şarttır.

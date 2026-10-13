@@ -71,11 +71,9 @@ export class Db {
     this.#depth++;
     try {
       const result = fn();
-      this.#depth--;
       this.#raw.exec(nested ? `RELEASE ${sp}` : "COMMIT");
       return result;
     } catch (e) {
-      this.#depth--;
       try {
         this.#raw.exec(nested ? `ROLLBACK TO ${sp}` : "ROLLBACK");
         if (nested) this.#raw.exec(`RELEASE ${sp}`);
@@ -83,6 +81,10 @@ export class Db {
         /* özgün hata daha bilgilendiricidir */
       }
       throw e;
+    } finally {
+      // Derinlik finally içinde azaltılır; bkz. src/lib/db/driver.ts açıklaması.
+      // COMMIT/RELEASE hata fırlatırsa azaltma iki kez işletilip sayaç bozulurdu.
+      this.#depth--;
     }
   }
 

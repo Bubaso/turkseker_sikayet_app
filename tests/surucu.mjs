@@ -67,6 +67,23 @@ kontrol("UNIQUE ihlali geri aldı", "a,c,d,e,i,j,k,l", adlar());
 
 kontrol("dönüş değeri aktarılıyor", 42, db.transaction(() => 42));
 
+// COMMIT'in kendisi hata fırlatırsa (disk dolması, antivirüs kaynaklı SQLITE_IOERR)
+// derinlik sayacı bozulmamalıdır. Bozulursa sonraki iç içe işlemler SAVEPOINT
+// yerine BEGIN gönderir ve çıplak ROLLBACK dış işlemin yazmalarını siler.
+const once = adlar();
+try {
+  db.transaction(() => {
+    ekle("commit-hatasi");
+    db.exec("COMMIT"); // işlemi erken kapatır; sürücünün COMMIT'i patlar
+  });
+} catch { /* beklenen */ }
+db.transaction(() => {
+  ekle("kurtarma-dis");
+  db.transaction(() => ekle("kurtarma-ic"));
+});
+kontrol("COMMIT hatasından sonra iç içe tx çalışır",
+  `${once},commit-hatasi,kurtarma-dis,kurtarma-ic`, adlar());
+
 /* --- Parametre normalleştirme --------------------------------------------- */
 
 db.exec("CREATE TABLE p (a TEXT, b INTEGER, c REAL)");

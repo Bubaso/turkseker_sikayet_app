@@ -73,12 +73,28 @@ for (const ek of ["", "-wal", "-shm", "-journal"]) {
 
 if (fs.existsSync(uploadDir)) {
   let sayi = 0;
+  const kilitli = [];
   for (const ad of fs.readdirSync(uploadDir)) {
     if (ad === ".gitkeep") continue;
-    fs.rmSync(path.join(uploadDir, ad), { recursive: true, force: true });
-    sayi++;
+    try {
+      fs.rmSync(path.join(uploadDir, ad), { recursive: true, force: true });
+      sayi++;
+    } catch (e) {
+      // Windows açık dosyaları silmez. Veritabanı zaten silindiği için burada
+      // durmak yerine atlanan dosyalar bildirilir; aksi halde yarım kalmış bir
+      // sıfırlama ham yığın iziyle biterdi.
+      if (e.code === "EPERM" || e.code === "EBUSY") kilitli.push(ad);
+      else throw e;
+    }
   }
   console.log(`yüklenen dosyalar temizlendi (${sayi} öğe)`);
+  if (kilitli.length > 0) {
+    console.warn(
+      `  uyarı: ${kilitli.length} dosya kullanımda olduğu için silinemedi ` +
+      `(${kilitli.slice(0, 3).join(", ")}${kilitli.length > 3 ? "…" : ""}).\n` +
+      "         Açık önizleme pencerelerini kapatıp komutu tekrar çalıştırabilirsiniz.",
+    );
+  }
 }
 
 /* --- Referans verisi ------------------------------------------------------ */
@@ -88,4 +104,13 @@ const r = spawnSync(
   ["--disable-warning=ExperimentalWarning", path.join(ROOT, "scripts", "seed.mjs")],
   { stdio: "inherit", cwd: ROOT },
 );
-process.exit(r.status ?? 0);
+// spawnSync süreci hiç başlatamazsa status null döner; "?? 0" bunu başarı
+// sayardı ve veritabanı silinmiş ama tohumlanmamış hâlde kalırdı.
+if (r.error) dur(`Referans verisi yüklenemedi: ${r.error.message}`);
+if (r.status !== 0) {
+  dur(
+    `Referans verisi yüklenemedi (çıkış kodu ${r.status ?? "bilinmiyor"}).\n` +
+    "         Veritabanı silindi ancak yeniden oluşturulamadı; " +
+    "sorunu giderip 'npm run db:seed' komutunu çalıştırın.",
+  );
+}

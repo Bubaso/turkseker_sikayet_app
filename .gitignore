@@ -18,3 +18,7 @@ data/uploads/*
 .env*.local
 .DS_Store
 *.log
+
+# Geçici dosyalar
+*.tmp
+yedek-*.db

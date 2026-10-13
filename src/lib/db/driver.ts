@@ -136,11 +136,9 @@ export class Db {
     this.depth++;
     try {
       const result = fn();
-      this.depth--;
       this.raw.exec(nested ? `RELEASE ${savepoint}` : "COMMIT");
       return result;
     } catch (e) {
-      this.depth--;
       try {
         this.raw.exec(nested ? `ROLLBACK TO ${savepoint}` : "ROLLBACK");
         if (nested) this.raw.exec(`RELEASE ${savepoint}`);
@@ -148,6 +146,13 @@ export class Db {
         // Geri alma da başarısızsa özgün hata daha bilgilendiricidir.
       }
       throw e;
+    } finally {
+      // Derinlik finally içinde azaltılır. Aksi halde COMMIT/RELEASE satırının
+      // kendisi hata fırlattığında (disk dolması, antivirüs kaynaklı SQLITE_IOERR)
+      // azaltma hem try hem catch bloğunda işletilir, sayaç -1'e iner ve bağlantı
+      // kalıcı olarak bozulur: sonraki iç içe işlemler SAVEPOINT yerine BEGIN
+      // göndermeye çalışır, çıplak ROLLBACK dış işlemin yazmalarını siler.
+      this.depth--;
     }
   }
 
