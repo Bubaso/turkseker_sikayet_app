@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Türkşeker Müşteri Şikâyet Takip Sistemi — Tasarım Belirteçleri
+   Sade, kurumsal, yoğun veri tablolarına uygun. Tek vurgu rengi + anlamsal
+   durum renkleri. Gölge ve gradyan kullanılmaz; ayrım 1px kenarlıkla yapılır.
+   ========================================================================== */
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* Kurumsal vurgu — lacivert */
+  --color-brand-50: #eff5fb;
+  --color-brand-100: #d9e7f5;
+  --color-brand-200: #b6cfea;
+  --color-brand-300: #85addc;
+  --color-brand-400: #4e84c7;
+  --color-brand-500: #2c63ab;
+  --color-brand-600: #1f4d8c;
+  --color-brand-700: #1a3f72;
+  --color-brand-800: #17345c;
+  --color-brand-900: #142b4c;
+
+  /* Türkşeker kurumsal kırmızısı — yalnızca marka çubuğu ve kritik durum */
+  --color-kurum-500: #c8102e;
+  --color-kurum-600: #a60d26;
+
+  /* Nötr metin ve yüzeyler */
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+
+  /* Anlamsal durumlar */
+  --color-ok-50: #ecfdf3;
+  --color-ok-200: #a7f3c9;
+  --color-ok-600: #047857;
+  --color-ok-700: #036347;
+  --color-warn-50: #fffaeb;
+  --color-warn-200: #fde68a;
+  --color-warn-600: #b45309;
+  --color-warn-700: #92400e;
+  --color-danger-50: #fef2f2;
+  --color-danger-200: #fecaca;
+  --color-danger-600: #b91c1c;
+  --color-danger-700: #991b1b;
+  --color-info-50: #eff6ff;
+  --color-info-200: #bfdbfe;
+  --color-info-600: #1d4ed8;
+
+  --radius-card: 6px;
+}
+
+/* --- Temel ---------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  background-color: var(--color-ink-100);
+  color: var(--color-ink-800);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+}
+* {
+  min-width: 0;
+}
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+::selection {
+  background: var(--color-brand-100);
+}
+
+/* Sayısal kolonların hizalı görünmesi için */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Yeniden kullanılan bileşen sınıfları -------------------------------- */
+@layer components {
+  .card {
+    @apply rounded-[6px] border border-ink-200 bg-white;
+  }
+  .card-pad {
+    @apply rounded-[6px] border border-ink-200 bg-white p-4 sm:p-5;
+  }
+  .card-title {
+    @apply border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase;
+  }
+
+  .label {
+    @apply mb-1 block text-[13px] font-medium text-ink-700;
+  }
+  .hint {
+    @apply mt-1 block text-xs leading-snug text-ink-500;
+  }
+  .input {
+    @apply block w-full rounded-[5px] border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900
+           placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100
+           focus:outline-none disabled:bg-ink-100 disabled:text-ink-500;
+  }
+  .input-err {
+    @apply border-danger-600 focus:border-danger-600 focus:ring-danger-200;
+  }
+  .err {
+    @apply mt-1 block text-xs font-medium text-danger-700;
+  }
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-[5px] border px-3.5 py-2
+           text-sm font-medium transition-colors select-none
+           disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-primary {
+    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700 hover:border-brand-700;
+  }
+  .btn-secondary {
+    @apply border-ink-300 bg-white text-ink-700 hover:bg-ink-50;
+  }
+  .btn-danger {
+    @apply border-danger-600 bg-danger-600 text-white hover:bg-danger-700;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-brand-600 hover:bg-brand-50;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-[13px];
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+  }
+
+  .table-wrap {
+    @apply w-full overflow-x-auto;
+  }
+  .tbl {
+    @apply w-full border-collapse text-sm;
+  }
+  .tbl thead th {
+    @apply border-b border-ink-200 bg-ink-50 px-3 py-2 text-left text-xs font-semibold
+           tracking-wide text-ink-600 uppercase whitespace-nowrap;
+  }
+  .tbl tbody td {
+    @apply border-b border-ink-100 px-3 py-2 align-top;
+  }
+  .tbl tbody tr:hover {
+    @apply bg-brand-50/45;
+  }
+
+  .link {
+    @apply text-brand-600 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500;
+  }
+}
+
+/* --- Yazdırma (resmî A4 belge çıktıları) --------------------------------- */
+@media print {
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-page {
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .page-break {
+    break-after: page;
+  }
+  a[href]::after {
+    content: "";
+  }
+}
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+}

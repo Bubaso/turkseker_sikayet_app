@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Veritabanı ve yüklenen dosyalar (yerel çalışma verisi)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/uploads/*
+!data/uploads/.gitkeep
+
+.env
+.env.local
+.env*.local
+.DS_Store
+*.log
