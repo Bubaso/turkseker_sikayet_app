@@ -414,16 +414,20 @@ export async function onTutanakApproved(complaintId: number, user: SessionUser):
     });
   });
 
-  await notifyCustomer({
-    complaintId,
-    code: c.verdict === VERDICT.HAKLI ? TEMPLATE.KARAR_HAKLI : TEMPLATE.KARAR_HAKSIZ,
-    phone: c.customer_phone,
-    email: c.customer_email,
-    ctx: notifyCtx(c, {
-      dueDate: c.due_resolution_at,
-      verdictReason: c.verdict_reason ?? undefined,
-    }),
-  });
+  // Daire Başkanlığı kararı sonrası yeniden düzenlenen tutanakta müşteriye
+  // ikinci bir karar bildirimi gönderilmez; sonuç zaten İTİRAZ_SONUC ile iletilmiştir.
+  if (!c.escalation_decided_at) {
+    await notifyCustomer({
+      complaintId,
+      code: c.verdict === VERDICT.HAKLI ? TEMPLATE.KARAR_HAKLI : TEMPLATE.KARAR_HAKSIZ,
+      phone: c.customer_phone,
+      email: c.customer_email,
+      ctx: notifyCtx(c, {
+        dueDate: c.due_resolution_at,
+        verdictReason: c.verdict_reason ?? undefined,
+      }),
+    });
+  }
 }
 
 /* --- 5. İtiraz: Daire Başkanlığına gönderme (md. 5) --------------------- */
@@ -513,21 +517,50 @@ export async function decideEscalation(
     completeTask(complaintId, TASK.DAIRE_KARAR, user.id, note);
 
     if (nowHaklı) {
-      // Daire itirazı kabul etti: karar HAKLI'ya döner, işlem dalı açılır.
+      // Daire itirazı kabul etti: karar HAKLI'ya döner ve işlem dalı açılır.
+      //
+      // Fabrika daha önce şikâyeti haksız bulduğu için elindeki belge İnceleme
+      // Tutanağıdır; md. 6 gereği iade/değişim ancak "Ürün Değişim İade
+      // Tutanağı" (FR PASAT 004) veya nakliye bedeli de varsa FR PASAT 005 ile
+      // yapılabilir. Bu nedenle tutanak düzenleme ve imza görevleri yeniden
+      // açılır. 5 iş günlük işlem süresi, şikâyet tarihinden itibaren çoktan
+      // geçtiği için daire kararı tarihinden yeniden başlatılır; bu yeniden
+      // başlatma olay günlüğüne ayrıca işlenir.
+      const holidays = holidaySet();
+      const newResolution = addBusinessDays(today(), SLA.ISLEM, holidays);
+
       run(
         `UPDATE complaints
             SET verdict = 'HAKLI',
                 verdict_reason = COALESCE(verdict_reason, '') ||
                   ' | Daire Başkanlığı kararı: şikâyet haklı bulundu.',
-                decision = ? , updated_at = datetime('now')
+                decision = ?, due_resolution_at = ?, updated_at = datetime('now')
           WHERE id = ?`,
-        note, complaintId,
+        note, newResolution, complaintId,
       );
+      run(
+        `UPDATE tasks
+            SET status = 'BEKLEMEDE', completed_at = NULL, completed_by = NULL, due_at = ?,
+                result_note = 'Daire Başkanlığı itirazı kabul ettiğinden iade/değişim tutanağı yeniden düzenlenecek.'
+          WHERE complaint_id = ? AND code IN (?, ?)`,
+        newResolution, complaintId, TASK.TUTANAK_HAZIRLA, TASK.TUTANAK_IMZA,
+      );
+
       const fresh = load(complaintId);
       createTasks(fresh, postVerdictTaskCodes({
         verdict: "HAKLI", demand: fresh.demand, isCritical: false, needsEscalation: false,
       }));
       setStatus(fresh, STATUS.ISLEM_SURECINDE, user, "Daire Başkanlığı itirazı kabul etti");
+      logEvent({
+        complaintId,
+        type: EVENT_TYPE.ITIRAZ,
+        title: "İşlem süresi daire kararı tarihinden yeniden başlatıldı",
+        note:
+          `İade/değişim işlemi için 5 iş günlük süre ${newResolution} tarihine kadar uzatıldı. ` +
+          "Ürün Değişim İade Tutanağının düzenlenmesi ve imza zinciri yeniden açıldı.",
+        actorId: user.id,
+        payload: { dueResolutionAt: newResolution },
+      });
     } else {
       const fresh = load(complaintId);
       setStatus(fresh, STATUS.RAPORLAMA, user, "Daire Başkanlığı kararı: şikâyet haklı bulunmadı");

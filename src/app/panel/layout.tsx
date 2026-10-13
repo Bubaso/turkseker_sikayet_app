@@ -1,0 +1,118 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { all, scalar } from "@/lib/db";
+import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
+import { currentUser, demoAccounts, type DemoAccount } from "@/server/auth";
+import { isDemoMode } from "@/server/settings";
+import { logoutAction } from "@/app/giris/actions";
+import RoleSwitcher from "@/components/role-switcher";
+import GmSwitcher from "@/components/gm-switcher";
+import { PanelNav } from "@/components/panel-nav";
+import { FlashMessage } from "@/components/flash";
+
+export const dynamic = "force-dynamic";
+
+export default async function PanelLayout({ children }: { children: React.ReactNode }) {
+  const user = await currentUser();
+  if (!user) redirect("/giris?next=/panel");
+
+  const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
+
+  // Sayaçlar — yan menüde gösterilir.
+  const factoryClause = gm ? "" : "AND c.factory_id = " + Number(user.factory_id ?? -1);
+  const openCount = scalar<number>(
+    `SELECT COUNT(*) FROM complaints c
+      WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL') ${factoryClause}`,
+  ) ?? 0;
+  const overdueCount = scalar<number>(
+    `SELECT COUNT(DISTINCT c.id) FROM complaints c JOIN tasks t ON t.complaint_id = c.id
+      WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')
+        AND t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+        AND t.due_at IS NOT NULL AND t.due_at < date('now') ${factoryClause}`,
+  ) ?? 0;
+  const myTaskCount = gm
+    ? scalar<number>(
+        `SELECT COUNT(*) FROM tasks
+          WHERE status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+            AND (assignee_id = ? OR (department_id IS NOT NULL AND department_id = ?))`,
+        user.id, user.department_id,
+      ) ?? 0
+    : scalar<number>(
+        `SELECT COUNT(*) FROM tasks
+          WHERE status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+            AND (assignee_id = ? OR (assignee_id IS NULL AND factory_id = ? AND assignee_role = ?))`,
+        user.id, user.factory_id, user.role,
+      ) ?? 0;
+  const escalationCount = scalar<number>(
+    `SELECT COUNT(*) FROM complaints
+      WHERE escalated_at IS NOT NULL AND escalation_decided_at IS NULL
+        ${user.role === "GM_DAIRE" ? `AND escalated_dept_id = ${Number(user.department_id ?? -1)}` : ""}`,
+  ) ?? 0;
+
+  const demo = isDemoMode();
+  let factoryAccounts: { id: number; short_name: string; accounts: DemoAccount[] }[] = [];
+  let gmAccounts: DemoAccount[] = [];
+  if (demo) {
+    const factories = all<{ id: number; short_name: string }>(
+      "SELECT id, short_name FROM factories WHERE is_active = 1 ORDER BY short_name",
+    );
+    factoryAccounts = factories.map((f) => ({ ...f, accounts: demoAccounts(f.id) }));
+    gmAccounts = demoAccounts(null);
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-ink-100">
+      <div className="h-1 bg-kurum-500" aria-hidden />
+
+      <header className="sticky top-0 z-10 border-b border-ink-200 bg-white">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+          <Link href="/panel" className="flex items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-[5px] bg-brand-700 text-[10px] font-bold text-white" aria-hidden>
+              TŞ
+            </span>
+            <span className="leading-tight">
+              <span className="block text-sm font-semibold text-ink-900">Şikâyet Takip Sistemi</span>
+              <span className="block text-xs text-ink-500">
+                {gm ? (user.department_name ?? "Genel Müdürlük") : user.factory_name}
+              </span>
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden text-right leading-tight sm:block">
+              <span className="block text-sm font-medium text-ink-800">{user.full_name}</span>
+              <span className="block text-xs text-ink-500">{user.title}</span>
+            </div>
+            {demo && factoryAccounts.length > 0 && (
+              <RoleSwitcher factories={factoryAccounts} currentUserId={user.id}
+                            currentLabel={`${user.title}${user.factory_name ? ` — ${user.factory_name}` : ""}`} />
+            )}
+            {demo && gmAccounts.length > 0 && (
+              <GmSwitcher accounts={gmAccounts} currentUserId={user.id} />
+            )}
+            <form action={logoutAction}>
+              <button type="submit" className="btn btn-secondary btn-sm">Çıkış</button>
+            </form>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-5 px-4 py-5 lg:flex-row">
+        <PanelNav
+          gm={gm}
+          counts={{ open: openCount, overdue: overdueCount, myTasks: myTaskCount, escalations: escalationCount }}
+          canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
+          canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}
+          canDecideEscalation={can(user.role, PERMISSIONS.ITIRAZ_KARAR)}
+        />
+        <main className="min-w-0 flex-1">
+          <Suspense fallback={null}>
+            <FlashMessage />
+          </Suspense>
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

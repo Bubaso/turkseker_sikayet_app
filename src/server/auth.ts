@@ -5,7 +5,9 @@
    =========================================================================== */
 
 import crypto from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { all, one, run } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { can, isGmRole, type Permission, type Role } from "@/lib/roles";
@@ -127,7 +129,35 @@ export async function logout(): Promise<void> {
 
 /* --- Geçerli kullanıcı --------------------------------------------------- */
 
+/**
+ * Sunucu tarafında geçici kimlik devri.
+ * Yalnızca demo verisi üreticisi kullanır: üretilen kayıtların gerçek iş
+ * kuralları motorundan (yetki kontrolleriyle birlikte) geçmesini sağlar.
+ * Çerez tabanlı oturumu değiştirmez, yalnızca verilen fonksiyonun çağrı
+ * zincirinde geçerlidir.
+ */
+const actAsStore = new AsyncLocalStorage<SessionUser>();
+
+export function runAs<T>(userId: number, fn: () => Promise<T>): Promise<T> {
+  const u = loadUser(userId);
+  if (!u) throw new Error(`Kullanıcı bulunamadı: ${userId}`);
+  return actAsStore.run(u, fn);
+}
+
+/** Verilen rolü taşıyan fabrika personeli olarak çalıştırır. */
+export function runAsRole<T>(factoryId: number, role: string, fn: () => Promise<T>): Promise<T> {
+  const u = one<{ id: number }>(
+    "SELECT id FROM users WHERE factory_id = ? AND role = ? AND is_active = 1 ORDER BY id LIMIT 1",
+    factoryId, role,
+  );
+  if (!u) throw new Error(`${role} rolünde personel bulunamadı (fabrika ${factoryId}).`);
+  return runAs(u.id, fn);
+}
+
 export async function currentUser(): Promise<SessionUser | null> {
+  const impersonated = actAsStore.getStore();
+  if (impersonated) return impersonated;
+
   const store = await cookies();
   const sid = unsign(store.get(COOKIE)?.value);
   if (!sid) return null;
@@ -228,4 +258,16 @@ export async function switchDemoUser(userId: number): Promise<SessionUser> {
 /** Süresi geçmiş oturumları temizler. */
 export function pruneSessions(): void {
   run("DELETE FROM sessions WHERE expires_at <= datetime('now')");
+}
+
+/**
+ * Sayfa bileşenleri için oturum kontrolü.
+ * Next.js App Router'da düzen (layout) ve sayfa paralel render edildiğinden
+ * düzendeki yönlendirme sayfanın çalışmasını engellemez; her korumalı sayfa
+ * oturumu kendisi doğrulamalıdır.
+ */
+export async function requirePageUser(next = "/panel"): Promise<SessionUser> {
+  const u = await currentUser();
+  if (!u) redirect(`/giris?next=${encodeURIComponent(next)}`);
+  return u;
 }

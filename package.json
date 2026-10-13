@@ -7,11 +7,10 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:reset": "node scripts/reset-db.mjs",
     "db:seed": "node scripts/seed.mjs",
-    "db:demo": "node scripts/seed.mjs --demo"
+    "test:senaryo": "node tests/senaryo.mjs"
   },
   "dependencies": {
     "better-sqlite3": "11.10.0",

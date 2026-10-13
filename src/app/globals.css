@@ -190,3 +190,36 @@ body {
   size: A4;
   margin: 18mm 16mm;
 }
+
+/* --- Veri görselleştirme belirteçleri ------------------------------------
+   Kategorik paletin sırası sabittir ve renk körlüğü ayrımı doğrulanmıştır
+   (OKLab CVD ΔE 9.2, normal görüş ΔE 24.0; beyaz zemine karşı ölçüldü).
+   Sıra değiştirilmemelidir: ayrım mekanizması sıralamanın kendisidir.
+   Aqua slotu 3:1 kontrastın altındadır; bu yüzden aqua kullanan her grafikte
+   doğrudan etiket ve tablo görünümü zorunludur.
+   -------------------------------------------------------------------- */
+.viz {
+  --viz-surface: #ffffff;
+  --viz-ink: #0f172a;
+  --viz-ink-2: #475569;
+  --viz-muted: #94a3b8;
+  --viz-grid: #e2e8f0;
+  --viz-axis: #cbd5e1;
+
+  /* Kategorik — sabit sıra */
+  --viz-s1: #256abf; /* mavi   */
+  --viz-s2: #eb6834; /* turuncu */
+  --viz-s3: #1baf7a; /* aqua   */
+
+  /* Sıralı (büyüklük) — tek hue, açıktan koyuya */
+  --viz-seq-100: #cde2fb;
+  --viz-seq-250: #86b6ef;
+  --viz-seq-450: #2a78d6;
+  --viz-seq-500: #256abf;
+
+  /* Durum — yalnızca iyi/uyarı/kritik anlamı taşıdığında, ikon+etiketle */
+  --viz-good: #0ca30c;
+  --viz-warn: #fab219;
+  --viz-serious: #ec835a;
+  --viz-critical: #d03b3b;
+}

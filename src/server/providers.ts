@@ -126,7 +126,7 @@ const smtp: MailProvider = {
       // nodemailer isteğe bağlı bir pakettir; yalnızca SMTP seçildiğinde yüklenir.
       // Paket adı değişken üzerinden verilir ki kurulu olmadığında derleme bozulmasın.
       const pkg = "nodemailer";
-      const mod = (await import(pkg).catch(() => null)) as NodemailerModule | null;
+      const mod = (await import(/* webpackIgnore: true */ pkg).catch(() => null)) as NodemailerModule | null;
       if (!mod) {
         return {
           ok: false,
