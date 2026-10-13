@@ -53,8 +53,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   let factoryAccounts: FactoryGroup[] = [];
   let gmAccounts: DemoAccount[] = [];
   if (demo) {
-    const factories = all<{ id: number; short_name: string }>(
-      "SELECT id, short_name FROM factories WHERE is_active = 1 ORDER BY short_name",
+    const factories = all<{ id: number; short_name: string; name: string }>(
+      "SELECT id, short_name, name FROM factories WHERE is_active = 1 ORDER BY short_name",
     );
     factoryAccounts = factories.map((f) => ({ ...f, accounts: demoAccounts(f.id) }));
     gmAccounts = demoAccounts(null);

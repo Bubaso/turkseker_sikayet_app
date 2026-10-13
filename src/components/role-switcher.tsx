@@ -7,7 +7,10 @@ import { switchRoleAction } from "@/app/giris/actions";
 
 export interface FactoryGroup {
   id: number;
+  /** "Susurluk" — satır altlarında kısa gösterim için. */
   short_name: string;
+  /** "Susurluk Şeker Fabrikası" — açılır listede tam ad gösterilir. */
+  name: string;
   accounts: DemoAccount[];
 }
 
@@ -114,18 +117,37 @@ export default function RoleSwitcher({
             <div className="max-h-[24rem] overflow-y-auto p-3.5">
               {tab === "fabrika" && (
                 <>
-                  <label className="label" htmlFor="rs-factory">Fabrika</label>
+                  <label className="label" htmlFor="rs-factory">
+                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                      1
+                    </span>
+                    Hangi fabrikada çalışacaksınız?
+                  </label>
                   <select
                     id="rs-factory"
-                    className="input mb-3"
+                    className="input"
                     value={factoryId ?? ""}
                     onChange={(e) => setFactoryId(Number(e.target.value))}
                   >
                     {factories.map((f) => (
-                      <option key={f.id} value={f.id}>{f.short_name}</option>
+                      <option key={f.id} value={f.id}>{f.name}</option>
                     ))}
                   </select>
+                  <span className="hint mb-3">
+                    Fabrikayı değiştirince aşağıdaki unvanlar o fabrikanın personeline döner.
+                  </span>
+
+                  <p className="label">
+                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                      2
+                    </span>
+                    Hangi unvanla gireceksiniz?
+                  </p>
                 </>
+              )}
+
+              {tab === "gm" && (
+                <p className="label">Genel Müdürlük kadrosundan birini seçin</p>
               )}
 
               {liste.length === 0 ? (
@@ -151,6 +173,7 @@ export default function RoleSwitcher({
                           <span className="block truncate font-medium text-ink-800">{a.title}</span>
                           <span className="block truncate text-xs text-ink-500">
                             {a.full_name}
+                            {tab === "fabrika" && selected ? ` · ${selected.short_name}` : ""}
                             {tab === "gm" && a.department_name ? ` · ${a.department_name}` : ""}
                           </span>
                         </span>
