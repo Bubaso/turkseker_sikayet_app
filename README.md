@@ -13,6 +13,7 @@ formları sistem verisinden otomatik üretilir.
 ## İçindekiler
 
 - [Hızlı başlangıç](#hızlı-başlangıç)
+- [Sorun giderme](#sorun-giderme)
 - [Demo hesapları](#demo-hesapları)
 - [Sistemin kapsadığı süreç](#sistemin-kapsadığı-süreç)
 - [Modüller](#modüller)
@@ -27,15 +28,42 @@ formları sistem verisinden otomatik üretilir.
 
 ## Hızlı başlangıç
 
-Gereksinim: **Node.js 20.9 veya üzeri**. Başka hiçbir kurulum (veritabanı
-sunucusu, Docker vb.) gerekmez — veri tek bir SQLite dosyasında tutulur.
+**Gereksinim: yalnızca Node.js 22.13+ veya 24 LTS.** Başka hiçbir şey kurmanız
+gerekmez — veritabanı sunucusu, Docker, Python, Visual Studio Build Tools yok.
+Veri tek bir SQLite dosyasında tutulur ve Node'un **yerleşik** SQLite desteği
+kullanılır; bu nedenle projede derlenmesi gereken hiçbir bileşen yoktur.
+
+> **Windows kullanıcıları — önemli:** Projeyi `C:\Windows\System32` veya
+> `C:\Program Files` gibi korumalı sistem klasörlerine **klonlamayın**. Bu
+> klasörlere yazma izni olmadığı için kurulum `EPERM` hatalarıyla başarısız olur.
+> Kendi kullanıcı klasörünüzü kullanın.
+
+### Windows (Komut İstemi veya PowerShell)
+
+```bat
+cd %USERPROFILE%
+git clone https://github.com/Bubaso/turkseker_sikayet_app
+cd turkseker_sikayet_app
+npm install
+npm run kurulum
+npm run dev
+```
+
+### macOS / Linux
 
 ```bash
-npm install                 # bağımlılıklar
-cp .env.example .env.local  # ortam değişkenleri
-npm run db:seed             # 14 fabrika, 81 il, ürünler, kategoriler, 175 kullanıcı
-npm run dev                 # http://localhost:3000
+cd ~
+git clone https://github.com/Bubaso/turkseker_sikayet_app
+cd turkseker_sikayet_app
+npm install
+npm run kurulum
+npm run dev
 ```
+
+`npm run kurulum` komutu Node sürümünü doğrular, korumalı dizin kontrolü yapar,
+`.env.local` dosyasını rastgele bir oturum anahtarıyla oluşturur, veri
+klasörlerini açar ve referans verisini (14 fabrika, 81 il, ürünler, kategoriler,
+175 kullanıcı) yükler. Windows, macOS ve Linux'ta aynı şekilde çalışır.
 
 Ardından tarayıcıda:
 
@@ -47,7 +75,34 @@ Ardından tarayıcıda:
 Veritabanını sıfırlamak için `npm run db:reset` (tüm şikâyet verisi silinir,
 referans tanımlar yeniden yüklenir).
 
----
+### Kurumsal ağ arkasında kurulum
+
+Türkşeker gibi kurumsal ağlarda TLS trafiği bir güvenlik cihazı tarafından
+kesilir ve sertifikalar değiştirilir. Bu, `self-signed certificate in
+certificate chain` hatalarına yol açar.
+
+Bu uygulama **yalnızca npm kayıt defterinden (`registry.npmjs.org`)** paket
+indirir; `nodejs.org` veya `github.com` üzerinden ikili dosya indiren hiçbir
+bağımlılık yoktur. npm kayıt defterine erişebiliyorsanız kurulum sorunsuz
+tamamlanır.
+
+npm kayıt defterine de erişemiyorsanız, kurumsal kök sertifikanızı npm'e
+tanıtın (tercih edilen yöntem):
+
+```bat
+npm config set cafile "C:\yol\kurumsal-kok-sertifika.pem"
+```
+
+### Sorun giderme
+
+| Hata | Sebep ve çözüm |
+|---|---|
+| `EPERM: operation not permitted` | Proje korumalı bir sistem klasöründe. `%USERPROFILE%` altına taşıyın. |
+| `self-signed certificate in certificate chain` | Kurumsal TLS kesmesi. Yukarıdaki `npm config set cafile` adımını uygulayın. |
+| `Cannot find package 'better-sqlite3'` | Eski bir sürümden kalma. `npm install` komutunu yeniden çalıştırın; bu paket artık kullanılmıyor. |
+| `node:sqlite bulunamadı` / `DatabaseSync is not a function` | Node.js sürümünüz eski. 22.13+ veya 24 LTS kurun: https://nodejs.org |
+| `'cp' is not recognized` | Windows'ta `cp` yoktur. `npm run kurulum` komutu bu işi sizin yerinize yapar. |
+| Port 3000 dolu | `npm run dev -- -p 3001` ile başka port kullanın. |
 
 ## Demo hesapları
 
@@ -203,7 +258,7 @@ gömme sorunu yaşatmaz.
 |---|---|---|
 | Arayüz | Next.js 15 (App Router), React 19, TypeScript | Sunucu bileşenleri + Server Actions |
 | Stil | Tailwind CSS v4 | Tek vurgu rengi, gölgesiz, yoğun veri tablolarına uygun |
-| Veritabanı | SQLite (better-sqlite3) | Tek dosya; PostgreSQL'e taşınabilir |
+| Veritabanı | SQLite — Node yerleşik `node:sqlite` | Tek dosya, derleme gerektirmez; PostgreSQL'e taşınabilir |
 | Excel | ExcelJS | Saf JS, yerel bağımlılık yok |
 | Grafikler | Satır içi SVG | Harici grafik kütüphanesi yok |
 | Oturum | HMAC imzalı httpOnly çerez + sunucu tarafı oturum kaydı | |
@@ -225,6 +280,8 @@ src/
   components/               ortak arayüz bileşenleri, grafikler
   lib/
     db/schema.sql           veritabanı şeması (24 tablo)
+    db/driver.ts            node:sqlite sürücü katmanı (işlem, SAVEPOINT, parametre normalleştirme)
+    db/index.ts             bağlantı ve sorgu yardımcıları
     domain.ts               durumlar, talepler, belge türleri, SLA günleri
     workflow.ts             görev kartı kataloğu, imza zincirleri, itiraz eşikleri
     dates.ts                iş günü ve SLA hesapları
@@ -239,8 +296,14 @@ src/
     stats.ts                performans istatistikleri
     monthly.ts              FR PASAT 005 aylık tablo
     demo.ts                 demo verisi üreticisi
-scripts/                    seed ve sıfırlama betikleri
-tests/senaryo.mjs           uçtan uca senaryo testi
+scripts/
+  kurulum.mjs               tek komutluk kurulum (çapraz platform)
+  seed.mjs                  referans verisi yükleyici
+  reset-db.mjs              veritabanı sıfırlama
+  lib/db.mjs                sürücünün betikler için düz JS karşılığı
+tests/
+  surucu.mjs                sürücü davranış testi (işlem, SAVEPOINT, tip dönüşümleri)
+  senaryo.mjs               uçtan uca senaryo testi
 ```
 
 ### Yetki matrisi
@@ -341,7 +404,11 @@ tanımlıdır**; Diyanet İşleri Başkanlığının resmî ilanından sonra
 9. **HTTPS arkasında yayına alın.** Oturum çerezi `NODE_ENV=production` iken
    `Secure` olarak işaretlenir; uygulamanın HTTPS üzerinden sunulması şarttır.
 
-10. **Kurumsal ölçekte PostgreSQL'e geçiş.** Mevcut kullanım (14 fabrika, yılda
+10. **Node.js sürümünü sabitleyin.** Uygulama Node'un yerleşik SQLite desteğini
+    kullanır ve en az 22.13 gerektirir. Sunucuda LTS sürüm (22 veya 24) kullanın;
+    `package.json` içindeki `engines` alanı bunu belirtir.
+
+11. **Kurumsal ölçekte PostgreSQL'e geçiş.** Mevcut kullanım (14 fabrika, yılda
     birkaç yüz dosya) için SQLite fazlasıyla yeterlidir. Yüksek eşzamanlılık
     gerekirse `src/lib/db/index.ts` tek değişim noktasıdır; SQL'in tamamı
     standarttır, yalnızca `datetime('now')` ve `strftime` çağrıları PostgreSQL
@@ -374,9 +441,15 @@ Müşteri takibi için ikinci bir bağlantı:
 ## Testler
 
 ```bash
-npm run typecheck     # TypeScript tür kontrolü
-npm run build         # üretim derlemesi
+npm run typecheck      # TypeScript tür kontrolü
+npm run test:surucu    # SQLite sürücü davranış testi (20 kontrol, saniyeler sürer)
+npm run build          # üretim derlemesi
 ```
+
+`test:surucu` veritabanı sürücüsünün işlem semantiğini doğrular: commit,
+rollback, iç içe SAVEPOINT kullanımı, hata yayılımı, parametre normalleştirme
+(`undefined` → NULL, `boolean` → 0/1) ve satır nesnelerinin React Sunucu
+Bileşeni uyumluluğu. Hiçbir harici bağımlılık gerektirmez.
 
 **Uçtan uca senaryo testi.** Bir şikâyeti halka açık formdan açar ve talimatın
 tüm akışını arayüz üzerinden yürütür: ekip oluşturma, yerinde inceleme, numune,
@@ -386,7 +459,7 @@ müşteri tarafındaki sonucun doğrulanması.
 
 ```bash
 npm install -D playwright && npx playwright install chromium
-npm run dev                          # ayrı bir terminalde, DEMO_MODE=true ile
+npm run dev                          # ayrı bir terminalde
 npm run test:senaryo                 # varsayılan http://localhost:3000
 npm run test:senaryo -- http://localhost:3100   # başka adres
 ```
@@ -394,7 +467,9 @@ npm run test:senaryo -- http://localhost:3100   # başka adres
 Test 29 kontrolün tamamını doğrular ve başarısızlık hâlinde sıfırdan farklı
 çıkış kodu döndürür.
 
----
+> Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
+> indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu
+> yalnızca senaryo testini etkiler; uygulamanın kendisi çalışmaya devam eder.
 
 ## Talimattan sapmalar ve eklemeler
 

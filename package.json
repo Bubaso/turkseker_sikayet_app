@@ -4,16 +4,17 @@
   "private": true,
   "description": "Türkiye Şeker Fabrikaları A.Ş. - Müşteri Şikâyet Takip Sistemi",
   "scripts": {
+    "kurulum": "node --disable-warning=ExperimentalWarning scripts/kurulum.mjs",
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "db:reset": "node scripts/reset-db.mjs",
-    "db:seed": "node scripts/seed.mjs",
-    "test:senaryo": "node tests/senaryo.mjs"
+    "db:seed": "node --disable-warning=ExperimentalWarning scripts/seed.mjs",
+    "db:reset": "node --disable-warning=ExperimentalWarning scripts/reset-db.mjs",
+    "test:senaryo": "node tests/senaryo.mjs",
+    "test:surucu": "node --disable-warning=ExperimentalWarning tests/surucu.mjs"
   },
   "dependencies": {
-    "better-sqlite3": "11.10.0",
     "exceljs": "4.4.0",
     "next": "^15.5.27",
     "react": "19.1.0",
@@ -21,7 +22,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.8",
-    "@types/better-sqlite3": "7.6.13",
     "@types/node": "22.15.29",
     "@types/react": "19.1.6",
     "@types/react-dom": "19.1.5",
@@ -29,6 +29,6 @@
     "typescript": "5.8.3"
   },
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22.13.0"
   }
 }

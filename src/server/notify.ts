@@ -5,6 +5,7 @@
    =========================================================================== */
 
 import { all, one, run } from "@/lib/db";
+import { env } from "@/lib/env";
 import { fmtDate, fmtDateLong } from "@/lib/dates";
 import { fmtTl, normalizePhone } from "@/lib/format";
 import { asciify, smsMetrics } from "./sms-text";
@@ -60,7 +61,7 @@ export interface NotifyContext {
 }
 
 function baseUrl(): string {
-  return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return env("APP_BASE_URL", "http://localhost:3000").replace(/\/$/, "");
 }
 
 export function trackingUrl(token: string): string {

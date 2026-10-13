@@ -1,4 +1,5 @@
 import { all, one, run } from "@/lib/db";
+import { envBool } from "@/lib/env";
 
 export interface SettingRow {
   key: string;
@@ -42,5 +43,5 @@ export function holidaySet(): Set<string> {
 
 /** Demo rol değiştirici açık mı. */
 export function isDemoMode(): boolean {
-  return (process.env.DEMO_MODE ?? "false").toLowerCase() === "true";
+  return envBool("DEMO_MODE", false);
 }

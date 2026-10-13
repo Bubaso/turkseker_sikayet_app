@@ -1,3 +1,5 @@
+import { env, envNumber, envOptional } from "@/lib/env";
+
 /* ===========================================================================
    SMS ve e-posta sağlayıcı adaptörleri.
    Varsayılan "simulasyon" sağlayıcısı dış dünyaya çıkmaz; mesajlar
@@ -44,9 +46,9 @@ const simulasyonMail: MailProvider = {
 const netgsm: SmsProvider = {
   name: "netgsm",
   async send(phone, text) {
-    const user = process.env.NETGSM_USERNAME;
-    const pass = process.env.NETGSM_PASSWORD;
-    const header = process.env.SMS_SENDER_TITLE ?? "TURKSEKER";
+    const user = envOptional("NETGSM_USERNAME");
+    const pass = envOptional("NETGSM_PASSWORD");
+    const header = env("SMS_SENDER_TITLE", "TURKSEKER");
     if (!user || !pass) {
       return { ok: false, error: "NETGSM_USERNAME / NETGSM_PASSWORD tanımlı değil." };
     }
@@ -78,9 +80,9 @@ const netgsm: SmsProvider = {
 const iletimerkezi: SmsProvider = {
   name: "iletimerkezi",
   async send(phone, text) {
-    const key = process.env.ILETIMERKEZI_KEY;
-    const hash = process.env.ILETIMERKEZI_HASH;
-    const sender = process.env.SMS_SENDER_TITLE ?? "TURKSEKER";
+    const key = envOptional("ILETIMERKEZI_KEY");
+    const hash = envOptional("ILETIMERKEZI_HASH");
+    const sender = env("SMS_SENDER_TITLE", "TURKSEKER");
     if (!key || !hash) {
       return { ok: false, error: "ILETIMERKEZI_KEY / ILETIMERKEZI_HASH tanımlı değil." };
     }
@@ -120,7 +122,7 @@ interface NodemailerTransport {
 const smtp: MailProvider = {
   name: "smtp",
   async send(to, subject, text) {
-    const host = process.env.SMTP_HOST;
+    const host = envOptional("SMTP_HOST");
     if (!host) return { ok: false, error: "SMTP_HOST tanımlı değil." };
     try {
       // nodemailer isteğe bağlı bir pakettir; yalnızca SMTP seçildiğinde yüklenir.
@@ -137,14 +139,14 @@ const smtp: MailProvider = {
       if (!createTransport) return { ok: false, error: "nodemailer yüklenemedi." };
       const transport = createTransport({
         host,
-        port: Number(process.env.SMTP_PORT ?? 587),
-        secure: Number(process.env.SMTP_PORT ?? 587) === 465,
-        auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
+        port: envNumber("SMTP_PORT", 587),
+        secure: envNumber("SMTP_PORT", 587) === 465,
+        auth: envOptional("SMTP_USER")
+          ? { user: envOptional("SMTP_USER"), pass: envOptional("SMTP_PASSWORD") }
           : undefined,
       });
       const info = await transport.sendMail({
-        from: process.env.MAIL_FROM ?? "sikayet@turkseker.gov.tr",
+        from: env("MAIL_FROM", "sikayet@turkseker.gov.tr"),
         to, subject, text,
       });
       return { ok: true, ref: info.messageId };
@@ -157,7 +159,7 @@ const smtp: MailProvider = {
 /* --- Seçiciler ----------------------------------------------------------- */
 
 export function smsProvider(): SmsProvider {
-  switch ((process.env.SMS_PROVIDER ?? "simulasyon").toLowerCase()) {
+  switch (env("SMS_PROVIDER", "simulasyon").toLowerCase()) {
     case "netgsm": return netgsm;
     case "iletimerkezi": return iletimerkezi;
     default: return simulasyonSms;
@@ -165,7 +167,7 @@ export function smsProvider(): SmsProvider {
 }
 
 export function mailProvider(): MailProvider {
-  switch ((process.env.MAIL_PROVIDER ?? "simulasyon").toLowerCase()) {
+  switch (env("MAIL_PROVIDER", "simulasyon").toLowerCase()) {
     case "smtp": return smtp;
     default: return simulasyonMail;
   }

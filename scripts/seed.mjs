@@ -12,7 +12,6 @@
    gerçek iş kuralları motorundan geçer.
    =========================================================================== */
 
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,13 +20,18 @@ import { FABRIKALAR, ILLER, DAIRELER } from "./data/kurulus.mjs";
 import { URUNLER, KATEGORILER, LAB_PARAMETRELERI, TATILLER } from "./data/tanimlar.mjs";
 import { FABRIKA_KADROSU, GM_KADROSU, uret } from "./data/personel.mjs";
 import { hashPassword } from "./lib/hash.mjs";
+import { Db, assertDriverAvailable, silenceSqliteWarning } from "./lib/db.mjs";
+import { env } from "./lib/env.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DB_PATH = path.resolve(process.env.DATABASE_PATH ?? path.join(ROOT, "data/sikayet.db"));
-const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? "Demo2026!";
+const DB_PATH = path.resolve(ROOT, env("DATABASE_PATH", path.join(ROOT, "data", "sikayet.db")));
+const DEMO_PASSWORD = env("SEED_PASSWORD", "Demo2026!");
+
+assertDriverAvailable();
+silenceSqliteWarning();
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-const db = new Database(DB_PATH);
+const db = new Db(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 db.exec(fs.readFileSync(path.join(ROOT, "src/lib/db/schema.sql"), "utf8"));
@@ -213,7 +217,7 @@ db.transaction(() => {
 
   const userCount = db.prepare("SELECT COUNT(*) c FROM users").get().c;
   log(`Kullanıcı: ${userCount} (şifre: ${DEMO_PASSWORD})`);
-})();
+});
 
 db.close();
 console.log("\n✓ Referans verisi yüklendi:", DB_PATH);

@@ -9,6 +9,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { all, one, run } from "@/lib/db";
+import { envOptional } from "@/lib/env";
 import { verifyPassword } from "@/lib/password";
 import { can, isGmRole, type Permission, type Role } from "@/lib/roles";
 import { isDemoMode } from "./settings";
@@ -32,7 +33,7 @@ export interface SessionUser {
 }
 
 function secret(): string {
-  const s = process.env.SESSION_SECRET;
+  const s = envOptional("SESSION_SECRET");
   if (!s || s.length < 16) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3", "exceljs"],
+  // Yerleşik node:sqlite kullanıldığı için derlenmesi gereken yerel paket yoktur.
+  serverExternalPackages: ["exceljs"],
   experimental: {
     serverActions: { bodySizeLimit: "25mb" },
   },

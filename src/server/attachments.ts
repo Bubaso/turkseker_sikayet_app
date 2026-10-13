@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { all, one, run } from "@/lib/db";
+import { env } from "@/lib/env";
 import type { AttachmentView } from "@/lib/types";
 import { EVENT_TYPE, logEvent } from "./events";
 import { getSettingNum } from "./settings";
@@ -27,7 +28,7 @@ const ALLOWED: Record<string, string> = {
 export const ACCEPT_ATTR = ".jpg,.jpeg,.png,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx";
 
 export function uploadDir(): string {
-  return path.resolve(process.env.UPLOAD_DIR ?? "./data/uploads");
+  return path.resolve(env("UPLOAD_DIR", "./data/uploads"));
 }
 
 export function isImage(mime: string): boolean {

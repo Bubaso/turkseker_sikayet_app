@@ -15,8 +15,8 @@
 
 import { chromium } from "playwright";
 
-const BASE = (process.argv[2] ?? process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const SIFRE = process.env.SEED_PASSWORD ?? "Demo2026!";
+const BASE = (process.argv[2] || process.env.APP_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+const SIFRE = process.env.SEED_PASSWORD || "Demo2026!";
 
 // Her koşuda farklı numara kullanılır: aynı numaraya saatlik SMS doğrulama
 // sınırı uygulandığı için testin arka arkaya çalışabilmesi buna bağlıdır.
