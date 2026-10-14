@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  DOC_STATUS_LABEL, STATUS_LABEL, STATUS_TONE, TASK_STATUS_LABEL,
-  type DocStatus, type Status, type TaskStatus,
+  STATUS_LABEL, STATUS_TONE, type Status,
 } from "@/lib/domain";
 import { SLA_TONE, type SlaInfo } from "@/lib/dates";
 
@@ -57,20 +56,6 @@ export function SlaChip({ sla, compact = false }: { sla: SlaInfo; compact?: bool
       {sla.label}
     </Chip>
   );
-}
-
-export function TaskStatusChip({ status }: { status: string }) {
-  const tone: Tone =
-    status === "TAMAMLANDI" ? "ok" : status === "DEVAM_EDIYOR" ? "brand"
-    : status === "GEREKSIZ" ? "ink" : "warn";
-  return <Chip tone={tone}>{TASK_STATUS_LABEL[status as TaskStatus] ?? status}</Chip>;
-}
-
-export function DocStatusChip({ status }: { status: string }) {
-  const tone: Tone =
-    status === "ONAYLANDI" ? "ok" : status === "IMZADA" ? "warn"
-    : status === "REDDEDILDI" ? "danger" : "ink";
-  return <Chip tone={tone}>{DOC_STATUS_LABEL[status as DocStatus] ?? status}</Chip>;
 }
 
 export function VerdictChip({ verdict }: { verdict: string | null }) {

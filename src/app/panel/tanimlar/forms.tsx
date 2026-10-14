@@ -75,11 +75,12 @@ export function DemoDataForms({ complaintCount }: { complaintCount: number }) {
       <Card title="Örnek (demo) verisi üret">
         <ActionForm action={generateDemoAction} submitLabel="Demo verisi üret">
           <Notice tone="info">
-            Üretilen kayıtlar gerçek iş kuralları motorundan geçer: ekip oluşturma, numune, analiz,
-            6 adımlı tutanak imza zinciri, itiraz, iade/değişim, resmî yazı ve kapanış adımları
-            gerçek süreç fonksiyonlarıyla yürütülür. Sonrasında zaman damgaları geçmişe yayılmış
-            gerçekçi bir takvime yazılır, böylece SLA ve trend raporları anlamlı görünür.
-            Dosyaların bir kısmı bilinçli olarak açık ve gecikmeli bırakılır.
+            Üretilen kayıtlar gerçek süreç motorundan geçer: ekip kurulur, sonra her aşama bir
+            belge yüklenerek kapatılır (inceleme tutanağı, imzalı karar tutanağı, iade/değişim
+            belgesi, resmî yazı); itiraz dalı ve kapanış da gerçek süreç fonksiyonlarıyla
+            yürütülür. Sonrasında zaman damgaları geçmişe yayılmış gerçekçi bir takvime yazılır,
+            böylece SLA ve trend raporları anlamlı görünür. Dosyaların bir kısmı bilinçli olarak
+            açık ve gecikmeli bırakılır.
           </Notice>
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-40">
@@ -100,11 +101,11 @@ export function DemoDataForms({ complaintCount }: { complaintCount: number }) {
 
       <Card title="Tüm şikâyet verisini sil">
         <ActionForm action={clearDataAction} submitLabel="Verileri sil" submitTone="danger"
-                    confirm="Tüm şikâyet dosyaları, tutanaklar, analizler ve bildirimler kalıcı olarak silinecek. Bu işlem geri alınamaz. Onaylıyor musunuz?">
+                    confirm="Tüm şikâyet dosyaları, ekler ve bildirimler kalıcı olarak silinecek. Bu işlem geri alınamaz. Onaylıyor musunuz?">
           <Notice tone="danger" title="Bu işlem geri alınamaz">
-            {complaintCount} şikâyet dosyası ve bunlara bağlı tüm görevler, tutanaklar, imzalar,
-            numuneler, analizler, ekler ve bildirimler silinir. Fabrika, ürün, kategori, resmî
-            tatil tanımları ve kullanıcı hesapları korunur.
+            {complaintCount} şikâyet dosyası ve bunlara bağlı tüm aşamalar, ekler, resmî yazılar
+            ve bildirimler silinir. Fabrika, ürün, kategori, resmî tatil tanımları ve kullanıcı
+            hesapları korunur.
           </Notice>
           <div className="w-56">
             <label className="label" htmlFor="onay">

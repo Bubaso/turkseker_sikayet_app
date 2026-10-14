@@ -7,14 +7,13 @@ import { addBusinessDays, now, today } from "@/lib/dates";
 import { normalizePhone } from "@/lib/format";
 import { randomToken } from "@/lib/password";
 import { CHANNEL, DEMAND, OPEN_STATUSES, SLA, STATUS, demandIncludesFreight } from "@/lib/domain";
-import { initialTaskCodes } from "@/lib/workflow";
+import { baslangicAsamalari } from "@/lib/asamalar";
 import type { Complaint, ComplaintView, Factory } from "@/lib/types";
 import { EVENT_TYPE, logEvent } from "./events";
-import { createTasks } from "./tasks";
+import { asamalariAc } from "./asamalar-db";
 import { holidaySet } from "./settings";
 import { TEMPLATE, notifyCustomer } from "./notify";
-import { createDocument } from "./documents";
-import { DOC_TYPE } from "@/lib/domain";
+import { createComplaintForm } from "./documents";
 
 /* --- Şikâyet numarası ---------------------------------------------------- */
 
@@ -90,12 +89,6 @@ export async function createComplaint(input: CreateComplaintInput): Promise<Crea
   const factory = one<Factory>("SELECT * FROM factories WHERE id = ?", factoryId);
   if (!factory) throw new Error("Geçersiz fabrika seçimi.");
 
-  const labRequired = input.categoryId
-    ? (one<{ needs_lab: number }>(
-        "SELECT needs_lab FROM complaint_categories WHERE id = ?", input.categoryId,
-      )?.needs_lab ?? 0) === 1
-    : false;
-
   const demand = input.demand ?? DEMAND.IADE;
   const token = randomToken(18);
 
@@ -116,8 +109,8 @@ export async function createComplaint(input: CreateComplaintInput): Promise<Crea
          invoice_no, delivery_note_no, contract_no, delivery_date,
          category_id, subject, description, demand, demands_freight,
          kvkk_consent_at, phone_verified_at, source_ip,
-         due_team_at, due_inspection_at, due_resolution_at, lab_required
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         due_team_at, due_inspection_at, due_resolution_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       complaintNo, token, input.channel ?? CHANNEL.WEB, STATUS.YENI,
       input.originFactoryId, factoryId, receivedAt, input.receivedById ?? null,
       input.customerCompany.trim(), input.customerName?.trim() || null,
@@ -132,13 +125,13 @@ export async function createComplaint(input: CreateComplaintInput): Promise<Crea
       demand, demandIncludesFreight(demand) ? 1 : 0,
       input.kvkkConsent ? now() : null, input.phoneVerified ? now() : null,
       input.sourceIp ?? null,
-      dueTeam, dueInspection, dueResolution, labRequired ? 1 : 0,
+      dueTeam, dueInspection, dueResolution,
     );
 
     const id = Number(res.lastInsertRowid);
     const complaint = one<Complaint>("SELECT * FROM complaints WHERE id = ?", id)!;
 
-    createTasks(complaint, initialTaskCodes(labRequired));
+    asamalariAc(complaint, baslangicAsamalari());
 
     for (const a of input.attachments ?? []) {
       run(
@@ -156,14 +149,15 @@ export async function createComplaint(input: CreateComplaintInput): Promise<Crea
       toStatus: STATUS.YENI,
       actorId: input.receivedById ?? null,
       actorLabel: input.receivedById ? null : "Müşteri",
-      payload: { channel: input.channel ?? CHANNEL.WEB, demand, labRequired },
+      payload: { channel: input.channel ?? CHANNEL.WEB, demand },
     });
 
     return { id, complaintNo, dueInspection };
   });
 
-  // Müşteri Şikâyet Formu (FR PASAT 007) kayıtla birlikte otomatik açılır.
-  createDocument(created.id, DOC_TYPE.FR_PASAT_007, input.receivedById ?? null);
+  // Müşteri Şikâyet Formu (FR PASAT 007) kayıtla birlikte kayda geçer; Fabrika
+  // Müdürü dosyayı açtığında ilk göreceği belge budur.
+  createComplaintForm(created.id, input.receivedById ?? null);
 
   const nearer = suggestNearerFactory(created.id);
 

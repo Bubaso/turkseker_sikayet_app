@@ -9,9 +9,9 @@ export const STATUS = {
   YENI: "YENI",
   YONLENDIRILDI: "YONLENDIRILDI",
   INCELEMEDE: "INCELEMEDE",
-  TUTANAK_IMZADA: "TUTANAK_IMZADA",
+  KARAR_VERILDI: "KARAR_VERILDI",
   ITIRAZ_DEGERLENDIRME: "ITIRAZ_DEGERLENDIRME",
-  ISLEM_SURECINDE: "ISLEM_SURECINDE",
+  ISLEMDE: "ISLEMDE",
   RAPORLAMA: "RAPORLAMA",
   KAPANDI: "KAPANDI",
   REDDEDILDI: "REDDEDILDI",
@@ -22,11 +22,11 @@ export type Status = (typeof STATUS)[keyof typeof STATUS];
 export const STATUS_LABEL: Record<Status, string> = {
   YENI: "Yeni kayıt — ekip bekleniyor",
   YONLENDIRILDI: "Yönlendirildi",
-  INCELEMEDE: "İncelemede",
-  TUTANAK_IMZADA: "Tutanak imzada",
+  INCELEMEDE: "İnceleme ve belge toplama",
+  KARAR_VERILDI: "Karar verildi",
   ITIRAZ_DEGERLENDIRME: "İtiraz değerlendirmede",
-  ISLEM_SURECINDE: "İşlem sürecinde",
-  RAPORLAMA: "Raporlama / bilgilendirme",
+  ISLEMDE: "İade / değişim sürüyor",
+  RAPORLAMA: "Resmî yazı ve bilgilendirme",
   KAPANDI: "Kapandı",
   REDDEDILDI: "Haksız bulundu",
   IPTAL: "İptal",
@@ -37,9 +37,9 @@ export const STATUS_PUBLIC_LABEL: Record<Status, string> = {
   YENI: "Şikâyetiniz alındı, inceleme ekibi oluşturuluyor",
   YONLENDIRILDI: "Size daha yakın fabrikaya yönlendirildi",
   INCELEMEDE: "İnceleme ve analiz sürüyor",
-  TUTANAK_IMZADA: "İnceleme tamamlandı, onay sürecinde",
+  KARAR_VERILDI: "İnceleme tamamlandı, karar verildi",
   ITIRAZ_DEGERLENDIRME: "Genel Müdürlük değerlendirmesinde",
-  ISLEM_SURECINDE: "İade / değişim işlemi yapılıyor",
+  ISLEMDE: "İade / değişim işlemi yapılıyor",
   RAPORLAMA: "İşlem tamamlandı, bilgilendirme hazırlanıyor",
   KAPANDI: "Şikâyetiniz kapatıldı",
   REDDEDILDI: "İnceleme sonucu: şikâyet haklı bulunmadı",
@@ -52,9 +52,9 @@ export const STATUS_TONE: Record<Status, ChipTone> = {
   YENI: "info",
   YONLENDIRILDI: "brand",
   INCELEMEDE: "brand",
-  TUTANAK_IMZADA: "warn",
+  KARAR_VERILDI: "warn",
   ITIRAZ_DEGERLENDIRME: "danger",
-  ISLEM_SURECINDE: "brand",
+  ISLEMDE: "brand",
   RAPORLAMA: "info",
   KAPANDI: "ok",
   REDDEDILDI: "ink",
@@ -70,16 +70,16 @@ export function isTerminal(s: string): boolean {
 /** Açık dosya durumları — listelerde "açık dosyalar" filtresi. */
 export const OPEN_STATUSES: Status[] = [
   STATUS.YENI, STATUS.YONLENDIRILDI, STATUS.INCELEMEDE,
-  STATUS.TUTANAK_IMZADA, STATUS.ITIRAZ_DEGERLENDIRME, STATUS.ISLEM_SURECINDE, STATUS.RAPORLAMA,
+  STATUS.KARAR_VERILDI, STATUS.ITIRAZ_DEGERLENDIRME, STATUS.ISLEMDE, STATUS.RAPORLAMA,
 ];
 
 /** Durumun iş akışındaki sıra numarası — ilerleme çubuğu için. */
 export const STATUS_STEP: Record<Status, number> = {
-  YENI: 1, YONLENDIRILDI: 2, INCELEMEDE: 3,
-  TUTANAK_IMZADA: 4, ITIRAZ_DEGERLENDIRME: 5, ISLEM_SURECINDE: 5,
-  RAPORLAMA: 6, KAPANDI: 7, REDDEDILDI: 7, IPTAL: 7,
+  YENI: 1, YONLENDIRILDI: 1, INCELEMEDE: 2,
+  KARAR_VERILDI: 3, ITIRAZ_DEGERLENDIRME: 4, ISLEMDE: 4,
+  RAPORLAMA: 5, KAPANDI: 6, REDDEDILDI: 6, IPTAL: 6,
 };
-export const TOTAL_STEPS = 7;
+export const TOTAL_STEPS = 6;
 
 /* --- Başvuru kanalı (aylık tablo "Kayıt türü") ---------------------------- */
 
@@ -154,43 +154,19 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
 
 /* --- Belge türleri -------------------------------------------------------- */
 
-export const DOC_TYPE = {
-  FR_PASAT_007: "FR_PASAT_007",
-  FR_PASAT_004: "FR_PASAT_004",
-  FR_PASAT_005: "FR_PASAT_005",
-  INCELEME_TUTANAGI: "INCELEME_TUTANAGI",
-  MUSTERI_BILGILENDIRME: "MUSTERI_BILGILENDIRME",
-} as const;
+export const DOC_TYPE = { FR_PASAT_007: "FR_PASAT_007" } as const;
 export type DocType = (typeof DOC_TYPE)[keyof typeof DOC_TYPE];
 
 export const DOC_TYPE_LABEL: Record<DocType, string> = {
   FR_PASAT_007: "Müşteri Şikâyet Formu",
-  FR_PASAT_004: "Ürün Değişim-İade Tutanağı",
-  FR_PASAT_005: "Ürün Değişim/İade ve Nakliye Bedelinin Ödenmesi Tutanağı",
-  INCELEME_TUTANAGI: "İnceleme Tutanağı",
-  MUSTERI_BILGILENDIRME: "Müşteri Bilgilendirme Formu",
 };
 
 export const DOC_TYPE_CODE: Record<DocType, string> = {
   FR_PASAT_007: "FR PASAT 007",
-  FR_PASAT_004: "FR PASAT 004",
-  FR_PASAT_005: "FR PASAT 005",
-  INCELEME_TUTANAGI: "FR PASAT 008",
-  MUSTERI_BILGILENDIRME: "FR PASAT 006",
 };
 
-export const DOC_STATUS = {
-  TASLAK: "TASLAK", IMZADA: "IMZADA", ONAYLANDI: "ONAYLANDI",
-  REDDEDILDI: "REDDEDILDI", IPTAL: "IPTAL",
-} as const;
+export const DOC_STATUS = { ONAYLANDI: "ONAYLANDI", IPTAL: "IPTAL" } as const;
 export type DocStatus = (typeof DOC_STATUS)[keyof typeof DOC_STATUS];
-export const DOC_STATUS_LABEL: Record<DocStatus, string> = {
-  TASLAK: "Taslak",
-  IMZADA: "İmza sürecinde",
-  ONAYLANDI: "Onaylandı",
-  REDDEDILDI: "Reddedildi",
-  IPTAL: "İptal",
-};
 
 /* --- Görev durumu --------------------------------------------------------- */
 
@@ -208,28 +184,31 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 
 /* --- Ek türleri ----------------------------------------------------------- */
 
+/*
+ * Ek türleri aşama kodlarıyla aynı adı taşır: her kilometre taşı bir belge
+ * yüklenerek kapandığı için ek, hangi aşamanın belgesi olduğunu kendi üzerinde
+ * taşır. KANIT müşterinin başvuruda ilettiği görsel/belge, DIGER serbest ektir.
+ */
 export const ATTACHMENT_KIND = {
-  KANIT: "KANIT", ANALIZ_RAPORU: "ANALIZ_RAPORU", IMZALI_TUTANAK: "IMZALI_TUTANAK",
-  RESMI_YAZI: "RESMI_YAZI", FATURA: "FATURA", DIGER: "DIGER",
+  KANIT: "KANIT",
+  INCELEME: "INCELEME",
+  KARAR: "KARAR",
+  ITIRAZ: "ITIRAZ",
+  DAIRE_KARAR: "DAIRE_KARAR",
+  ISLEM: "ISLEM",
+  RESMI_YAZI: "RESMI_YAZI",
+  DIGER: "DIGER",
 } as const;
 export type AttachmentKind = (typeof ATTACHMENT_KIND)[keyof typeof ATTACHMENT_KIND];
 export const ATTACHMENT_KIND_LABEL: Record<AttachmentKind, string> = {
-  KANIT: "Kanıt (görsel/belge)",
-  ANALIZ_RAPORU: "Analiz raporu",
-  IMZALI_TUTANAK: "Islak imzalı tutanak",
-  RESMI_YAZI: "Resmî yazı",
-  FATURA: "Fatura / irsaliye",
-  DIGER: "Diğer",
-};
-
-/* --- Analiz uygunluğu ----------------------------------------------------- */
-
-export const CONFORMITY = { UYGUN: "UYGUN", UYGUN_DEGIL: "UYGUN_DEGIL", KISMEN: "KISMEN" } as const;
-export type Conformity = (typeof CONFORMITY)[keyof typeof CONFORMITY];
-export const CONFORMITY_LABEL: Record<Conformity, string> = {
-  UYGUN: "Standartlara uygun",
-  UYGUN_DEGIL: "Standartlara uygun değil",
-  KISMEN: "Kısmen uygun",
+  KANIT: "Müşterinin ilettiği kanıt",
+  INCELEME: "İnceleme tutanağı / analiz raporu",
+  KARAR: "İmzalı karar tutanağı",
+  ITIRAZ: "Daire Başkanlığına üst yazı",
+  DAIRE_KARAR: "Daire Başkanlığı karar yazısı",
+  ISLEM: "İade / değişim / nakliye belgesi",
+  RESMI_YAZI: "Resmî yazı ve müşteri bilgilendirmesi",
+  DIGER: "Diğer belge",
 };
 
 /* --- Daire başkanlıkları -------------------------------------------------- */

@@ -6,7 +6,7 @@
 import { all, one } from "@/lib/db";
 import { CHANNEL_LABEL, PRODUCT_GROUP_LABEL, type Channel, type ProductGroup } from "@/lib/domain";
 import { fmtDate, monthName } from "@/lib/dates";
-import { letterRecipients } from "@/lib/workflow";
+import { letterRecipients } from "@/lib/esik";
 
 export interface MonthlyRow {
   id: number;

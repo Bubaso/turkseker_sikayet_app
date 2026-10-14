@@ -36,20 +36,6 @@ export interface ComplaintCategory {
   name: string;
   family: string;
   is_critical: number;
-  needs_lab: number;
-  sort_order: number;
-  is_active: number;
-}
-
-export interface LabParameter {
-  id: number;
-  code: string;
-  name: string;
-  unit: string | null;
-  product_group: string | null;
-  spec_min: number | null;
-  spec_max: number | null;
-  spec_text: string | null;
   sort_order: number;
   is_active: number;
 }
@@ -107,8 +93,6 @@ export interface Complaint {
   team_formed_at: string | null;
   visited_at: string | null;
   inspection_note: string | null;
-  lab_required: number;
-  lab_skip_reason: string | null;
 
   verdict: string | null;
   verdict_reason: string | null;
@@ -131,9 +115,6 @@ export interface Complaint {
   freight_paid_at: string | null;
   transaction_date: string | null;
 
-  capa_started_at: string | null;
-  capa_no: string | null;
-  capa_note: string | null;
 
   letter_sent_at: string | null;
   letter_no: string | null;
@@ -204,99 +185,21 @@ export interface TeamMemberView {
   email: string | null;
 }
 
-export interface SampleRow {
-  id: number;
-  complaint_id: number;
-  sample_no: string;
-  taken_at: string;
-  taken_by: number | null;
-  taken_place: string | null;
-  lot_no: string | null;
-  quantity: string | null;
-  seal_no: string | null;
-  note: string | null;
-  created_at: string;
-}
-
-export interface SampleView extends SampleRow {
-  taken_by_name: string | null;
-  analysis_count: number;
-}
-
-export interface AnalysisRow {
-  id: number;
-  complaint_id: number;
-  sample_id: number | null;
-  report_no: string;
-  analyzed_at: string;
-  analyzed_by: number | null;
-  lab_name: string | null;
-  conformity: string;
-  summary: string | null;
-  created_at: string;
-}
-
-export interface AnalysisView extends AnalysisRow {
-  analyzed_by_name: string | null;
-  sample_no: string | null;
-  results: AnalysisResultRow[];
-}
-
-export interface AnalysisResultRow {
-  id: number;
-  analysis_id: number;
-  parameter_id: number | null;
-  parameter: string;
-  value: string;
-  unit: string | null;
-  spec_text: string | null;
-  conforms: number | null;
-  sort_order: number;
-}
-
 export interface DocumentRow {
   id: number;
   complaint_id: number;
   type: string;
   doc_no: string;
   status: string;
-  body: string | null;
   created_at: string;
   created_by: number | null;
-  submitted_at: string | null;
   approved_at: string | null;
-  approved_by: number | null;
-  cancelled_at: string | null;
-  cancel_reason: string | null;
-}
-
-export interface SignatureRow {
-  id: number;
-  document_id: number;
-  sort_order: number;
-  expected_role: string;
-  expected_title: string;
-  is_approval: number;
-  user_id: number | null;
-  signer_name: string | null;
-  signer_title: string | null;
-  decision: string;
-  decided_at: string | null;
-  note: string | null;
-}
-
-export interface DocumentView extends DocumentRow {
-  created_by_name: string | null;
-  signatures: SignatureRow[];
-  /** İmza bekleyen ilk sıra; yoksa null. */
-  pending: SignatureRow | null;
 }
 
 export interface AttachmentRow {
   id: number;
   complaint_id: number;
   document_id: number | null;
-  analysis_id: number | null;
   kind: string;
   file_name: string;
   stored_name: string;

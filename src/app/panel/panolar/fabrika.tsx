@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { isGmRole } from "@/lib/roles";
 import { fmtDate, slaInfo } from "@/lib/dates";
-import { DOC_TYPE_LABEL, STATUS_LABEL, type DocType, type Status } from "@/lib/domain";
 import { all, scalar } from "@/lib/db";
 import type { SessionUser } from "@/server/auth";
 import { listComplaints } from "@/server/complaints";
-import { myTasks } from "@/server/tasks";
-import { documentsAwaitingUser } from "@/server/documents";
+import { benimAsamalarim } from "@/server/asamalar-db";
 import { dashboardStats, nextDue } from "@/server/stats";
 import { holidaySet } from "@/server/settings";
-import { Card, Chip, EmptyState, Notice, PageHeader, SlaChip, Stat, StatusChip } from "@/components/ui";
+import { Card, EmptyState, Notice, PageHeader, SlaChip, Stat, StatusChip } from "@/components/ui";
 import { ComplaintTable, type TableRowExtra } from "@/components/complaint-table";
 
 export async function FabrikaPano({ user }: { user: SessionUser }) {
@@ -18,11 +16,7 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
   const holidays = holidaySet();
 
   const stats = dashboardStats(factoryId);
-  const tasks = myTasks(user, { onlyOpen: true, limit: 8 });
-  // İmza kuyruğu kullanıcıya özeldir; sayaç tıklandığında açılan sayfayla aynı
-  // şeyi saymalıdır. Daha önce fabrika genelindeki tüm "imzada" belgeler
-  // sayıldığı için dosya kapandıktan sonra da 1 görünebiliyordu.
-  const imzaBekleyen = documentsAwaitingUser(user);
+  const tasks = benimAsamalarim(user, 8);
 
   // Kartların açacağı filtreler
   const simdi = new Date();
@@ -87,10 +81,10 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Ekip bekleyen" value={stats.awaitingTeam} tone={stats.awaitingTeam ? "warn" : "ink"}
               hint="1 iş günü içinde kurulmalı" />
-        <Stat label="İmzanızı bekleyen" value={imzaBekleyen.length}
-              tone={imzaBekleyen.length ? "warn" : "ink"}
-              href={imzaBekleyen.length ? "/panel/belgeler" : undefined}
-              hint="Sıra sizde olan belgeler" />
+        <Stat label="Belge bekleyen" value={stats.belgeBekleyen}
+              tone={stats.belgeBekleyen ? "warn" : "ink"}
+              href="/panel/gorevler?kapsam=fabrika"
+              hint="Aşaması belge yüklenerek kapanacak dosya" />
         <Stat label="İtiraz değerlendirmede" value={stats.inEscalation}
               tone={stats.inEscalation ? "warn" : "ink"} href="/panel/itirazlar" />
         <Stat label="Gıda güvenliği ihbarı" value={stats.criticalOpen}
@@ -98,31 +92,14 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card title="Görevlerim" className="xl:col-span-2"
+        <Card title="Bana düşen aşamalar" className="xl:col-span-2"
               actions={<Link href="/panel/gorevler" className="btn btn-ghost btn-sm">Tümü →</Link>}
               bodyClass="">
-          {tasks.length === 0 && imzaBekleyen.length === 0 ? (
-            <EmptyState title="Size atanmış açık görev yok"
+          {tasks.length === 0 ? (
+            <EmptyState title="Size düşen açık aşama yok"
                         hint="Yeni bir şikâyet geldiğinde veya sıra size ulaştığında burada görünür." />
           ) : (
             <ul className="divide-y divide-ink-100">
-              {/* İmza sırası da bir iştir ve en üstte durur. */}
-              {imzaBekleyen.slice(0, 4).map((d) => (
-                <li key={`imza-${d.id}`}
-                    className="flex flex-wrap items-start justify-between gap-2 px-4 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/panel/sikayet/${d.complaint_id}?sekme=belgeler`}
-                          className="text-sm font-medium text-ink-800 hover:text-brand-700 hover:underline">
-                      {DOC_TYPE_LABEL[d.type as DocType] ?? d.type} — imzanız bekleniyor
-                    </Link>
-                    <p className="text-xs text-ink-500">
-                      <span className="font-mono">{d.complaint_no}</span> · {d.customer_company}
-                      {d.factory_short && ` · ${d.factory_short}`}
-                    </p>
-                  </div>
-                  <Chip tone="warn">İmza</Chip>
-                </li>
-              ))}
               {tasks.map((t) => {
                 const sla = slaInfo(t.due_at, null, holidays);
                 return (

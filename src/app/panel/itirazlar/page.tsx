@@ -2,10 +2,11 @@ import Link from "next/link";
 import { all } from "@/lib/db";
 import { PERMISSIONS, can } from "@/lib/roles";
 import { PRODUCT_GROUP_LABEL, type ProductGroup } from "@/lib/domain";
-import { fmtDate, slaInfo } from "@/lib/dates";
+import { fmtDate, slaInfo, today } from "@/lib/dates";
 import { fmtQuantity } from "@/lib/format";
 import { ESCALATION_THRESHOLD_TEXT } from "@/lib/domain";
 import {requirePageUser} from "@/server/auth";
+import { ACCEPT_ATTR } from "@/server/attachments";
 import { holidaySet } from "@/server/settings";
 import { Card, Chip, EmptyState, Notice, PageHeader, SlaChip, Stat } from "@/components/ui";
 import { LineChart, TableView } from "@/components/charts";
@@ -201,18 +202,15 @@ export default async function EscalationsPage({
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-ink-100 pt-3">
-                  <Link href={`/panel/sikayet/${c.id}?sekme=belgeler`} className="btn btn-secondary btn-sm">
-                    Tutanak ve analizleri incele
-                  </Link>
-                  <Link href={`/panel/sikayet/${c.id}?sekme=ekler`} className="btn btn-secondary btn-sm">
-                    Kanıtları gör
+                <div className="mt-4 border-t border-ink-100 pt-3">
+                  <Link href={`/panel/sikayet/${c.id}`} className="btn btn-secondary btn-sm">
+                    Dosyayı aç — form, tutanaklar ve kanıtlar
                   </Link>
                 </div>
 
                 {!showHistory && canDecide && isMine && (
                   <div className="mt-4 border-t border-ink-200 pt-4">
-                    <EscalationDecision complaintId={c.id} />
+                    <EscalationDecision complaintId={c.id} bugun={today()} accept={ACCEPT_ATTR} />
                   </div>
                 )}
                 {!showHistory && canDecide && !isMine && (

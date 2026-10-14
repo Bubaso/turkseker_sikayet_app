@@ -9,27 +9,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { CHANNEL, DEMAND, VERDICT, type Verdict } from "@/lib/domain";
+import { ASAMA, ASAMALAR, type AsamaKodu } from "@/lib/asamalar";
 import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { requireFactoryAccess, requirePermission, requireUser } from "@/server/auth";
 import {
-  cancelComplaint, closeComplaint, decideEscalation, escalateComplaint, formTeam,
-  onTutanakApproved, prepareTutanak, recordFreightPayment, recordInspection,
-  recordTransaction, redirectComplaint,
-  sendCustomerInfo, sendOfficialLetter, startCapa,
-} from "@/server/process";
-import { addAnalysis, addSample, evaluateParameter, labParameters } from "@/server/lab";
-import { getDocument, reopenDocument, signDocument } from "@/server/documents";
+  asamaYetkisi, asamayiGerekmez, asamayiKaydet, dosyayiIptalEt, dosyayiKapat,
+  dosyayiYonlendir, ekibiKur,
+} from "@/server/asama";
+import { atanabilirPersonel, sorumluyuDegistir } from "@/server/asamalar-db";
 import { createComplaint } from "@/server/complaints";
-import { deleteAttachment, recordAttachment, storeFile } from "@/server/attachments";
-import {
-  assignTask, complaintSteps, eligibleAssignees, setTaskStatus,
-} from "@/server/tasks";
+import { deleteAttachment, recordAttachment, storeFile, type StoredFile } from "@/server/attachments";
 import { EVENT_TYPE, logEvent } from "@/server/events";
 import { deliver, retryFailed } from "@/server/notify";
 import { setSetting } from "@/server/settings";
 import { yaziyiOkunduIsaretle } from "@/server/yonetim";
-import type { TaskCode } from "@/lib/workflow";
-import type { LabParameter } from "@/lib/types";
 
 export interface ActionResult {
   ok?: boolean;
@@ -79,364 +72,127 @@ const detail = (cid: number) => [`/panel/sikayet/${cid}`, "/panel", "/panel/sika
 
 /* --- 1. Ekip ------------------------------------------------------------- */
 
+/* --- 1. Ekip oluşturma ve yönlendirme ------------------------------------ */
+
+/**
+ * Ekip kurma. Fabrika Müdürü kaç kişi olacağını seçer, her satırda unvan ve
+ * isim belirler. Form "uye_0", "uye_1" … alanlarını gönderir.
+ */
 export async function formTeamAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    const picks = fd.getAll("member").map(String).filter(Boolean);
-    if (picks.length === 0) throw new Error("Ekibe en az bir personel seçmelisiniz.");
-    const leadId = Number(s(fd, "lead"));
-    const members = picks.map((p) => {
-      const [userId, unit] = p.split("|");
-      return { userId: Number(userId), unit: unit!, isLead: Number(userId) === leadId };
-    });
-    await formTeam(cid, members, s(fd, "note") || null);
-    return `İnceleme ekibi oluşturuldu (${members.length} kişi). Müşteriye bilgilendirme gönderildi.`;
+    const uyeler: { userId: number; unvan: string }[] = [];
+    for (const [k, v] of fd.entries()) {
+      if (!k.startsWith("uye_")) continue;
+      const uid = Number(String(v));
+      if (!uid) continue;
+      const unvan = s(fd, `unvan_${k.slice(4)}`);
+      uyeler.push({ userId: uid, unvan: unvan || "—" });
+    }
+    await ekibiKur(cid, uyeler, s(fd, "note") || null);
+    return `${uyeler.length} kişilik ekip oluşturuldu.`;
   }, detail(cid), s(fd, "returnTo"));
 }
-
-/* --- 2. Yönlendirme ------------------------------------------------------ */
 
 export async function redirectAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    const to = Number(s(fd, "toFactoryId"));
-    const reason = s(fd, "reason");
-    if (!to) throw new Error("Hedef fabrika seçilmedi.");
-    if (!reason) throw new Error("Yönlendirme gerekçesi zorunludur.");
-    await redirectComplaint(cid, to, reason);
-    return "Dosya yönlendirildi; yeni fabrikanın ekip kurma süresi yeniden hesaplandı.";
-  }, detail(cid), s(fd, "returnTo"));
+    await dosyayiYonlendir(cid, Number(s(fd, "toFactoryId")), s(fd, "reason"));
+    return "Dosya seçilen fabrikaya yönlendirildi.";
+  }, [...detail(cid), "/panel/sikayetler"], s(fd, "returnTo"));
 }
 
-/* --- 3. İnceleme --------------------------------------------------------- */
+/* --- 2. Kilometre taşı kaydı (belge yükleyerek) -------------------------- */
 
-export async function inspectionAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+/**
+ * Tek bir eylem bütün belgeli aşamaları kapatır: tarih, kısa açıklama ve
+ * belge. Belge uygulamada üretilmez; fabrikada hazırlanıp buraya yüklenir.
+ */
+export async function asamaAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    const labRequired = s(fd, "labRequired") === "1";
-    await recordInspection(cid, {
-      visitedAt: s(fd, "visitedAt"),
-      note: s(fd, "note"),
-      remoteOnly: s(fd, "remoteOnly") === "1",
-      labRequired,
-      labSkipReason: labRequired ? null : s(fd, "labSkipReason"),
-    });
-    return labRequired
-      ? "İnceleme kaydedildi. Numune ve analiz görevleri açıldı."
-      : "İnceleme kaydedildi. Analiz yapılmama gerekçesi tutanağa işlenecek.";
-  }, detail(cid), s(fd, "returnTo"));
-}
+    const kod = s(fd, "asama") as AsamaKodu;
+    const a = ASAMALAR[kod];
+    if (!a) throw new Error("Geçersiz aşama.");
 
-/* --- 4. Numune ve analiz ------------------------------------------------- */
+    // Yetki ve sıra, belge yüklenmeden önce denetlenir.
+    const { user } = await asamaYetkisi(cid, kod);
 
-export async function sampleAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    await addSample(cid, {
-      takenAt: s(fd, "takenAt"),
-      takenPlace: s(fd, "takenPlace"),
-      lotNo: s(fd, "lotNo") || null,
-      quantity: s(fd, "quantity") || null,
-      sealNo: s(fd, "sealNo") || null,
-      note: s(fd, "note") || null,
-    });
-    return "Numune kaydedildi. Müşteriye bilgilendirme gönderildi.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-export async function analysisAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const group = s(fd, "productGroup");
-    const params = labParameters(group);
-    const byId = new Map<number, LabParameter>(params.map((p) => [p.id, p]));
-
-    const results = [];
-    for (const key of fd.keys()) {
-      if (!key.startsWith("deger_")) continue;
-      const pid = Number(key.slice(6));
-      const value = s(fd, key);
-      if (!value) continue;
-      const p = byId.get(pid);
-      if (!p) continue;
-      const manual = s(fd, `uygun_${pid}`);
-      const conforms =
-        manual === "1" ? true : manual === "0" ? false : evaluateParameter(p, value);
-      results.push({
-        parameterId: p.id,
-        parameter: p.name,
-        value,
-        unit: p.unit,
-        specText: p.spec_text,
-        conforms,
-      });
-    }
-    if (results.length === 0) throw new Error("En az bir parametreye değer girmelisiniz.");
-
-    const analysisId = await addAnalysis(cid, {
-      sampleId: Number(s(fd, "sampleId")) || null,
-      reportNo: s(fd, "reportNo"),
-      analyzedAt: s(fd, "analyzedAt"),
-      labName: s(fd, "labName") || null,
-      summary: s(fd, "summary") || null,
-      results,
-    });
-
-    // Analiz raporu dosyası
-    const user = await requireUser();
-    const file = fd.get("rapor");
-    if (file instanceof File && file.size > 0) {
-      const stored = await storeFile(file);
-      recordAttachment(stored, {
-        complaintId: cid, kind: "ANALIZ_RAPORU", analysisId,
-        caption: `Analiz raporu ${s(fd, "reportNo")}`, uploadedBy: user.id,
-      });
-    }
-    const bad = results.filter((r) => r.conforms === false).length;
-    return bad > 0
-      ? `Analiz kaydedildi. ${bad} parametre spesifikasyon dışı — sonuç "uygun değil".`
-      : "Analiz kaydedildi. Tüm parametreler spesifikasyona uygun.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-/* --- 5. Tutanak ve imza -------------------------------------------------- */
-
-export async function tutanakAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const verdict = s(fd, "verdict") as Verdict;
-    if (verdict !== VERDICT.HAKLI && verdict !== VERDICT.HAKSIZ) {
-      throw new Error("Karar seçilmedi.");
-    }
-    await prepareTutanak(cid, {
-      verdict,
-      verdictReason: s(fd, "verdictReason"),
-      decision: s(fd, "decision"),
-      bodyNote: s(fd, "bodyNote") || null,
-    });
-    return "Tutanak düzenlendi ve imza sürecine alındı. Sıradaki imza sahibine düştü.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-export async function signAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const user = await requirePermission(PERMISSIONS.BELGE_IMZALA);
-    const docId = Number(s(fd, "documentId"));
-    const decision = s(fd, "decision") === "RED" ? "RED" : "ONAY";
-    const doc = getDocument(docId);
-    if (!doc) throw new Error("Belge bulunamadı.");
-
-    const res = signDocument(docId, user, decision, s(fd, "note") || null);
-
-    if (res.rejected) return "Belge reddedildi. Düzeltme için taslağa alınabilir.";
-    if (res.completed) {
-      const isTutanak = ["FR_PASAT_004", "FR_PASAT_005", "INCELEME_TUTANAGI"].includes(doc.type);
-      if (isTutanak) {
-        await onTutanakApproved(cid, user);
-        return "Tutanak Fabrika Müdürü onayıyla tamamlandı. Karar kesinleşti ve sonraki görevler açıldı.";
+    // Dosyalar diske yazılır; ek kayıtları aşama kaydıyla aynı işlemde açılır.
+    const belgeler: StoredFile[] = [];
+    if (a.belgeli) {
+      const dosyalar = fd.getAll("belge").filter((f): f is File => f instanceof File && f.size > 0);
+      if (dosyalar.length === 0) {
+        throw new Error(`Bu aşama belge yüklenerek kapanır: ${a.belgeAdi ?? "ilgili belge"}.`);
       }
-      return "Belge imza zinciri tamamlandı ve onaylandı.";
+      for (const f of dosyalar) belgeler.push(await storeFile(f));
     }
-    return "İmzanız kaydedildi. Belge sıradaki imza sahibine geçti.";
-  }, detail(cid), s(fd, "returnTo"));
-}
 
-export async function reopenDocAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const user = await requirePermission(PERMISSIONS.BELGE_HAZIRLA);
-    const reason = s(fd, "reason");
-    if (!reason) throw new Error("Düzeltme gerekçesi zorunludur.");
-    reopenDocument(Number(s(fd, "documentId")), user, reason);
-    return "Belge taslağa alındı, imzalar sıfırlandı.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-/* --- 6. İtiraz ----------------------------------------------------------- */
-
-export async function escalateAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    await escalateComplaint(cid, s(fd, "note") || null);
-    return "İtiraz ilgili Daire Başkanlığına gönderildi. Karar süresi 5 iş günü.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-export async function escalationDecisionAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const result = s(fd, "result") === "SIKAYET_HAKLI" ? "SIKAYET_HAKLI" : "SIKAYET_HAKSIZ";
-    await decideEscalation(cid, result, s(fd, "note"));
-    return result === "SIKAYET_HAKLI"
-      ? "İtiraz kabul edildi. Dosya iade/değişim sürecine döndü."
-      : "İtiraz reddedildi. Fabrika kararı teyit edildi.";
-  }, [...detail(cid), "/panel/itirazlar"], s(fd, "returnTo"));
-}
-
-/* --- 7. İşlem, DF, resmî yazı, bilgilendirme, kapanış ------------------- */
-
-export async function transactionAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    await recordTransaction(cid, {
-      transactionDate: s(fd, "transactionDate"),
-      returnedKg: n(fd, "returnedKg") ?? 0,
-      exchangedKg: n(fd, "exchangedKg") ?? 0,
-      refundAmount: n(fd, "refundAmount") ?? 0,
-      note: s(fd, "note") || null,
+    await asamayiKaydet(cid, kod, {
+      tarih: s(fd, "tarih"),
+      not: s(fd, "not"),
+      belgeler,
+      karar: (s(fd, "karar") || undefined) as Verdict | undefined,
+      itirazKabul: s(fd, "itirazKabul") === "1",
+      iadeKg: n(fd, "iadeKg"), degisimKg: n(fd, "degisimKg"),
+      bedel: n(fd, "bedel"), nakliye: n(fd, "nakliye"),
     });
-    return "İşlem kaydedildi. Resmî yazı için 3 iş günlük süre başladı.";
+    return `${a.baslik} kayda geçirildi.`;
+  }, [...detail(cid), "/panel/itirazlar", "/panel/resmi-yazilar"], s(fd, "returnTo"));
+}
+
+export async function asamaGerekmezAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const cid = id(fd);
+  return guard(async () => {
+    await asamayiGerekmez(cid, s(fd, "asama") as AsamaKodu, s(fd, "gerekce"));
+    return "Aşama atlandı olarak işaretlendi.";
   }, detail(cid), s(fd, "returnTo"));
 }
 
-export async function freightPaymentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+/** Aşamanın sorumlusunu değiştirir — Fabrika Müdürü. */
+export async function assignTaskAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    await recordFreightPayment(cid, {
-      amount: n(fd, "amount") ?? 0,
-      paidAt: s(fd, "paidAt"),
-      note: s(fd, "note") || null,
+    const user = await requirePermission(PERMISSIONS.GOREV_ATA);
+    const taskId = Number(s(fd, "taskId"));
+    const hedefId = Number(s(fd, "assigneeId"));
+    const t = one<{ complaint_id: number; factory_id: number; title: string }>(
+      `SELECT t.complaint_id, c.factory_id, t.title FROM tasks t
+         JOIN complaints c ON c.id = t.complaint_id WHERE t.id = ?`, taskId,
+    );
+    if (!t || t.complaint_id !== cid) throw new Error("Aşama bulunamadı.");
+    await requireFactoryAccess(t.factory_id);
+    const aday = atanabilirPersonel(t.factory_id).find((u) => u.id === hedefId);
+    if (!aday) throw new Error("Bu personel bu fabrikanın kadrosunda değil.");
+    sorumluyuDegistir(taskId, hedefId, user);
+    logEvent({
+      complaintId: cid, type: EVENT_TYPE.GOREV,
+      title: `Aşama sorumlusu değişti: ${t.title}`,
+      note: `Yeni sorumlu: ${aday.full_name}`, actorId: user.id,
     });
-    return "Nakliye bedeli ödemesi kaydedildi.";
+    return `"${t.title}" aşamasının sorumlusu ${aday.full_name} olarak güncellendi.`;
   }, detail(cid), s(fd, "returnTo"));
 }
 
-export async function capaAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const no = s(fd, "capaNo");
-    const note = s(fd, "note");
-    if (!no) throw new Error("Düzeltici faaliyet numarası zorunludur.");
-    if (!note) throw new Error("Düzeltici faaliyet açıklaması zorunludur.");
-    await startCapa(cid, no, note);
-    return "FSSC 22000 düzeltici faaliyet kaydı açıldı.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-export async function letterAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    await sendOfficialLetter(cid, s(fd, "letterNo"), s(fd, "note") || null);
-    return "Resmî yazı dağıtımı kaydedildi.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-export async function customerInfoAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    await sendCustomerInfo(cid, s(fd, "explanation"));
-    return "Müşteri Bilgilendirme Formu düzenlendi ve müşteriye gönderildi.";
-  }, detail(cid), s(fd, "returnTo"));
-}
+/* --- 3. Kapanış ve iptal ------------------------------------------------- */
 
 export async function closeAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    await closeComplaint(cid, s(fd, "note"));
-    return "Dosya kapatıldı. Müşteriye kapanış bildirimi gönderildi.";
+    await dosyayiKapat(cid, s(fd, "note"));
+    return "Dosya kapatıldı.";
   }, detail(cid), s(fd, "returnTo"));
 }
 
 export async function cancelAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
-    await cancelComplaint(cid, s(fd, "reason"));
+    await dosyayiIptalEt(cid, s(fd, "reason"));
     return "Dosya iptal edildi.";
   }, detail(cid), s(fd, "returnTo"));
 }
 
-/* --- 8. Görev, not, dosya ----------------------------------------------- */
-
-interface TaskRef {
-  complaint_id: number;
-  factory_id: number;
-  code: string;
-  title: string;
-  status: string;
-  assignee_id: number | null;
-}
-
-/** Formdan gelen görev kimliğini dosyaya ve fabrikaya bağlayarak doğrular. */
-function loadTaskRef(taskId: number, complaintId: number): TaskRef {
-  const t = one<TaskRef>(
-    `SELECT t.complaint_id, c.factory_id, t.code, t.title, t.status, t.assignee_id
-       FROM tasks t JOIN complaints c ON c.id = t.complaint_id
-      WHERE t.id = ?`,
-    taskId,
-  );
-  if (!t || t.complaint_id !== complaintId) throw new Error("Görev bulunamadı.");
-  if (t.status === "TAMAMLANDI" || t.status === "GEREKSIZ") {
-    throw new Error(`"${t.title}" adımı daha önce kapatılmış.`);
-  }
-  return t;
-}
-
-/**
- * Görev kartı düğmeleri. İki işlem vardır ve yetkileri farklıdır:
- *  - "Başladım" (DEVAM_EDIYOR): yalnızca görevin sorumlusu, sırası gelmiş adımda.
- *  - "Gerek yok" (GEREKSIZ): süreçte bir adımı atlamak olduğundan Fabrika Müdürüne aittir.
- * Bir adım bu uçtan "tamamlandı" yapılamaz; tamamlanma yalnızca adımın kendi
- * formu işlendiğinde gerçekleşir.
- */
-export async function taskStatusAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const user = await requireUser();
-    const status = s(fd, "status");
-    const t = loadTaskRef(Number(s(fd, "taskId")), cid);
-    await requireFactoryAccess(t.factory_id);
-
-    if (status === "TAMAMLANDI") {
-      throw new Error(
-        `"${t.title}" adımı buradan tamamlanamaz; adımın kendi formu doldurulduğunda kapanır.`,
-      );
-    }
-    if (status === "GEREKSIZ") {
-      if (!can(user.role, PERMISSIONS.GOREV_ATA)) {
-        throw new Error("Bir adımı atlama yetkisi Fabrika Müdürüne aittir.");
-      }
-    } else if (status === "DEVAM_EDIYOR") {
-      if (t.assignee_id !== user.id) {
-        throw new Error("Bir adımı yalnızca sorumlusu başlatabilir.");
-      }
-      const steps = complaintSteps(cid, user);
-      const step = steps.find((x) => x.code === t.code);
-      if (step && !step.ready) {
-        throw new Error(
-          `Bu adımın sırası gelmedi. Önce: ${step.blockedBy.map((b) => b.title).join("; ")}.`,
-        );
-      }
-    } else {
-      throw new Error("Geçersiz görev durumu.");
-    }
-
-    setTaskStatus(Number(s(fd, "taskId")), status, user, s(fd, "note") || null);
-    return status === "GEREKSIZ" ? "Adım atlandı olarak işaretlendi." : "Görev başlatıldı.";
-  }, detail(cid), s(fd, "returnTo"));
-}
-
-/** Bir adımın sorumlusunu değiştirir — yalnızca Fabrika Müdürü. */
-export async function assignTaskAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const cid = id(fd);
-  return guard(async () => {
-    const user = await requirePermission(PERMISSIONS.GOREV_ATA);
-    const taskId = Number(s(fd, "taskId"));
-    const assigneeId = Number(s(fd, "assigneeId"));
-    const t = loadTaskRef(taskId, cid);
-    await requireFactoryAccess(t.factory_id);
-
-    const eligible = eligibleAssignees(t.factory_id, t.code as TaskCode);
-    const target = eligible.find((e) => e.id === assigneeId);
-    if (!target) {
-      throw new Error(
-        `Bu personel "${t.title}" adımını yürütemez; adımın gerektirdiği yetkiyi taşımıyor.`,
-      );
-    }
-    assignTask(taskId, assigneeId, user);
-    return `"${t.title}" adımının sorumlusu ${target.full_name} olarak güncellendi.`;
-  }, detail(cid), s(fd, "returnTo"));
-}
+/* --- 4. Not ve ekler ----------------------------------------------------- */
 
 export async function noteAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
@@ -489,6 +245,7 @@ export async function deleteAttachmentAction(_p: ActionResult, fd: FormData): Pr
 
 /* --- 9. Elden / telefonla şikâyet kaydı --------------------------------- */
 
+/* --- 5. Elden / telefonla şikâyet kaydı ------------------------------- */
 export async function staffComplaintAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   let newId = 0;
   const res = await guard(async () => {
@@ -552,6 +309,7 @@ export async function staffComplaintAction(_p: ActionResult, fd: FormData): Prom
 /* --- 10. Bildirim giden kutusu ------------------------------------------ */
 
 /** Daireye gelen resmî yazıyı okundu olarak işaretler (md. 6 ve 8). */
+
 export async function letterReadAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return guard(async () => {
     const user = await requireUser();
@@ -582,6 +340,7 @@ export async function retryNotificationAction(_p: ActionResult, fd: FormData): P
 }
 
 /* --- 11. Ayarlar -------------------------------------------------------- */
+
 
 export async function settingsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return guard(async () => {
@@ -616,16 +375,6 @@ export async function holidayAction(_p: ActionResult, fd: FormData): Promise<Act
 }
 
 /** Yalnızca açık görevi olmayan görev kodlarını listeler — arayüz yardımcı. */
-export async function openTaskCodes(complaintId: number): Promise<string[]> {
-  await requireUser();
-  return all<{ code: string }>(
-    "SELECT code FROM tasks WHERE complaint_id = ? AND status IN ('BEKLEMEDE','DEVAM_EDIYOR')",
-    complaintId,
-  ).map((r) => r.code);
-}
-
-
-/* --- 12. Demo verisi ---------------------------------------------------- */
 
 export async function generateDemoAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return guard(async () => {

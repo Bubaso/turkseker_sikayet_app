@@ -50,7 +50,7 @@ export function PanelNav({
         },
         {
           href: "/panel/gorevler",
-          label: "Görevlerim",
+          label: "Bana düşen aşamalar",
           count: counts.myTasks,
           tone: "brand",
           show: !ustYonetim,
@@ -77,7 +77,6 @@ export function PanelNav({
           tone: "brand",
           show: gm,
         },
-        { href: "/panel/belgeler", label: "İmza bekleyen belgeler", show: !gm },
         { href: "/panel/bildirimler", label: "SMS / e-posta giden kutusu", show: canSeeNotifications },
       ],
     },

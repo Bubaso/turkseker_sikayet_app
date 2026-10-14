@@ -109,20 +109,6 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Laboratuvar analiz parametre tanımları
-CREATE TABLE IF NOT EXISTS lab_parameters (
-  id             INTEGER PRIMARY KEY,
-  code           TEXT NOT NULL UNIQUE,
-  name           TEXT NOT NULL,
-  unit           TEXT,
-  product_group  TEXT,                            -- NULL ise tüm gruplar
-  spec_min       REAL,
-  spec_max       REAL,
-  spec_text      TEXT,                            -- "yok", "tespit edilmedi"
-  sort_order     INTEGER NOT NULL DEFAULT 0,
-  is_active      INTEGER NOT NULL DEFAULT 1
-);
-
 -- --- Şikâyet ---------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS complaints (
@@ -189,11 +175,9 @@ CREATE TABLE IF NOT EXISTS complaints (
 
   -- Ekip
   team_formed_at     TEXT,
-  -- İnceleme
+  -- İnceleme (tutanak ve varsa analiz raporu ek olarak yüklenir)
   visited_at         TEXT,
   inspection_note    TEXT,
-  lab_required       INTEGER NOT NULL DEFAULT 0,
-  lab_skip_reason    TEXT,   -- analiz alınmadıysa gerekçe (md. 4)
 
   -- Sonuç
   verdict            TEXT,   -- HAKLI | HAKSIZ
@@ -218,11 +202,6 @@ CREATE TABLE IF NOT EXISTS complaints (
   freight_amount     REAL NOT NULL DEFAULT 0,     -- ödenen nakliye bedeli (TL)
   freight_paid_at    TEXT,                        -- nakliye bedelinin ödendiği tarih (md. 6-b)
   transaction_date   TEXT,                        -- işlem tarihi
-
-  -- FSSC 22000 düzeltici faaliyet (md. 4)
-  capa_started_at    TEXT,
-  capa_no            TEXT,
-  capa_note          TEXT,
 
   -- Resmî yazı dağıtımı (md. 6)
   letter_sent_at     TEXT,
@@ -276,12 +255,12 @@ CREATE TABLE IF NOT EXISTS team_members (
 CREATE INDEX IF NOT EXISTS idx_team_complaint ON team_members(complaint_id);
 CREATE INDEX IF NOT EXISTS idx_team_user      ON team_members(user_id);
 
--- --- İş görev kartları -----------------------------------------------------
+-- --- Süreç aşamaları (kilometre taşları) -----------------------------------
 
 CREATE TABLE IF NOT EXISTS tasks (
   id             INTEGER PRIMARY KEY,
   complaint_id   INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
-  code           TEXT    NOT NULL,                -- bkz. src/lib/workflow.ts
+  code           TEXT    NOT NULL,                -- bkz. src/lib/asamalar.ts
   title          TEXT    NOT NULL,
   description    TEXT,
   -- Sorumlu: belirli kullanıcı ya da rol havuzu
@@ -306,87 +285,21 @@ CREATE INDEX IF NOT EXISTS idx_tasks_due       ON tasks(due_at, status);
 
 -- --- Numune ve laboratuvar -------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS samples (
-  id            INTEGER PRIMARY KEY,
-  complaint_id  INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
-  sample_no     TEXT    NOT NULL,
-  taken_at      TEXT    NOT NULL,
-  taken_by      INTEGER REFERENCES users(id),
-  taken_place   TEXT,                             -- "Müşteri deposu" / "Fabrika ambarı"
-  lot_no        TEXT,
-  quantity      TEXT,                             -- "2 x 500 g"
-  seal_no       TEXT,
-  note          TEXT,
-  created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_samples_complaint ON samples(complaint_id);
-
-CREATE TABLE IF NOT EXISTS analyses (
-  id             INTEGER PRIMARY KEY,
-  complaint_id   INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
-  sample_id      INTEGER REFERENCES samples(id) ON DELETE SET NULL,
-  report_no      TEXT    NOT NULL,
-  analyzed_at    TEXT    NOT NULL,
-  analyzed_by    INTEGER REFERENCES users(id),
-  lab_name       TEXT,                            -- "Kalite ve İşletme Kontrol Laboratuvarı"
-  -- UYGUN | UYGUN_DEGIL | KISMEN
-  conformity     TEXT    NOT NULL,
-  summary        TEXT,
-  created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_analyses_complaint ON analyses(complaint_id);
-
-CREATE TABLE IF NOT EXISTS analysis_results (
-  id            INTEGER PRIMARY KEY,
-  analysis_id   INTEGER NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
-  parameter_id  INTEGER REFERENCES lab_parameters(id),
-  parameter     TEXT    NOT NULL,
-  value         TEXT    NOT NULL,
-  unit          TEXT,
-  spec_text     TEXT,
-  conforms      INTEGER,                          -- 1 uygun, 0 uygun değil, NULL belirsiz
-  sort_order    INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_results_analysis ON analysis_results(analysis_id);
-
--- --- Belgeler ve imza zinciri ---------------------------------------------
+-- --- Belge (yalnızca Müşteri Şikâyet Formu) --------------------------------
 
 CREATE TABLE IF NOT EXISTS documents (
   id            INTEGER PRIMARY KEY,
   complaint_id  INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
-  -- FR_PASAT_007 | FR_PASAT_004 | FR_PASAT_005 | MUSTERI_BILGILENDIRME
+  -- FR_PASAT_007 (uygulamanın ürettiği tek belge)
   type          TEXT    NOT NULL,
   doc_no        TEXT    NOT NULL,
-  -- TASLAK | IMZADA | ONAYLANDI | REDDEDILDI | IPTAL
-  status        TEXT    NOT NULL DEFAULT 'TASLAK',
-  body          TEXT,                             -- JSON: forma basılan alanlar
+  -- TASLAK | ONAYLANDI | IPTAL
+  status        TEXT    NOT NULL DEFAULT 'ONAYLANDI',
   created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
   created_by    INTEGER REFERENCES users(id),
-  submitted_at  TEXT,
-  approved_at   TEXT,
-  approved_by   INTEGER REFERENCES users(id),
-  cancelled_at  TEXT,
-  cancel_reason TEXT
+  approved_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_documents_complaint ON documents(complaint_id);
-
-CREATE TABLE IF NOT EXISTS document_signatures (
-  id             INTEGER PRIMARY KEY,
-  document_id    INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-  sort_order     INTEGER NOT NULL,
-  expected_role  TEXT    NOT NULL,
-  expected_title TEXT    NOT NULL,                -- "Ambar Şefi"
-  is_approval    INTEGER NOT NULL DEFAULT 0,      -- Fabrika Müdürü "Onay" satırı
-  user_id        INTEGER REFERENCES users(id),
-  signer_name    TEXT,
-  signer_title   TEXT,
-  -- BEKLIYOR | ONAY | RED
-  decision       TEXT    NOT NULL DEFAULT 'BEKLIYOR',
-  decided_at     TEXT,
-  note           TEXT,
-  UNIQUE(document_id, sort_order)
-);
-CREATE INDEX IF NOT EXISTS idx_signatures_document ON document_signatures(document_id, sort_order);
 
 -- --- Dosya ekleri ----------------------------------------------------------
 
@@ -394,8 +307,8 @@ CREATE TABLE IF NOT EXISTS attachments (
   id            INTEGER PRIMARY KEY,
   complaint_id  INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
   document_id   INTEGER REFERENCES documents(id) ON DELETE SET NULL,
-  analysis_id   INTEGER REFERENCES analyses(id) ON DELETE SET NULL,
-  -- KANIT | ANALIZ_RAPORU | IMZALI_TUTANAK | RESMI_YAZI | FATURA | DIGER
+  -- KANIT (müşterinin eki) | aşama kodu (INCELEME, KARAR, ITIRAZ, DAIRE_KARAR,
+  -- ISLEM, RESMI_YAZI) | DIGER
   kind          TEXT    NOT NULL DEFAULT 'KANIT',
   file_name     TEXT    NOT NULL,
   stored_name   TEXT    NOT NULL,

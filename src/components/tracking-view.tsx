@@ -20,13 +20,6 @@ interface Milestone {
 
 /** Müşteriye gösterilecek kilometre taşları — iç yazışma ve notlar yer almaz. */
 function milestones(c: ComplaintView): Milestone[] {
-  const firstSample = all<{ taken_at: string }>(
-    "SELECT taken_at FROM samples WHERE complaint_id = ? ORDER BY id LIMIT 1", c.id,
-  )[0];
-  const firstAnalysis = all<{ analyzed_at: string; conformity: string }>(
-    "SELECT analyzed_at, conformity FROM analyses WHERE complaint_id = ? ORDER BY id LIMIT 1", c.id,
-  )[0];
-
   const out: Milestone[] = [
     { label: "Şikâyetiniz kaydedildi", date: c.received_at, done: true },
   ];
@@ -53,23 +46,6 @@ function milestones(c: ComplaintView): Milestone[] {
     note: c.visited_at ? null : `En geç ${fmtDateLong(c.due_inspection_at)} tarihine kadar`,
     done: !!c.visited_at,
   });
-
-  if (firstSample || c.lab_required === 1) {
-    out.push({ label: "Numune alındı", date: firstSample?.taken_at ?? null, done: !!firstSample });
-    out.push({
-      label: "Laboratuvar analizi tamamlandı",
-      date: firstAnalysis?.analyzed_at ?? null,
-      done: !!firstAnalysis,
-    });
-  } else if (c.lab_skip_reason) {
-    out.push({
-      label: "Laboratuvar analizi",
-      date: c.visited_at,
-      note: c.lab_skip_reason,
-      done: !!c.visited_at,
-      atlandi: true,
-    });
-  }
 
   out.push({
     label: c.verdict
@@ -117,21 +93,10 @@ function milestones(c: ComplaintView): Milestone[] {
     });
   }
 
-  if (c.verdict === "HAKLI" && c.demands_freight === 1) {
-    out.push({
-      label: "Nakliye bedeli ödendi",
-      date: c.freight_paid_at,
-      note: c.freight_amount
-        ? `Ödenen tutar: ${fmtTl(c.freight_amount)}`
-        : `En geç ${fmtDateLong(c.due_resolution_at)} tarihine kadar`,
-      done: !!c.freight_paid_at,
-    });
-  }
-
   out.push({
-    label: "Müşteri Bilgilendirme Formu gönderildi",
-    date: c.customer_informed_at,
-    done: !!c.customer_informed_at,
+    label: "Sonuç yazılı olarak bildirildi",
+    date: c.letter_sent_at ?? c.customer_informed_at,
+    done: !!(c.letter_sent_at ?? c.customer_informed_at),
   });
   out.push({
     label: "Dosyanız kapatıldı",

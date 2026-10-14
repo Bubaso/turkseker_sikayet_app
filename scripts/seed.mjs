@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { FABRIKALAR, ILLER, DAIRELER } from "./data/kurulus.mjs";
-import { URUNLER, KATEGORILER, LAB_PARAMETRELERI, TATILLER } from "./data/tanimlar.mjs";
+import { URUNLER, KATEGORILER, TATILLER } from "./data/tanimlar.mjs";
 import { FABRIKA_KADROSU, GM_KADROSU, uret } from "./data/personel.mjs";
 import { hashPassword } from "./lib/hash.mjs";
 import { Db, assertDriverAvailable, silenceSqliteWarning } from "./lib/db.mjs";
@@ -121,19 +121,6 @@ db.transaction(() => {
   }
   log(`Şikâyet kategorisi: ${db.prepare("SELECT COUNT(*) c FROM complaint_categories").get().c}`);
 
-  /* --- Laboratuvar parametreleri ---------------------------------------- */
-  const upLab = db.prepare(`
-    INSERT INTO lab_parameters (code, name, unit, product_group, spec_min, spec_max, spec_text, sort_order, is_active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-    ON CONFLICT(code) DO UPDATE SET
-      name = excluded.name, unit = excluded.unit, product_group = excluded.product_group,
-      spec_min = excluded.spec_min, spec_max = excluded.spec_max, spec_text = excluded.spec_text,
-      sort_order = excluded.sort_order
-  `);
-  for (const p of LAB_PARAMETRELERI) {
-    upLab.run(p.code, p.name, p.unit, p.group, p.min, p.max, p.text, p.sort);
-  }
-  log(`Laboratuvar parametresi: ${LAB_PARAMETRELERI.length}`);
 
   /* --- Resmî tatiller ---------------------------------------------------- */
   const upHoliday = db.prepare(

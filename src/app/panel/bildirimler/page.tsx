@@ -124,7 +124,7 @@ export default async function OutboxPage({
                     {TEMPLATE_LABEL[n.template_code as TemplateCode] ?? n.template_code}
                   </span>
                   {n.complaint_no && n.complaint_id && (
-                    <Link href={`/panel/sikayet/${n.complaint_id}?sekme=bildirimler`}
+                    <Link href={`/panel/sikayet/${n.complaint_id}`}
                           className="font-mono text-xs text-brand-700 hover:underline">
                       {n.complaint_no}
                     </Link>

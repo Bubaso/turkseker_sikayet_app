@@ -1,7 +1,6 @@
 /* ===========================================================================
-   Roller ve yetki matrisi
-   Dayanak: TL PASAT 004 md. 3 (ekip birimleri) ve tutanak imza zinciri
-   (FR PASAT 004 / FR PASAT 005).
+   Roller ve yetki matrisi.
+   Dayanak: TL PASAT 004 md. 3 (inceleme ekibi fabrika birimlerinden kurulur).
    =========================================================================== */
 
 export const ROLES = {
@@ -70,120 +69,61 @@ export function isGmRole(role: string): boolean {
   return (GM_ROLES as string[]).includes(role);
 }
 
-/* --- Ekip birimleri (md. 3) ----------------------------------------------- */
+/* --- Yetkiler -------------------------------------------------------------
 
-export const TEAM_UNITS = {
-  KALITE_ISLETME_KONTROL: "KALITE_ISLETME_KONTROL",
-  TEKNIK_ISLETME: "TEKNIK_ISLETME",
-  MUHASEBE: "MUHASEBE",
-  ZIRAAT: "ZIRAAT",
-} as const;
-export type TeamUnit = (typeof TEAM_UNITS)[keyof typeof TEAM_UNITS];
-
-export const TEAM_UNIT_LABEL: Record<TeamUnit, string> = {
-  KALITE_ISLETME_KONTROL: "Kalite ve İşletme Kontrol",
-  TEKNIK_ISLETME: "Teknik (İşletme)",
-  MUHASEBE: "Muhasebe",
-  ZIRAAT: "Ziraat",
-};
-
-/** Bir ekip birimine atanabilecek roller. */
-export const TEAM_UNIT_ROLES: Record<TeamUnit, Role[]> = {
-  KALITE_ISLETME_KONTROL: [ROLES.KALITE_MUDUR_YRD, ROLES.KALITE_SORUMLUSU, ROLES.LABORATUVAR],
-  TEKNIK_ISLETME: [ROLES.TEKNIK_ISLETME, ROLES.MUDUR_YRD_TEKNIK],
-  MUHASEBE: [ROLES.MUHASEBE],
-  ZIRAAT: [ROLES.ZIRAAT, ROLES.MUDUR_YRD_ZIRAAT],
-};
-
-/* --- Yetkiler -------------------------------------------------------------- */
+   Sadeleştirilmiş modelde yetki matrisi küçüktür: bir aşamayı kimin
+   kaydedebileceğini yetki değil, aşamanın sorumlusu belirler (bkz.
+   asamaYetkisi). Burada yalnızca aşamalardan bağımsız altı yetki kalır.
+   -------------------------------------------------------------------------- */
 
 export const PERMISSIONS = {
   /** Şikâyet kaydı açabilir (telefon/e-posta/elden gelen başvurular). */
   SIKAYET_KAYDET: "SIKAYET_KAYDET",
-  /** Ekip kurabilir veya dosyayı başka fabrikaya yönlendirebilir. */
-  EKIP_YONET: "EKIP_YONET",
-  /** Bir görevin sorumlusunu değiştirebilir (izin, rapor, ayrılma hâlleri). */
+  /** Bir aşamanın sorumlusunu değiştirebilir (izin, rapor, ayrılma hâlleri). */
   GOREV_ATA: "GOREV_ATA",
-  /** Yerinde inceleme ve numune kaydı girebilir. */
-  INCELEME_GIR: "INCELEME_GIR",
-  /** Laboratuvar analiz sonucu girebilir. */
-  ANALIZ_GIR: "ANALIZ_GIR",
-  /** Tutanak/belge taslağı hazırlayabilir. */
-  BELGE_HAZIRLA: "BELGE_HAZIRLA",
-  /** İmza zincirinde onay verebilir. */
-  BELGE_IMZALA: "BELGE_IMZALA",
-  /** Fabrika müdürü nihai onayı. */
-  BELGE_ONAYLA: "BELGE_ONAYLA",
-  /** Haklı/haksız kararını kaydedebilir. */
-  KARAR_VER: "KARAR_VER",
-  /** İade/değişim ve nakliye ödemesi gerçekleşmesini girebilir. */
-  ISLEM_GIR: "ISLEM_GIR",
-  /** İtirazı Daire Başkanlığına gönderebilir. */
-  ITIRAZ_GONDER: "ITIRAZ_GONDER",
+  /** Dosyayı kapatabilir ya da iptal edebilir. */
+  SIKAYET_KAPAT: "SIKAYET_KAPAT",
   /** Daire Başkanlığı olarak itirazı karara bağlayabilir. */
   ITIRAZ_KARAR: "ITIRAZ_KARAR",
-  /** Resmî yazı dağıtımını kaydedebilir. */
-  RESMI_YAZI: "RESMI_YAZI",
-  /** Şikâyeti kapatabilir. */
-  SIKAYET_KAPAT: "SIKAYET_KAPAT",
-  /** Tüm fabrikaların verisini görebilir. */
-  TUM_FABRIKALAR: "TUM_FABRIKALAR",
   /** Bildirim giden kutusunu görebilir. */
   BILDIRIM_GOR: "BILDIRIM_GOR",
-  /** Tanımları (ürün, kategori, tatil, kullanıcı) yönetebilir. */
+  /** Tanımları (ürün, kategori, tatil, ayar) yönetebilir. */
   TANIM_YONET: "TANIM_YONET",
-  /** Aylık raporu üretip gönderim kaydı açabilir. */
-  RAPOR_URET: "RAPOR_URET",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 const P = PERMISSIONS;
 
+/*
+ * Fabrika Müdürü süreci yönetir: şikâyeti görür, ekibi kurar ya da dosyayı
+ * yönlendirir, aşamaların sorumlusunu değiştirir, gerekirse aşamayı atlar ve
+ * dosyayı kapatır. Diğer unvanlar kendilerine düşen aşamayı kaydeder; bunun
+ * için ayrı bir yetkiye gerek yoktur.
+ */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SISTEM_YONETICISI: Object.values(P),
 
-  // Fabrika Müdürü süreci yönetir, adımları kendisi işlemez: şikâyeti görür,
-  // ekibi kurar ya da dosyayı yönlendirir, görevlerin sorumlusunu değiştirir ve
-  // süreci izler. Talimatın doğrudan kendisine verdiği üç iş kendisinde kalır:
-  // tutanağın son onayı (imza zincirinin 6. sırası), itirazın Daire
-  // Başkanlığına gönderilmesi ve dosyanın kapatılması.
   FABRIKA_MUDURU: [
-    P.SIKAYET_KAYDET, P.EKIP_YONET, P.GOREV_ATA, P.BELGE_IMZALA, P.BELGE_ONAYLA,
-    P.ITIRAZ_GONDER, P.SIKAYET_KAPAT, P.BILDIRIM_GOR, P.RAPOR_URET,
+    P.SIKAYET_KAYDET, P.GOREV_ATA, P.SIKAYET_KAPAT, P.BILDIRIM_GOR,
   ],
-  // Müdür yardımcıları imza zincirinin üyeleridir; Teknik ve Ziraat ayrıca
-  // inceleme ekibine girip ekip lideri olabilir (md. 3).
-  MUDUR_YRD_TEKNIK: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_IMZALA, P.BILDIRIM_GOR],
-  MUDUR_YRD_ZIRAAT: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_IMZALA, P.BILDIRIM_GOR],
-  MUDUR_YRD_IDARI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.BILDIRIM_GOR],
-  KALITE_MUDUR_YRD: [
-    P.SIKAYET_KAYDET, P.INCELEME_GIR, P.ANALIZ_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA,
-    P.KARAR_VER, P.RESMI_YAZI, P.BILDIRIM_GOR, P.RAPOR_URET,
-  ],
-  // BELGE_IMZALA gerekir: Müşteri Bilgilendirme Formunun imza zincirinde ilk
-  // sıra Kalite Sorumlusudur. Yetki olmadan form hiçbir zaman onaylanamıyordu.
-  KALITE_SORUMLUSU: [
-    P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA, P.KARAR_VER,
-    P.RESMI_YAZI, P.BILDIRIM_GOR, P.RAPOR_URET,
-  ],
-  // İade/değişim ambarda, nakliye bedelinin ödenmesi muhasebede.
-  AMBAR_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.ISLEM_GIR],
-  SATIS_BIRIM_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA],
-  LABORATUVAR: [P.INCELEME_GIR, P.ANALIZ_GIR],
-  MUHASEBE: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.ISLEM_GIR],
-  ZIRAAT: [P.SIKAYET_KAYDET, P.INCELEME_GIR],
-  TEKNIK_ISLETME: [P.SIKAYET_KAYDET, P.INCELEME_GIR],
+  MUDUR_YRD_TEKNIK: [P.SIKAYET_KAYDET, P.BILDIRIM_GOR],
+  MUDUR_YRD_ZIRAAT: [P.SIKAYET_KAYDET, P.BILDIRIM_GOR],
+  MUDUR_YRD_IDARI: [P.SIKAYET_KAYDET, P.BILDIRIM_GOR],
+  KALITE_MUDUR_YRD: [P.SIKAYET_KAYDET, P.BILDIRIM_GOR],
+  KALITE_SORUMLUSU: [P.SIKAYET_KAYDET, P.BILDIRIM_GOR],
+  AMBAR_SEFI: [P.SIKAYET_KAYDET],
+  SATIS_BIRIM_SEFI: [P.SIKAYET_KAYDET],
+  LABORATUVAR: [],
+  MUHASEBE: [P.SIKAYET_KAYDET],
+  ZIRAAT: [P.SIKAYET_KAYDET],
+  TEKNIK_ISLETME: [P.SIKAYET_KAYDET],
 
-  GM_UST_YONETIM: [P.TUM_FABRIKALAR, P.BILDIRIM_GOR, P.RAPOR_URET, P.ITIRAZ_KARAR],
-  GM_DAIRE: [P.TUM_FABRIKALAR, P.ITIRAZ_KARAR, P.BILDIRIM_GOR, P.RAPOR_URET],
+  GM_UST_YONETIM: [P.BILDIRIM_GOR, P.ITIRAZ_KARAR],
+  GM_DAIRE: [P.ITIRAZ_KARAR, P.BILDIRIM_GOR],
 };
 
 export function can(role: string, permission: Permission): boolean {
   const list = ROLE_PERMISSIONS[role as Role];
   return !!list && list.includes(permission);
-}
-
-export function permissionsOf(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role as Role] ?? [];
 }

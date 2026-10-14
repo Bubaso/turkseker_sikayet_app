@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Dosya ekleri — kanıt görselleri, analiz raporları, ıslak imzalı tutanaklar.
+   Dosya ekleri — müşterinin kanıtları ve aşama kayıtlarında yüklenen belgeler.
    Dosyalar UPLOAD_DIR altında rastgele adla saklanır; özgün ad veritabanında
    tutulur. Tarayıcıya yalnızca güvenli tür listesindekiler gömülü gösterilir.
    =========================================================================== */
@@ -98,7 +98,6 @@ export interface AttachInput {
   kind?: string;
   caption?: string | null;
   documentId?: number | null;
-  analysisId?: number | null;
   uploadedBy?: number | null;
   uploaderLabel?: string | null;
 }
@@ -107,10 +106,10 @@ export function recordAttachment(f: StoredFile, input: AttachInput): number {
   const id = Number(
     run(
       `INSERT INTO attachments
-         (complaint_id, document_id, analysis_id, kind, file_name, stored_name, mime, size,
+         (complaint_id, document_id, kind, file_name, stored_name, mime, size,
           caption, uploaded_by, uploader_label)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      input.complaintId, input.documentId ?? null, input.analysisId ?? null,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      input.complaintId, input.documentId ?? null,
       input.kind ?? "KANIT", f.fileName, f.storedName, f.mime, f.size,
       input.caption ?? null, input.uploadedBy ?? null, input.uploaderLabel ?? null,
     ).lastInsertRowid,

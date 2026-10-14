@@ -14,7 +14,7 @@ export function PrintToolbar({
 }) {
   return (
     <div className="no-print mx-auto mb-4 flex w-[210mm] max-w-full flex-wrap items-center justify-between gap-2 px-4">
-      <Link href={geriHref ?? `/panel/sikayet/${complaintId}?sekme=belgeler`}
+      <Link href={geriHref ?? `/panel/sikayet/${complaintId}`}
             className="btn btn-secondary btn-sm">
         ← {geriEtiket ?? "Dosyaya dön"}
       </Link>

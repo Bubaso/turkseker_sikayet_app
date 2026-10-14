@@ -12,7 +12,8 @@ export interface DashboardStats {
   newThisWeek: number;
   closedThisMonth: number;
   awaitingTeam: number;
-  awaitingSignature: number;
+  /** Belge yüklenmesi beklenen açık dosya sayısı. */
+  belgeBekleyen: number;
   inEscalation: number;
   criticalOpen: number;
 }
@@ -39,8 +40,10 @@ export function dashboardStats(factoryId: number | null): DashboardStats {
     awaitingTeam: n(`SELECT COUNT(*) FROM complaints c
                       WHERE c.team_formed_at IS NULL
                         AND c.status IN ('YENI','YONLENDIRILDI') ${s}`),
-    awaitingSignature: n(`SELECT COUNT(*) FROM complaints c JOIN documents d ON d.complaint_id = c.id
-                           WHERE d.status = 'IMZADA' ${s}`),
+    belgeBekleyen: n(`SELECT COUNT(DISTINCT c.id) FROM complaints c JOIN tasks t ON t.complaint_id = c.id
+                       WHERE t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+                         AND t.code IN ('INCELEME','KARAR','ITIRAZ','DAIRE_KARAR','ISLEM','RESMI_YAZI')
+                         AND c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL') ${s}`),
     inEscalation: n(`SELECT COUNT(*) FROM complaints c
                       WHERE c.escalated_at IS NOT NULL AND c.escalation_decided_at IS NULL ${s}`),
     criticalOpen: n(`SELECT COUNT(*) FROM complaints c

@@ -1,143 +1,67 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { all } from "@/lib/db";
-import { DEPT, STATUS_STEP, TOTAL_STEPS } from "@/lib/domain";
+import { ATTACHMENT_KIND, STATUS_STEP, TOTAL_STEPS } from "@/lib/domain";
 import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { fmtDate, today } from "@/lib/dates";
-import { checkEscalation, letterRecipients, type TaskCode } from "@/lib/workflow";
-import {canAccessFactory, requirePageUser} from "@/server/auth";
-import { complaintTeam, assignableStaff } from "@/server/process";
+import { checkEscalation } from "@/lib/esik";
+import { ASAMA } from "@/lib/asamalar";
+import { canAccessFactory, requirePageUser } from "@/server/auth";
 import { getComplaint, listFactories, suggestNearerFactory } from "@/server/complaints";
-import { complaintSteps, eligibleAssignees } from "@/server/tasks";
-import { complaintSamples, complaintAnalyses, labParameters } from "@/server/lab";
-import { canSignNow, complaintDocuments } from "@/server/documents";
+import { dosyaAsamalari, atanabilirPersonel } from "@/server/asamalar-db";
+import { complaintDocuments } from "@/server/documents";
 import { ACCEPT_ATTR, complaintAttachments } from "@/server/attachments";
 import { complaintEvents } from "@/server/events";
-import { holidaySet, getSettingNum } from "@/server/settings";
-import { Card, Chip, Notice, PageHeader, StatusChip, Tabs, VerdictChip } from "@/components/ui";
-import { OzetTab } from "./tabs/ozet";
-import { GorevlerTab, TaskSummary, type AssigneeOption } from "./tabs/gorevler";
-import { EkipTab } from "./tabs/ekip";
-import { LabTab } from "./tabs/lab";
-import { BelgelerTab } from "./tabs/belgeler";
-import { EklerTab } from "./tabs/ekler";
-import { GecmisTab, BildirimlerTab } from "./tabs/gecmis";
-import { IslemlerPanel, type ActionCtx } from "./tabs/islemler";
-import type { NotificationView } from "@/lib/types";
+import { getSettingNum } from "@/server/settings";
+import { Card, Chip, Notice, PageHeader, StatusChip, VerdictChip } from "@/components/ui";
+import { SikayetFormu } from "@/components/sikayet-formu";
+import { ActionForm } from "@/components/action-form";
+import { cancelAction } from "@/app/panel/actions";
+import { Surec } from "./surec";
+import { Ekler } from "./ekler";
+import { Gecmis } from "./gecmis";
+import type { AttachmentView, NotificationView } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+/* ===========================================================================
+   Şikâyet dosyası — tek sayfa.
+
+   Sıra, ekranın sırasıdır: önce şikâyet formunun kendisi, hemen altında
+   dosyanın aşamaları (sırası gelen aşama kayıt formunu açar), sonra belgeler
+   ve geçmiş. Sekme yoktur; dosyanın tamamı tek akışta okunur.
+   =========================================================================== */
+
 export default async function ComplaintDetailPage({
-  params, searchParams,
+  params,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sekme?: string }>;
 }) {
   const { id } = await params;
-  const { sekme } = await searchParams;
   const user = await requirePageUser();
   const c = getComplaint(Number(id));
   if (!c) notFound();
-  if (!canAccessFactory(user, c.factory_id)) {
-    redirect("/panel/sikayetler?hata=yetki");
-  }
+  if (!canAccessFactory(user, c.factory_id)) redirect("/panel/sikayetler?hata=yetki");
 
-  const holidays = holidaySet();
-  const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
-  const steps = complaintSteps(c.id, user);
-  const documents = complaintDocuments(c.id);
+  const gm = isGmRole(user.role);
+  const mudur = user.role === "FABRIKA_MUDURU" || user.role === "SISTEM_YONETICISI";
+
+  const asamalar = dosyaAsamalari(c.id, user);
   const attachments = complaintAttachments(c.id);
-  const samples = complaintSamples(c.id);
-  const analyses = complaintAnalyses(c.id);
-  const team = complaintTeam(c.id);
   const events = complaintEvents(c.id);
+  const form = complaintDocuments(c.id)[0] ?? null;
   const notifications = all<NotificationView>(
     `SELECT n.*, NULL AS complaint_no, NULL AS factory_short FROM notifications n
       WHERE n.complaint_id = ? AND n.template_code <> 'OTP' ORDER BY n.id DESC`,
     c.id,
   );
 
-  const openTasks = steps.filter((t) => !t.settled).map((t) => t.code);
-  // Şu anda bu kullanıcının işleyebileceği adımlar: açık + sırası gelmiş + sorumlusu kendisi.
-  const actionable = steps.filter((t) => t.actionable).map((t) => t.code);
-  // Sırası gelmiş açık adımlar — kimde olduğundan bağımsız olarak "dosya nerede" sorusunu yanıtlar.
-  const currentSteps = steps.filter((t) => !t.settled && t.ready);
-  const canAssign = !gm && can(user.role, PERMISSIONS.GOREV_ATA);
-  const assignableBy: Record<string, AssigneeOption[]> = {};
-  if (canAssign) {
-    for (const t of steps) {
-      if (t.settled || t.department_id !== null) continue;
-      assignableBy[t.code] = eligibleAssignees(c.factory_id, t.code as TaskCode)
-        .map((u) => ({ id: u.id, full_name: u.full_name, title: u.title }));
-    }
-  }
-  const factories = listFactories().map((f) => ({ id: f.id, name: f.name }));
-  const ekipVerisi = {
-    staff: assignableStaff(c.factory_id),
-    factories,
-    currentFactoryId: c.factory_id,
-    suggestion: suggestNearerFactory(c.id),
-  };
-  // Sırası gelmiş ama bu kullanıcının olmayan adım — "size düşen işlem yok"
-  // mesajının doğru bilgi verebilmesi için.
-  const bekleyenAdim = currentSteps.find((t) => !t.mine) ?? null;
+  // Ekler aşama koduna göre gruplanır: her kilometre taşı kendi belgesini taşır.
+  const belgeler: Record<string, AttachmentView[]> = {};
+  for (const a of attachments) (belgeler[a.kind] ??= []).push(a);
+  const kanitlar = belgeler[ATTACHMENT_KIND.KANIT] ?? [];
 
-  const stepOf = (code: string) => steps.find((t) => t.code === code);
-  const canDo = (code: string) => stepOf(code)?.actionable === true;
-  const signableIds = documents.filter((d) => canSignNow(d.id, user)).map((d) => d.id);
-  const esc = checkEscalation(c.product_group, c.quantity_kg);
-  const deptNames = all<{ code: string; name: string }>("SELECT code, name FROM departments");
-  const recipients = letterRecipients(c.product_group)
-    .map((code) => deptNames.find((d) => d.code === code)?.name ?? code);
-  const approvedTutanak = documents.some(
-    (d) => ["FR_PASAT_004", "FR_PASAT_005"].includes(d.type) && d.status === "ONAYLANDI",
-  );
-
-  const tab = sekme ?? "ozet";
-  const tabs = [
-    { key: "ozet", label: "Özet" },
-    { key: "islemler", label: "Yapılacak işlem", count: gm ? 0 : actionable.length },
-    { key: "gorevler", label: "Süreç adımları", count: openTasks.length },
-    { key: "ekip", label: "Ekip", count: team.length },
-    { key: "lab", label: "Numune ve analiz", count: samples.length + analyses.length },
-    { key: "belgeler", label: "Tutanaklar", count: documents.length },
-    { key: "ekler", label: "Ekler", count: attachments.length },
-    { key: "bildirimler", label: "Bildirimler", count: notifications.length },
-    { key: "gecmis", label: "Geçmiş", count: events.length },
-  ];
-
-  const ctx: ActionCtx = {
-    complaintId: c.id,
-    today: today(),
-    openTasks,
-    demand: c.demand,
-    demandsFreight: c.demands_freight === 1,
-    labRequired: c.lab_required === 1,
-    quantityKg: c.quantity_kg,
-    verdict: c.verdict,
-    hasApprovedTutanak: approvedTutanak,
-    transactionDone: !!c.transaction_date,
-    escalated: !!c.escalated_at,
-    escalationRequired: esc.required,
-    escalationReason: esc.reason,
-    letterSent: !!c.letter_sent_at,
-    customerInformed: !!c.customer_informed_at,
-    closed: !!c.closed_at,
-    recipients,
-    suggestedLetterNo: `${c.factory_code}-${c.complaint_no.replace(/-/g, "")}`,
-    actionable,
-    ekip: c.team_formed_at ? null : ekipVerisi,
-    bekleyen: bekleyenAdim
-      ? {
-          baslik: bekleyenAdim.title,
-          sorumlu: bekleyenAdim.assignee_name
-            ? `${bekleyenAdim.assignee_name} (${bekleyenAdim.assignee_title})`
-            : "henüz sorumlusu atanmamış bir adım",
-        }
-      : null,
-    canCancel: !gm && can(user.role, PERMISSIONS.SIKAYET_KAPAT),
-  };
-
+  const simdiki = asamalar.find((a) => !a.kapandi && a.sirasiGeldi) ?? null;
   const step = STATUS_STEP[c.status as keyof typeof STATUS_STEP] ?? 1;
 
   return (
@@ -164,56 +88,47 @@ export default async function ComplaintDetailPage({
         }
         actions={
           <>
+            {form && (
+              <Link href={`/belge/${form.id}`} target="_blank" className="btn btn-secondary btn-sm">
+                Formu yazdır
+              </Link>
+            )}
             <Link href={`/takip/${c.tracking_token}`} target="_blank" className="btn btn-secondary btn-sm">
               Müşteri görünümü
             </Link>
-            {!gm && (
-              <Link href={`/panel/sikayet/${c.id}?sekme=islemler`} className="btn btn-primary btn-sm">
-                Yapılacak işlem
-              </Link>
-            )}
           </>
         }
       />
 
-      {/* İlerleme */}
+      {/* Dosya nerede: tek satırda şu anki adım ve ilerleme */}
       <div className="card px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-200">
-            <div className={`h-full rounded-full ${
-                  c.status === "REDDEDILDI" || c.status === "IPTAL" ? "bg-ink-400" : "bg-brand-600"
-                }`}
-                 style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }} />
+            <div
+              className={`h-full rounded-full ${
+                c.status === "REDDEDILDI" || c.status === "IPTAL" ? "bg-ink-400" : "bg-brand-600"
+              }`}
+              style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }}
+            />
           </div>
           <span className="tnum shrink-0 text-xs text-ink-500">Adım {step} / {TOTAL_STEPS}</span>
         </div>
-      </div>
-
-      {/* Dosya şu an kimde: sırası gelmiş açık adımlar */}
-      {currentSteps.length > 0 && !c.closed_at && (
-        <div className="card px-4 py-3">
-          <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
-            Şu anki adım
+        {simdiki && !c.closed_at && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="text-ink-500">Şu anki adım:</span>
+            <span className="font-semibold text-ink-900">{simdiki.title}</span>
+            <span className="text-ink-600">
+              — {simdiki.assignee_name
+                ? `${simdiki.assignee_name} (${simdiki.assignee_title})`
+                : "sorumlu atanmadı"}
+            </span>
+            {simdiki.due_at && (
+              <span className="tnum text-ink-500">· en geç {fmtDate(simdiki.due_at)}</span>
+            )}
+            {simdiki.islenebilir && <Chip tone="brand" dot>Sıra sizde</Chip>}
           </p>
-          <ul className="mt-1.5 space-y-1.5">
-            {currentSteps.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
-                <span className="font-semibold text-ink-900">{t.title}</span>
-                <span className="text-ink-600">
-                  — Sorumlu:{" "}
-                  {t.assignee_name
-                    ? `${t.assignee_name} (${t.assignee_title})`
-                    : "atanmadı, Fabrika Müdürü atamalı"}
-                </span>
-                {t.due_at && (
-                  <span className="tnum text-ink-500">· en geç {fmtDate(t.due_at)}</span>
-                )}
-                {t.mine && <Chip tone="brand" dot>Sıra sizde</Chip>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
+      </div>
 
       {c.escalated_at && !c.escalation_decided_at && (
         <Notice tone="warn" title="Daire Başkanlığı değerlendirmesinde">
@@ -222,123 +137,104 @@ export default async function ComplaintDetailPage({
         </Notice>
       )}
 
-      <Tabs tabs={tabs} active={tab} baseHref={`/panel/sikayet/${c.id}`} />
+      {c.redirected_at && (
+        <Notice tone="ink" title="Dosya yönlendirildi">
+          {fmtDate(c.redirected_at)} tarihinde bu fabrikaya devredildi.
+          {c.redirect_reason && <> Gerekçe: {c.redirect_reason}</>}
+        </Notice>
+      )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-4">
-        <div className="min-w-0 xl:col-span-3">
-          {tab === "ozet" && <OzetTab c={c} holidays={holidays} />}
+      {/* 1. Şikâyet formunun kendisi */}
+      <Card
+        title="Müşteri Şikâyet Formu (FR PASAT 007)"
+        bodyClass="p-4 sm:p-5"
+        actions={
+          <span className="text-xs text-ink-500">
+            Müşterinin beyanı — {fmtDate(c.received_at)}
+          </span>
+        }
+      >
+        <SikayetFormu c={c} kanitlar={kanitlar} />
+      </Card>
 
-          {tab === "islemler" && (
-            gm ? (
-              // Daire kararı bu kullanıcıdaysa genel bir not yerine doğrudan işi gösterilir.
-              actionable.includes("DAIRE_KARAR") ? (
-                <Card title="Bu dosyanın itirazı sizin değerlendirmenizde">
-                  <p className="text-sm leading-relaxed text-ink-600">
-                    {c.escalation_reason}
-                    {c.escalation_due_at && (
-                      <> Karar en geç <strong>{fmtDate(c.escalation_due_at)}</strong> tarihine
-                      kadar verilmelidir.</>
-                    )}
-                  </p>
-                  <Link href="/panel/itirazlar" className="btn btn-primary mt-3">
-                    İtiraz değerlendirme sayfasına git
-                  </Link>
-                </Card>
-              ) : (
-                <Notice tone="ink" title="Genel Müdürlük görünümü">
-                  Fabrika süreç işlemleri yalnızca ilgili fabrika personeli tarafından yapılır.
-                  İtiraz değerlendirmeleri için{" "}
-                  <Link href="/panel/itirazlar" className="link">İtiraz değerlendirmeleri</Link>{" "}
-                  sayfasını kullanın.
-                </Notice>
-              )
-            ) : (
-              <IslemlerPanel ctx={ctx} />
-            )
-          )}
-
-          {tab === "gorevler" && (
-            <GorevlerTab complaintId={c.id} steps={steps} holidays={holidays}
-                         assignableBy={assignableBy} canAssign={canAssign} canAddNote={!gm} />
-          )}
-
-          {tab === "ekip" && (
-            <EkipTab
-              complaintId={c.id}
-              team={team}
-              staff={ekipVerisi.staff}
-              canManage={canDo("EKIP_KUR")}
-              factories={factories}
-              currentFactoryId={c.factory_id}
-              suggestion={ekipVerisi.suggestion}
-              teamFormed={c.team_formed_at}
-              redirectedAt={c.redirected_at}
-              redirectedFrom={
-                c.redirected_from_id
-                  ? (factories.find((f) => f.id === c.redirected_from_id)?.name ?? null)
-                  : null
-              }
-              redirectReason={c.redirect_reason}
-              dueTeamAt={fmtDate(c.due_team_at)}
-            />
-          )}
-
-          {tab === "lab" && (
-            <LabTab
-              complaintId={c.id}
-              samples={samples}
-              analyses={analyses}
-              parameters={labParameters(c.product_group)}
-              productGroup={c.product_group}
-              today={today()}
-              canSample={canDo("NUMUNE_AL")}
-              canAnalyze={canDo("ANALIZ_GIR")}
-              accept={ACCEPT_ATTR}
-            />
-          )}
-
-          {tab === "belgeler" && (
-            <BelgelerTab complaintId={c.id} documents={documents} signableIds={signableIds}
-                         canPrepare={canDo("TUTANAK_HAZIRLA") || canDo("MUSTERI_BILGI")} />
-          )}
-
-          {tab === "ekler" && (
-            <EklerTab complaintId={c.id} attachments={attachments} canUpload={!gm}
-                      accept={ACCEPT_ATTR} maxMb={getSettingNum("ek_dosya_max_mb", 10)} />
-          )}
-
-          {tab === "bildirimler" && <BildirimlerTab rows={notifications} />}
-          {tab === "gecmis" && <GecmisTab events={events} />}
+      {/* 2. Aşamalar ve kayıt formları */}
+      <section>
+        <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+            Süreç
+          </h2>
+          <p className="text-xs text-ink-500">
+            Her aşama, fabrikada hazırlanan belgenin yüklenmesiyle kapanır.
+          </p>
         </div>
 
-        <aside className="min-w-0 space-y-5">
-          <Card title="Süreç adımları" bodyClass="">
-            <TaskSummary steps={steps} holidays={holidays} />
-          </Card>
+        {gm && !asamalar.some((a) => a.islenebilir) && (
+          <Notice tone="ink" title="Genel Müdürlük görünümü">
+            Fabrika süreç işlemleri ilgili fabrika personeli tarafından yapılır. Bu sayfada
+            dosyanın hangi aşamada olduğunu ve yüklenen belgeleri izleyebilirsiniz.
+            {c.escalated_at && (
+              <>
+                {" "}İtiraz değerlendirmeleri için{" "}
+                <Link href="/panel/itirazlar" className="link">İtiraz değerlendirmeleri</Link>{" "}
+                sayfasını kullanın.
+              </>
+            )}
+          </Notice>
+        )}
 
-          {signableIds.length > 0 && (
-            <Notice tone="warn" title="İmzanız bekleniyor">
-              {signableIds.length} belge sizin imzanızı bekliyor.{" "}
-              <Link href={`/panel/sikayet/${c.id}?sekme=belgeler`} className="link">
-                Tutanaklar sekmesine git
-              </Link>
-            </Notice>
-          )}
+        <div className={gm && !asamalar.some((a) => a.islenebilir) ? "mt-3" : ""}>
+          <Surec
+            c={c}
+            asamalar={asamalar}
+            belgeler={belgeler}
+            bugun={today()}
+            esik={checkEscalation(c.product_group, c.quantity_kg)}
+            mudur={mudur}
+            personel={atanabilirPersonel(c.factory_id)}
+            fabrikalar={listFactories().map((f) => ({ id: f.id, name: f.name }))}
+            oneri={asamalar.some((a) => a.code === ASAMA.EKIP && !a.kapandi)
+              ? suggestNearerFactory(c.id)
+              : null}
+            accept={ACCEPT_ATTR}
+            maxMb={getSettingNum("ek_dosya_max_mb", 10)}
+          />
+        </div>
+      </section>
 
-          <Card title="İtiraz eşiği" bodyClass="p-4">
-            <p className="text-xs leading-relaxed text-ink-600">{esc.reason}</p>
-            <p className="mt-2 text-xs text-ink-500">
-              Yönlendirilecek daire:{" "}
-              <strong>
-                {deptNames.find((d) => d.code === esc.departmentCode)?.name ??
-                 (esc.departmentCode === DEPT.PERAKENDE_LOJISTIK
-                   ? "Perakende Satışlar ve Lojistik Daire Başkanlığı"
-                   : "Pazarlama ve Satış Daire Başkanlığı")}
-              </strong>
-            </p>
-          </Card>
-        </aside>
-      </div>
+      {/* 3. Belgeler ve ekler */}
+      <Ekler
+        complaintId={c.id}
+        attachments={attachments}
+        canUpload={!gm && !c.closed_at}
+        accept={ACCEPT_ATTR}
+        maxMb={getSettingNum("ek_dosya_max_mb", 10)}
+      />
+
+      {/* 4. Geçmiş ve müşteriye giden bildirimler */}
+      <Gecmis events={events} notifications={notifications} />
+
+      {!c.closed_at && mudur && can(user.role, PERMISSIONS.SIKAYET_KAPAT) && (
+        <details className="card-pad">
+          <summary className="cursor-pointer text-sm font-medium text-danger-700">
+            Dosyayı iptal et
+          </summary>
+          <p className="mt-2 max-w-[68ch] text-sm text-ink-600">
+            Mükerrer kayıt veya müşterinin başvurusunu geri çekmesi gibi hâllerde kullanılır.
+            Dosya kapanır, açık aşamalar düşer ve işlem geçmişe yazılır.
+          </p>
+          <div className="mt-3">
+            <ActionForm action={cancelAction} complaintId={c.id} submitLabel="İptal et"
+                        submitTone="danger" compact
+                        confirm="Dosya iptal edilecek. Onaylıyor musunuz?">
+              <div>
+                <label className="label" htmlFor="reason">İptal gerekçesi</label>
+                <input id="reason" name="reason" className="input" required
+                       placeholder="Örnek: Müşteri başvurusunu geri çekti." />
+              </div>
+            </ActionForm>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

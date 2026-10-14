@@ -124,7 +124,7 @@ export default async function ResmiYazilarPage({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Link href={`/panel/sikayet/${y.complaint_id}?sekme=belgeler`}
+                    <Link href={`/panel/sikayet/${y.complaint_id}`}
                           className="btn btn-secondary btn-sm">
                       Ekleri gör
                     </Link>

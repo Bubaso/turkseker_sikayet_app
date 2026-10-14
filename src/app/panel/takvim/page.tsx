@@ -5,7 +5,7 @@ import {
   DAY_NAMES_TR, daysInMonth, fmtDate, isWeekend, monthName, today, weekday,
 } from "@/lib/dates";
 import {requirePageUser} from "@/server/auth";
-import { openTasksFor } from "@/server/tasks";
+import { fabrikaAcikAsamalari } from "@/server/asamalar-db";
 import { holidaySet } from "@/server/settings";
 import { Card, Chip, PageHeader } from "@/components/ui";
 
@@ -29,7 +29,7 @@ export default async function CalendarPage({
   const first = days[0]!;
   const last = days[days.length - 1]!;
 
-  const tasks = openTasksFor(gm ? null : user.factory_id, 1000)
+  const tasks = fabrikaAcikAsamalari(gm ? null : user.factory_id, 1000)
     .filter((t) => t.due_at && t.due_at >= first && t.due_at <= last);
 
   const received = all<{ received_at: string; complaint_no: string; id: number; customer_company: string }>(
@@ -55,7 +55,7 @@ export default async function CalendarPage({
     <div className="space-y-5">
       <PageHeader
         title={`${monthName(month)} ${year}`}
-        subtitle={`${tasks.length} görev son tarihi · ${received.length} yeni şikâyet · ${
+        subtitle={`${tasks.length} aşama son tarihi · ${received.length} yeni şikâyet · ${
           Object.keys(holidayNames).length
         } resmî tatil`}
         actions={
@@ -111,7 +111,7 @@ export default async function CalendarPage({
                 <ul className="mt-1 space-y-0.5">
                   {dayTasks.slice(0, 3).map((t) => (
                     <li key={t.id}>
-                      <Link href={`/panel/sikayet/${t.complaint_id}?sekme=islemler`}
+                      <Link href={`/panel/sikayet/${t.complaint_id}`}
                             className={`block truncate rounded px-1 py-0.5 text-[10px] leading-tight ${
                               past ? "bg-danger-50 text-danger-700" : "bg-ink-100 text-ink-700"
                             } hover:bg-brand-100`}
@@ -121,7 +121,7 @@ export default async function CalendarPage({
                     </li>
                   ))}
                   {dayTasks.length > 3 && (
-                    <li className="px-1 text-[10px] text-ink-500">+{dayTasks.length - 3} görev daha</li>
+                    <li className="px-1 text-[10px] text-ink-500">+{dayTasks.length - 3} aşama daha</li>
                   )}
                 </ul>
               </div>

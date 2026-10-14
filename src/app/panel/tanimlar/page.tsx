@@ -85,11 +85,8 @@ export default async function DefinitionsPage({
   const products = all<{ id: number; name: string; product_group: string; packaging: string | null }>(
     "SELECT id, name, product_group, packaging FROM products WHERE is_active = 1 ORDER BY sort_order",
   );
-  const categories = all<{ id: number; name: string; family: string; is_critical: number; needs_lab: number }>(
-    "SELECT id, name, family, is_critical, needs_lab FROM complaint_categories WHERE is_active = 1 ORDER BY sort_order",
-  );
-  const labParams = all<{ code: string; name: string; unit: string | null; product_group: string | null; spec_text: string | null }>(
-    "SELECT code, name, unit, product_group, spec_text FROM lab_parameters WHERE is_active = 1 ORDER BY sort_order",
+  const categories = all<{ id: number; name: string; family: string; is_critical: number }>(
+    "SELECT id, name, family, is_critical FROM complaint_categories WHERE is_active = 1 ORDER BY sort_order",
   );
   const holidays = all<{ date: string; name: string }>(
     "SELECT date, name FROM holidays WHERE date >= date('now','-1 year') ORDER BY date",
@@ -131,7 +128,6 @@ export default async function DefinitionsPage({
                 ["Kullanıcı", `${roleCounts.reduce((a, r) => a + r.n, 0)} etkin hesap`],
                 ["Ürün", `${products.length} tanımlı`],
                 ["Şikâyet kategorisi", `${categories.length} tanımlı`],
-                ["Laboratuvar parametresi", `${labParams.length} tanımlı`],
                 ["Şikâyet dosyası", `${complaintCount} kayıt`],
                 ["Resmî tatil", `${holidays.length} gün (son 1 yıl ve sonrası)`],
                 ["Bugün", fmtDate(today())],
@@ -294,14 +290,13 @@ export default async function DefinitionsPage({
           <Card title={`Şikâyet kategorileri (${categories.length})`} bodyClass="">
             <div className="table-wrap">
               <table className="tbl">
-                <thead><tr><th>Kategori</th><th>Aile</th><th>Gıda güvenliği</th><th>Analiz gerekir</th></tr></thead>
+                <thead><tr><th>Kategori</th><th>Aile</th><th>Gıda güvenliği</th></tr></thead>
                 <tbody>
                   {categories.map((c) => (
                     <tr key={c.id}>
                       <td className="font-medium text-ink-800">{c.name}</td>
                       <td className="text-ink-600">{kategoriAilesi(c.family)}</td>
                       <td>{c.is_critical ? <Chip tone="danger" dot>Kritik</Chip> : <span className="text-ink-400">—</span>}</td>
-                      <td>{c.needs_lab ? <Chip tone="brand">Evet</Chip> : <span className="text-ink-400">Hayır</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -309,28 +304,6 @@ export default async function DefinitionsPage({
             </div>
           </Card>
 
-          <Card title={`Laboratuvar parametreleri (${labParams.length})`} bodyClass="">
-            <div className="table-wrap">
-              <table className="tbl">
-                <thead><tr><th>Kod</th><th>Parametre</th><th>Birim</th><th>Ürün grubu</th><th>Spesifikasyon</th></tr></thead>
-                <tbody>
-                  {labParams.map((p) => (
-                    <tr key={p.code}>
-                      <td className="font-mono text-xs">{p.code}</td>
-                      <td className="font-medium text-ink-800">{p.name}</td>
-                      <td className="text-ink-600">{p.unit ?? "—"}</td>
-                      <td className="text-ink-600">
-                        {p.product_group
-                          ? PRODUCT_GROUP_LABEL[p.product_group as ProductGroup] ?? p.product_group
-                          : "Tüm gruplar"}
-                      </td>
-                      <td>{p.spec_text ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
         </div>
       )}
 

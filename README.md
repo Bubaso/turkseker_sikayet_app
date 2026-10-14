@@ -4,9 +4,11 @@ Türkiye Şeker Fabrikaları A.Ş.'nin 14 şeker fabrikası ve Genel Müdürlük
 başkanlıkları için müşteri şikâyetlerinin kaydı, incelenmesi, karara bağlanması
 ve raporlanmasını uçtan uca yürüten kurumsal uygulama.
 
-Süreç **TL PASAT 004 "Müşteri Şikâyetlerinde Uygulamalar"** talimatına birebir
-uyacak şekilde modellenmiştir; talimatın ekindeki FR PASAT 004, 005 ve 007
-formları sistem verisinden otomatik üretilir.
+Süreç **TL PASAT 004 "Müşteri Şikâyetlerinde Uygulamalar"** talimatına uyacak
+şekilde modellenmiştir. Uygulama belge üretmez: tutanak, analiz raporu ve resmî
+yazı fabrikada hazırlanıp imzalanır, sisteme yalnızca sonuç belgesi yüklenir.
+Uygulamanın işi, her kilometre taşının ne zaman, kim tarafından ve hangi
+belgeyle kayda geçtiğini tutmak ve süreci izlenebilir kılmaktır.
 
 ---
 
@@ -157,37 +159,47 @@ sunucu tarafında rol değiştirme reddedilir.
 
 ## Sistemin kapsadığı süreç
 
-| # | Adım | Süre (iş günü) | Sorumlu | Dayanak |
-|---|---|---|---|---|
-| 1 | Şikâyet kaydı + Müşteri Şikâyet Formu (FR PASAT 007) | 0 | Fabrika / müşteri | md. 1 |
-| 2 | İnceleme ekibi oluşturma **veya** daha yakın fabrikaya yönlendirme | ≤ 1 | Fabrika Müdürü | md. 2-3 |
-| 3 | Yerinde (ya da görsel üzerinden) inceleme | ≤ 3 | Ekip | md. 4 |
-| 4 | Numune alma ve laboratuvar analizi | aynı gün / ertesi iş günü | Kalite ve İşl. Kontrol Lab. | md. 4 |
-| 5 | Tutanak düzenleme, 6 imza + Fabrika Müdürü onayı | ≤ 3 | İmza zinciri | md. 4 |
-| 6 | FSSC 22000 düzeltici faaliyet | — | Gıda Güvenliği Ekibi | md. 4 |
-| 7 | Haksız + eşik aşımı → Daire Başkanlığı itiraz değerlendirmesi | ≤ 5 | İlgili daire | md. 5 |
-| 8 | İade / değişim işlemi | ≤ 5 | Ambar Şefi | md. 6-a/b |
-| 9 | Nakliye bedelinin ödenmesi | ≤ 5 | Muhasebe | md. 6-b |
-| 10 | Resmî yazı + ekleri 4 Daire Başkanlığına | işlemden ≤ 3 | Kalite Sorumlusu | md. 6 |
-| 11 | Müşteri Bilgilendirme Formu | — | Kalite Sorumlusu | md. 7 |
-| 12 | Dosyanın kapatılması | işlemden ≤ 3 | Fabrika Müdürü | md. 8 |
-| 13 | Aylık Müşteri Şikâyetleri Tablosu | aylık | Fabrika | md. 8 |
+Uygulama **belge üretmez.** Tutanak, analiz raporu, resmî yazı ve müşteri
+bilgilendirmesi fabrikada hazırlanır, elle imzalanır ve yalnızca sonuç belgesi
+sisteme yüklenir. Uygulamanın işi, her kilometre taşının **ne zaman, kim
+tarafından ve hangi belgeyle** kayda geçtiğini tutmak ve süreci izlenebilir
+kılmaktır.
+
+Dosyada en çok sekiz aşama vardır (`src/lib/asamalar.ts`):
+
+| # | Aşama | Nasıl kapanır | Süre (iş günü) | Sorumlu | Dayanak |
+|---|---|---|---|---|---|
+| 1 | Şikâyet kaydı + Müşteri Şikâyet Formu (FR PASAT 007) | kayıtla birlikte otomatik | 0 | Fabrika / müşteri | md. 1 |
+| 2 | İnceleme ekibini oluştur **veya** daha yakın fabrikaya yönlendir | ekip kutularından | ≤ 1 | Fabrika Müdürü | md. 2-3 |
+| 3 | İnceleme ve analiz belgelerini yükle | **belge** | ≤ 3 | Ekip lideri | md. 4 |
+| 4 | Kararı ve imzalı tutanağı yükle | **belge** + haklı/haksız | ≤ 3 | Ekip lideri | md. 4 |
+| 5 | Haksız + eşik aşımı → itirazı Daire Başkanlığına gönder | **belge** | — | Fabrika Müdürü | md. 5 |
+| 6 | Daire Başkanlığı kararını kaydet | **belge** + kabul/ret | ≤ 5 | İlgili daire | md. 5 |
+| 7 | İade / değişim ve nakliye belgelerini yükle | **belge** | ≤ 5 | Ambar Şefi | md. 6 |
+| 8 | Resmî yazıyı ve müşteri bilgilendirmesini yükle | **belge** | işlemden ≤ 3 | Kalite Sorumlusu | md. 6-7 |
+| 9 | Dosyayı kapat | kapanış notuyla | — | Fabrika Müdürü | md. 8 |
+| — | Aylık Müşteri Şikâyetleri Tablosu | aylık | aylık | Fabrika | md. 8 |
+
+İtiraz dalı yalnızca şikâyet haklı bulunmadığında ve miktar eşiği aşıldığında
+açılır; haklı dosyalarda 5-6 numaralı aşamalar hiç oluşmaz. Dosyada bulunmayan
+bir öncül sağlanmış sayıldığı için üç dal (haklı / haksız / itiraz) tek bir
+bağımlılık grafiğiyle yürür.
 
 **Tüm süreler iş günü bazlıdır.** Hafta sonları ve Tanımlar sayfasında kayıtlı
 resmî tatiller hesaba katılmaz.
 
-### İmza zinciri (FR PASAT 004 / 005)
+### İmza süreci fabrikada elle yürür
 
-Sıralıdır — önceki unvan imzalamadan sıra bir sonrakine geçmez:
+Talimatın öngördüğü altı imzalı zincir (Ambar Şefi → Satışı Yapan Birim Şefi →
+Kalite ve İşl. Kontrol Md. Yrd. → Fabrika Müdür Yrd. → Fabrika Müdür Yrd.
+(İdari) → onay: Fabrika Müdürü) **uygulamada yürütülmez.** Tutanak fabrikada
+hazırlanır, ıslak imzalar toplanır ve imzaları tamamlanmış son nüsha "Kararı ve
+imzalı tutanağı yükle" aşamasında sisteme yüklenir. Sistem belgenin kim
+tarafından, hangi tarihte kayda geçirildiğini saklar; imza satırlarını kendisi
+üretmez.
 
-```
-Ambar Şefi → Satışı Yapan Birim Şefi → Kalite ve İşletme Kontrol Md. Yrd.
-→ Fabrika Müdür Yrd. (Teknik veya Ziraat) → Fabrika Müdür Yrd. (İdari)
-→ ONAY: Fabrika Müdürü
-```
-
-Her imza ad-soyad, unvan ve zaman damgasıyla kaydedilir ve belge çıktısına
-basılır. Islak imzalı taranmış nüsha ayrıca Ekler sekmesinden yüklenebilir.
+Böylece uygulama, fabrikanın gerçek iş akışına paralel ikinci bir onay süreci
+işletmek yerine, o akışın sonucunu kayda geçiren bir izleme aracı olur.
 
 ### İtiraz eşikleri (md. 5)
 
@@ -203,10 +215,10 @@ dosya ilgili Daire Başkanlığına gönderilir:
 
 ### Müşteriye giden bildirimler
 
-12 kilometre taşında SMS ve e-posta gönderilir: doğrulama kodu, kayıt alındı,
-ekip oluşturuldu, yönlendirildi, yerinde inceleme, numune alındı, karar (haklı /
-haklı bulunmadı), Genel Müdürlük değerlendirmesi başladı / sonuçlandı, iade-
-değişim tamamlandı, dosya kapandı.
+Her kilometre taşında SMS ve e-posta gönderilir: doğrulama kodu, kayıt alındı,
+ekip oluşturuldu, yönlendirildi, inceleme yapıldı, karar (haklı / haklı
+bulunmadı), Genel Müdürlük değerlendirmesi başladı / sonuçlandı, iade-değişim
+tamamlandı, dosya kapandı.
 
 SMS metinlerinde Türkçe özel karakterler varsayılan olarak ASCII karşılıklarına
 çevrilir. Sebep: GSM-7 alfabesi `ş ğ ı İ` içermez; bu karakterler mesajı UCS-2'ye
@@ -225,21 +237,29 @@ ile değiştirilebilir.
 - Süreç adımları, kalan süreler ve gönderilen tüm bilgilendirmeler
 
 **Fabrika paneli**
-- Gösterge paneli, şikâyet dosyaları (filtre/arama/SLA renk kodu), görevlerim
-- Şikâyet detayı: özet, yapılacak işlem, görev kartları, ekip, numune ve analiz,
-  tutanaklar, ekler, bildirimler, geçmiş (denetim izi)
-- Ekip oluşturma, yakın fabrikaya yönlendirme, yerinde inceleme kaydı
-- Numune ve laboratuvar analizi (16 parametre, spesifikasyona göre otomatik
-  uygunluk değerlendirmesi)
-- Tutanak düzenleme ve imza zinciri, imza bekleyen belgeler kuyruğu
-- İade/değişim ve nakliye bedeli, düzeltici faaliyet, resmî yazı, kapanış
-- Takvim: görev son tarihleri, resmî tatiller, yeni şikâyetler
+- Gösterge paneli, şikâyet dosyaları (filtre/arama/SLA renk kodu), bana düşen
+  aşamalar
+- **Şikâyet dosyası tek sayfadır:** en üstte müşterinin doldurduğu formun
+  kendisi, hemen altında dosyanın aşamaları, sonra bütün ekler ve geçmiş.
+  Sekme yoktur.
+- Ekip kurma düzeneği: kaç kişi olacağı seçilir, o kadar kişi kutusu belirir,
+  her kutuda unvan (fabrika kadrosundan) ve isim seçilir
+- Aşama kaydı: tarih + kısa açıklama + **belge**. Belge uygulamada üretilmez,
+  dışarıda hazırlanıp yüklenir
+- Yakın fabrikaya yönlendirme, aşama sorumlusunu değiştirme, gerekmeyen aşamayı
+  atlama, dosyayı kapatma ve iptal etme
+- Takvim: aşama son tarihleri, resmî tatiller, yeni şikâyetler
 - Elden / telefonla gelen şikâyetlerin personel tarafından kaydı
 
-**Genel Müdürlük paneli**
-- 14 fabrikanın tüm dosyaları tek ekranda, fabrika filtresiyle
+**Genel Müdürlük paneli** — işlevi süreci izlemektir
+- Role göre ayrışan gösterge paneli (üst yönetim / daire başkanlığı)
+- 14 fabrikanın tüm dosyaları: hangi fabrikada kaç şikâyet, hangi aşamada
+- Dikkat gerektirenler: tekrarlayan ürün/müşteri, SLA aşımı, kritik dosyalar
+- Fabrika karşılaştırma, dönem kıyası ve 12 aylık trendler
 - Daire bazında itiraz kuyruğu ve karar verme (5 iş günü sayacıyla)
+- Daire Başkanlıklarına gelen resmî yazılar kutusu
 - SMS / e-posta giden kutusu, hatalı gönderimleri yeniden deneme
+- A4 yönetim özeti çıktısı
 
 **Raporlama**
 - Performans panosu: SLA uyum oranı, ortalama kapanma süresi, haklı bulunma
@@ -249,16 +269,17 @@ ile değiştirilebilir.
   Excel çıktısı olarak (devreden dosyalar işaretli, aylık işlem toplamı,
   gönderim dağıtımı ve imza alanı dâhil)
 
-**Belge üretimi**
-- FR PASAT 007 Müşteri Şikâyet Formu
-- FR PASAT 004 Ürün Değişim-İade Tutanağı
-- FR PASAT 005 Ürün Değişim/İade ve Nakliye Bedelinin Ödenmesi Tutanağı
-- İnceleme Tutanağı (haklı bulunmayan dosyalar için)
-- Müşteri Bilgilendirme Formu
+**Belge**
 
-Belgeler A4 yerleşiminde ekranda açılır; tarayıcının **Yazdır → PDF olarak
-kaydet** seçeneğiyle PDF üretilir. Bu yöntem Türkçe karakterlerde yazı tipi
-gömme sorunu yaşatmaz.
+Uygulamanın ürettiği tek belge **FR PASAT 007 Müşteri Şikâyet Formu**'dur:
+müşterinin beyanının kaydıdır, kayıtla birlikte otomatik oluşur ve dosyayı açan
+personelin ilk gördüğü şeydir. A4 yerleşiminde ekranda açılır; tarayıcının
+**Yazdır → PDF olarak kaydet** seçeneğiyle PDF üretilir.
+
+Diğer bütün belgeler (inceleme tutanağı, analiz raporu, karar tutanağı, üst
+yazı, irsaliye, dekont, resmî yazı, müşteri bilgilendirmesi) fabrikada
+hazırlanır ve ilgili aşamanın kayıt formundan yüklenir. Her ek, hangi aşamanın
+belgesi olduğunu kendi üzerinde taşır ve o aşamanın kutusunda görünür.
 
 ---
 
@@ -284,29 +305,39 @@ src/
     takip/                  müşteri takip sayfaları
     giris/                  personel girişi
     panel/                  tüm yönetim ekranları
-    belge/[id]/             resmî belge çıktıları (A4)
+      actions.ts            sunucu eylemleri (tek aşama eylemi: asamaAction)
+      sikayet/[id]/         dosya sayfası: form + ekip düzeneği + aşamalar
+        page.tsx            tek sayfa, sekme yok
+        surec.tsx           aşama listesi ve kayıt formları
+        ekip-kur.tsx        kişi sayısı → unvan + isim kutuları
+        ekler.tsx           bütün ekler (katlanır)
+        gecmis.tsx          denetim izi ve bildirimler (katlanır)
+      panolar/              role göre gösterge panoları
+    belge/[id]/             Müşteri Şikâyet Formu çıktısı (A4)
     api/ek/[id]/            yetkili dosya servisi
     api/rapor/aylik/        Excel çıktısı
   components/               ortak arayüz bileşenleri, grafikler
-    surec-seridi.tsx        süreç adımı şeridi — ana sayfa ve müşteri takip sayfasının ortağı
+    sikayet-formu.tsx       FR PASAT 007 — panelde ve yazdırmada ortak
+    surec-seridi.tsx        müşteri süreç şeridi — ana sayfa ve takip sayfası ortağı
   lib/
-    db/schema.sql           veritabanı şeması (24 tablo)
+    db/schema.sql           veritabanı şeması (19 tablo)
     db/driver.ts            node:sqlite sürücü katmanı (işlem, SAVEPOINT, parametre normalleştirme)
     db/index.ts             bağlantı ve sorgu yardımcıları
-    domain.ts               durumlar, talepler, belge türleri, SLA günleri
-    workflow.ts             görev kartı kataloğu, imza zincirleri, itiraz eşikleri
+    domain.ts               durumlar, talepler, ek türleri, SLA günleri
+    asamalar.ts             aşama kataloğu, öncüller, dalların açılması
+    esik.ts                 itiraz eşiği ve daire yönlendirmesi
     dates.ts                iş günü ve SLA hesapları
     roles.ts                roller ve yetki matrisi
   server/                   iş mantığı (sunucuya özel)
-    process.ts              süreç motoru — tüm iş akışı adımları
-    task-guard.ts           tek sorumlu ve sıra bekçisi (requireTaskTurn)
-    tasks.ts                görev kartları, adım görünümü, atama adayları
+    asama.ts                süreç motoru — tek giriş noktası: asamayiKaydet()
+    asamalar-db.ts          aşama satırları, görünümler, atama
     complaints.ts           kayıt oluşturma ve sorgular
-    documents.ts            belgeler ve imza zinciri
-    lab.ts                  numune ve analiz
+    documents.ts            Müşteri Şikâyet Formu
+    attachments.ts          dosya saklama ve ek kayıtları
     notify.ts               bildirim şablonları ve gönderim
     providers.ts            SMS / e-posta sağlayıcı adaptörleri
     stats.ts                performans istatistikleri
+    yonetim.ts              Genel Müdürlük gözetim sorguları
     monthly.ts              FR PASAT 005 aylık tablo
     demo.ts                 demo verisi üreticisi
 scripts/
@@ -349,69 +380,74 @@ durur; talimat numarası yer almaz.
 Talimat maddeleri (`TL PASAT 004 md. …`) yalnızca **personel panelinde** form ve
 ekranların altında dayanak olarak gösterilir.
 
-### İmza kuyruğu da bir iştir
+### Dosya sayfası: önce form, sonra aşamalar
 
-İmza sırası kendisine gelen kişi bunu **Görevlerim** sayfasında ve gösterge
-panelindeki görev kartında görür; gösterge panelindeki "İmzanızı bekleyen"
-sayacı yalnızca sırası o kişide olan belgeleri sayar, böylece karta tıklayınca
-açılan liste ile aynı sayıyı verir.
+Dosyayı açan kişinin ilk gördüğü şey **müşterinin doldurduğu formun kendisidir**
+(FR PASAT 007 düzeninde, alan alan). Hemen altında dosyanın aşamaları durur:
+sırası gelen aşama kayıt formunu açar, kapanmış aşama tarihini, kaydedeni ve
+yüklenen belgeyi gösterir, sırası gelmemiş aşama neyi beklediğini yazar.
 
-Belge, imzalanmadan önce **Göster** düğmesiyle okunabilir: masaüstünde sayfanın
-üstünde açılan bir pencerede, telefonda tam ekran. Pencereden yazdırma ve yeni
-sekmede açma da yapılabilir.
+Sekme yoktur. Bütün ekler ve denetim izi sayfanın altında katlanmış durur;
+günlük işte gerekmediği için akışı bölmez.
 
-Bir dosya, imza süreci yarım kalmış belge varken kapatılamaz; aksi halde dosya
-kapandıktan sonra da imza kuyruğunda görünmeye devam ediyordu.
+Yeni bir şikâyet Fabrika Müdürünün ekranına düştüğünde formun altında **ekip
+kurma düzeneği** çıkar: müdür ekibin kaç kişi olacağını seçer, o kadar kişi
+kutusu belirir, her kutuda önce unvan (fabrikanın kadrosundan otomatik
+listelenir), sonra o unvandaki isim seçilir. İlk sıradaki kişi ekip lideridir;
+inceleme ve karar aşamaları ona düşer.
 
 ### Tek sorumlu ve sıra kuralı
 
-Sistemin temel kuralı: **her süreç adımı tek bir kişinin üzerindedir ve adımlar
-sırayla işlenir.** Rol yetkisi yalnızca "bu adıma kim atanabilir" sorusunu
-yanıtlar; işi fiilen yapma hakkı görev kartının üzerindeki kişiye aittir.
+Sistemin temel kuralı: **her aşama tek bir kişinin üzerindedir ve aşamalar
+sırayla kapanır.**
 
-Bir adımı işleyebilmek için dört koşul birlikte sağlanmalıdır
-(`src/server/task-guard.ts` — `requireTaskTurn`):
+Bir aşamayı kaydedebilmek için şu koşullar birlikte sağlanmalıdır
+(`src/server/asama.ts` — `asamaYetkisi`):
 
 1. Kullanıcı dosyanın fabrikasına erişebiliyor,
-2. adım bu dosyada açık,
-3. öncül adımların tamamı kapanmış (sırası gelmiş),
-4. işlemi yapan kişi, görevin atanmış sorumlusu.
+2. aşama bu dosyada açık ve daha önce kapatılmamış,
+3. öncül aşamaların tamamı kapanmış (sırası gelmiş),
+4. işlemi yapan kişi aşamanın sorumlusu **ya da** Fabrika Müdürü — iş fabrikada
+   elle yapıldığı için kaydı sorumlunun yerine müdürün girmesi de meşrudur ve
+   her kayıt kimin girdiğini saklar.
 
-Arayüz aynı kuralı gösterir: bir adımın formu ve düğmeleri yalnızca sırası
-gelmiş ve sorumlusu o kişi olan adımda çıkar. Diğer personel adımı görür ama
-"Sıra: Ad Soyad" yazar; sırası gelmeyen adımda "Sırada bekliyor — önce şu adım"
-görünür. Sunucu tarafı, arayüz ne gösterirse göstersin kuralı yeniden uygular.
+Arayüz aynı kuralı gösterir: kayıt formu yalnızca sırası gelmiş ve kendisine
+düşen aşamada çıkar. Diğer personel aşamayı görür ama formunu değil; aşamanın
+kimin üzerinde olduğunu okur. Sırası gelmemiş aşamada "Sırası gelmedi — önce şu
+aşama tamamlanmalı" yazar. Sunucu tarafı, arayüz ne gösterirse göstersin kuralı
+yeniden uygular.
 
-Adımların sırası `src/lib/workflow.ts` içindeki `dependsOn` alanlarında
-tanımlıdır. Dosyada bulunmayan öncül sağlanmış sayılır; böylece haklı, haksız
-ve itiraz dalları tek bir bağımlılık grafiğiyle yürür.
+Aşamaların sırası `src/lib/asamalar.ts` içindeki `oncul` alanlarında tanımlıdır.
+**Dosyada bulunmayan öncül sağlanmış sayılır**; böylece haklı, haksız ve itiraz
+dalları tek bir bağımlılık grafiğiyle yürür.
 
-**Fabrika Müdürünün rolü** süreci yönetmektir, adımları işlemek değil: şikâyeti
-görür, inceleme ekibini kurar ya da dosyayı daha yakın fabrikaya yönlendirir,
-bir adımın sorumlusunu değiştirir (izin, rapor, görevden ayrılma hâllerinde),
-gerekmeyen bir adımı atlar ve süreci izler. Talimatın doğrudan kendisine
-verdiği üç iş kendisinde kalır: **tutanağın son onayı** (imza zincirinin 6.
-sırası), **itirazın Daire Başkanlığına gönderilmesi** ve **dosyanın
-kapatılması**. Bunların dışındaki hiçbir adımı kendi işleyemez.
+Bir aşama elle "tamamlandı" yapılamaz: belge isteyen aşama ancak belge
+yüklenerek kapanır. Ekip kurma ve kapanış belge istemez; biri ekip kutularından,
+diğeri kapanış notuyla kapanır.
 
-Bir adım görev kartından elle "tamamlandı" yapılamaz; tamamlanma yalnızca o
-adımın kendi formu işlendiğinde gerçekleşir.
+**Fabrika Müdürünün rolü** süreci yürütmektir: şikâyeti ve formunu görür,
+inceleme ekibini kurar ya da dosyayı daha yakın fabrikaya yönlendirir, bir
+aşamanın sorumlusunu değiştirir (izin, rapor, görevden ayrılma hâllerinde),
+koşulu oluşmayan aşamayı gerekçeyle atlar, gerektiğinde bir aşamanın kaydını
+kendisi girer, itirazı Daire Başkanlığına gönderir ve dosyayı kapatır. Açık
+aşama varken dosya kapatılamaz.
 
 #### Diğer yetki kuralları
 
-12 fabrika unvanı, Genel Müdürlük üst yönetimi, 5 daire başkanlığı ve sistem
-yöneticisi için ayrı yetkiler tanımlıdır (`src/lib/roles.ts`):
+Yetki matrisi sadeleştirilmiştir (`src/lib/roles.ts`): bir aşamayı kimin
+kaydedeceğini yetki değil, **aşamanın sorumlusu** belirler. Aşamalardan bağımsız
+altı yetki kalır — şikâyet kaydetme, sorumlu değiştirme, dosya kapatma, itiraz
+kararı, bildirim kutusu ve tanım yönetimi.
 
-- Laboratuvar Sorumlusu analiz girer, tutanak **imzalayamaz**
-- Ambar Şefi iade/değişimi kaydeder; **nakliye bedelini Muhasebe öder** (md. 6-b)
-- Ambar Şefi imza zincirinin ilk halkasıdır, karar veremez
-- Müdür yardımcıları imza zincirinin üyeleridir; Teknik ve Ziraat ayrıca
-  inceleme ekibine girip ekip lideri olabilir (md. 3)
+- Aşamaların varsayılan sorumlusu unvana göre atanır: inceleme ve karar ekip
+  liderine, iade/değişim Ambar Şefine, resmî yazı Kalite Sorumlusuna, ekip
+  kurma ve kapanış Fabrika Müdürüne, daire kararı ilgili Daire Başkanlığına
 - Daire Başkanı yalnızca **kendi dairesine** düşen itirazı karara bağlar
 - Fabrika personeli yalnızca **kendi fabrikasının** dosyalarını görür
-- Genel Müdürlük tüm fabrikaları görür, fabrika süreç işlemlerini yapamaz
-- Yeniden atama listesinde yalnızca o adımı yürütme yetkisi olan personel
-  görünür; iş yapamayacak bir kişiye adım atanamaz
+- Genel Müdürlük tüm fabrikaları görür; işlevi süreci izlemektir, fabrika
+  aşamalarını kaydetmez (istisna: kendi dairesinin itiraz kararı)
+- Dosya başka fabrikaya yönlendirildiğinde açık aşamalar yeni fabrikanın aynı
+  unvandaki personeline devrolur
 
 ---
 
@@ -556,11 +592,13 @@ rollback, iç içe SAVEPOINT kullanımı, hata yayılımı, parametre normalleş
 (`undefined` → NULL, `boolean` → 0/1) ve satır nesnelerinin React Sunucu
 Bileşeni uyumluluğu. Hiçbir harici bağımlılık gerektirmez.
 
-**Uçtan uca senaryo testi.** Bir şikâyeti halka açık formdan açar ve talimatın
-tüm akışını arayüz üzerinden yürütür: ekip oluşturma, yerinde inceleme, numune,
-analiz, tutanak, 6 adımlı imza zinciri, Fabrika Müdürü onayı, düzeltici
-faaliyet, iade + nakliye bedeli, resmî yazı, müşteri bilgilendirmesi, kapanış ve
-müşteri tarafındaki sonucun doğrulanması.
+**Uçtan uca senaryo testi.** Bir şikâyeti halka açık formdan açar ve akışın
+tamamını arayüz üzerinden yürütür: Fabrika Müdürü dosyayı açıp **formun
+kendisini** gördüğünü, formun altındaki düzenekte kişi sayısı seçilince o kadar
+kişi kutusu belirdiğini ve unvan + isim seçilerek ekibin kurulduğunu doğrular;
+sonra sırayla inceleme tutanağını, imzalı karar tutanağını, iade belgesini ve
+resmî yazıyı **dosya yükleyerek** kaydeder, dosyayı kapatır ve müşteri
+tarafındaki sonucu doğrular. Bir aşama kaydedilemezse test o noktada durur.
 
 ```bash
 npm install -D playwright && npx playwright install chromium
@@ -569,26 +607,25 @@ npm run test:senaryo                 # varsayılan http://localhost:3000
 npm run test:senaryo -- http://localhost:3100   # başka adres
 ```
 
-Test 31 kontrolün tamamını doğrular ve başarısızlık hâlinde sıfırdan farklı
+Test 21 kontrolün tamamını doğrular ve başarısızlık hâlinde sıfırdan farklı
 çıkış kodu döndürür.
 
-**Tek sorumlu ve sıra kuralı testi.** Süreç adımlarının tek kişide durduğunu ve
-sırayla işlendiğini doğrular: adımın sorumlusu "Sıra sizde" görür ve düğmesi
-vardır, aynı fabrikadaki başka personel aynı adımda düğme görmez ve adımın
-kimde olduğunu okur, sırası gelmeyen adım hangi adımı beklediğini yazar, Fabrika
-Müdürü başkasının adımının formunu görmez ama sorumluyu değiştirebilir, başka
-fabrikanın personeli dosyayı hiç açamaz.
+**Tek sorumlu ve sıra kuralı testi.** Aşamaların tek kişide durduğunu ve sırayla
+kapandığını doğrular: aşamanın sorumlusu "Sıra sizde" görür ve kayıt formu
+açılır, aynı fabrikadaki başka personel aynı aşamada form görmez ve aşamanın
+kimde olduğunu okur, sırası gelmeyen aşama hangi aşamayı beklediğini yazar,
+Fabrika Müdürü kaydı girebilir ve sorumluyu değiştirebilir, başka fabrikanın
+personeli dosyayı hiç açamaz, elle "tamamlandı" yolu yoktur.
 
 ```bash
-npm run test:sahiplik                       # varsayılan http://localhost:3100
-TEST_BASE=http://localhost:3000 npm run test:sahiplik
+npm run test:sahiplik                       # varsayılan http://localhost:3000
+TEST_BASE=http://localhost:3100 npm run test:sahiplik
 ```
 
 Test, dosyayı veritabanından kendisi seçer; öncesinde **Tanımlar > Demo Verisi**
-ekranından demo verisi üretilmiş olmalıdır. Son bölümü veritabanındaki her açık
-adım türü için bir örnek alıp sorumlusuna gerçekten yapacak iş gösterildiğini
-doğrular: formu bu sekmede olmayan adımlarda (numune, analiz, imza zinciri,
-daire kararı) ilgili sekmeye bağlantı çıkmalıdır.
+ekranından demo verisi üretilmiş olmalıdır. Son bölümü açık dosyaların hepsini
+tarar ve sırası gelmiş aşamanın sorumlusuna gerçekten yapacak iş gösterildiğini
+doğrular — "sorumluya işlem yok denmez" değişmezi bu taramayla korunur.
 
 > Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
 > indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu
@@ -599,24 +636,25 @@ daire kararı) ilgili sekmeye bağlantı çıkmalıdır.
 Aşağıdakiler TL PASAT 004'te açıkça yer almayan, sistemin tutarlı çalışması için
 eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
 
-1. **İnceleme Tutanağı (FR PASAT 008 olarak kodlandı).** Talimatın ekindeki iki
-   tutanak yalnızca iade/değişim hâllerini kapsar. Şikâyetin haklı bulunmadığı
-   dosyalarda inceleme sonucunu ve gerekçesini imza altına alacak bir belge
-   bulunmadığından, aynı 6 imzalı zincirle onaylanan bir İnceleme Tutanağı
-   eklenmiştir.
+1. **Belgeler uygulamada üretilmez, yüklenir.** Talimat hangi tutanağın
+   düzenleneceğini ve kimlerin imzalayacağını belirler ama bunun elektronik mi
+   kâğıt üzerinde mi yapılacağını söylemez. Uygulama, fabrikanın gerçek iş
+   akışına paralel ikinci bir onay süreci işletmek yerine o akışın **sonucunu**
+   kayda geçirir: tutanak dışarıda hazırlanıp imzalanır, imzaları tamamlanmış
+   nüsha ilgili aşamaya yüklenir. Sistem belgeyi kimin, hangi tarihte kayda
+   geçirdiğini saklar.
 
-2. **Kararın tutanakla kesinleşmesi.** Haklı/haksız kararı ayrı bir adım
-   değildir; tutanağa yazılır ve Fabrika Müdürü onayıyla kesinleşir. Bu,
-   md. 4'teki "düzenlenen tutanaklar fabrika müdürünün onayından sonra…"
-   ifadesine uygundur.
+2. **Kararın tutanakla kesinleşmesi.** Haklı/haksız kararı ayrı bir aşama
+   değildir; imzalı karar tutanağı yüklenirken işaretlenir. Bu, md. 4'teki
+   "düzenlenen tutanaklar fabrika müdürünün onayından sonra…" ifadesine
+   uygundur — onay fabrikada ıslak imzayla verilir.
 
 3. **Daire itirazı kabul ettiğinde işlem süresinin yeniden başlaması.** Talimat
    iade/değişim için şikâyet tarihinden itibaren 5 iş günü öngörür. Daire
    Başkanlığı kararı bu süreden sonra geldiğinde süre fiilen imkânsız hâle
    gelir; bu nedenle karar kabul edildiğinde 5 iş günlük süre **daire kararı
    tarihinden** yeniden başlatılır ve bu yeniden başlatma olay günlüğüne ayrıca
-   işlenir. Ayrıca iade/değişim için gereken FR PASAT 004/005 tutanağının
-   düzenlenmesi ve imza zinciri yeniden açılır.
+   işlenir.
 
 4. **SMS ile telefon doğrulaması.** Halka açık formda sahte kayıt önlenmesi ve
    bilgilendirme SMS'lerinin doğru numaraya ulaşması için zorunludur; Tanımlar
@@ -630,36 +668,31 @@ eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
    ile 14 fabrikanın koordinatları arasındaki kuş uçuşu mesafeden hesaplanır.
    Öneridir; yönlendirme kararı her hâlükârda Fabrika Müdürünündür.
 
-7. **Laboratuvar spesifikasyon değerleri** TS 861 kristal şeker standardı ve
-   yaygın kurum içi kabul kriterlerine göre ön tanımlı gelir. Kurumun geçerli
-   spesifikasyonlarıyla karşılaştırılıp Tanımlar sayfasından güncellenmelidir.
-
-8. **PDF üretimi** tarayıcının yazdırma işleviyle yapılır. Sunucu tarafında
+7. **PDF üretimi** tarayıcının yazdırma işleviyle yapılır. Sunucu tarafında
    doğrudan PDF üretimi gerekirse Playwright/Puppeteer ile `/belge/[id]`
    sayfasının çıktısı alınabilir.
 
-9. **Müşteri Şikâyet Formu (FR PASAT 007) bir kayıt belgesidir.** Müşterinin
-   beyanını kayda geçirir; bir karar belgesi değildir. Başvuru çevrim içi
-   yapıldığında imzalayacak bir personel bulunmadığından imza zinciri yoktur:
-   kayıt anında üretilir, doğrudan kayda geçer ve kimsenin imza kuyruğunda
-   beklemez. İmza disiplini karar belgelerinde kalır — tutanaklar ve Müşteri
-   Bilgilendirme Formu. Kurum bu formun da ıslak imzalı olmasını isterse iki
-   sıralı zincir (Kalite Sorumlusu → Fabrika Müdürü) geri açılabilir.
+8. **Müşteri Şikâyet Formu (FR PASAT 007) bir kayıt belgesidir.** Müşterinin
+   beyanını kayda geçirir; bir karar belgesi değildir. Kayıt anında üretilir ve
+   dosyayı açan personelin ilk gördüğü şeydir.
 
-10. **Nakliye bedeli ayrı bir adımdır.** Talimat md. 6'da iade/değişim ile
-   nakliye bedelinin ödenmesi aynı maddede geçer. Fiiliyatta iade/değişimi
-   ambar, ödemeyi muhasebe yapar; her adımın sorumlusu tek kişi olsun diye iki
-   iş ayrı görev kartına bölünmüştür. Her ikisi de şikâyet tarihinden itibaren
-   5 iş günü içinde tamamlanır ve ikisi de kapanmadan dosya kapatılamaz.
+9. **İade/değişim tutarları isteğe bağlıdır.** Aşamayı kapatan şey yüklenen
+   belgedir; iade kg, değişim kg, iade bedeli ve nakliye bedeli alanları
+   yalnızca Genel Müdürlüğe giden **aylık tablo** ve maliyet takibi beslensin
+   diye istenir ve boş bırakılabilir. Boş bırakılan alan mevcut değeri bozmaz.
 
-11. **Fabrika Müdürü adımları kendi işlemez.** Talimat kimin hangi işi yapacağını
-    unvan düzeyinde belirler ama bir üstün astının işini yapıp yapamayacağına
-    değinmez. Sorumluluk zincirinin izlenebilir kalması için müdüre yalnızca
-    talimatın doğrudan kendisine verdiği üç iş bırakılmıştır (tutanak onayı,
-    itirazın gönderilmesi, dosyanın kapatılması); personelin müsait olmadığı
-    hâllerde adımı başka bir personele **yeniden atar**. Bu kurumsal bir
-    tercihtir; kurum isterse müdüre gerekçeli "vekâleten işle" yetkisi
-    tanınabilir.
+10. **Ekibin kaç kişi olacağına Fabrika Müdürü karar verir.** Talimat md. 3
+    ekibin hangi birimlerden kurulacağını sayar ama kişi sayısını
+    belirlemez. Düzenek 1-8 kişi arası serbest bırakılmıştır; unvan listesi
+    fabrikanın kadrosundan otomatik gelir, aynı kişi iki kez seçilemez ve ilk
+    sıradaki kişi ekip lideri olur.
+
+11. **Fabrika Müdürü bir aşamanın kaydını sorumlusu yerine girebilir.** İş
+    fabrikada elle yapıldığı ve belge dışarıda hazırlandığı için, kaydın
+    bilgisayar başındaki kişi tarafından girilmesi olağandır. Her kayıt kimin
+    girdiğini saklar; izlenebilirlik kaydedenin kimliğiyle korunur. Müdür
+    ayrıca bir aşamanın sorumlusunu değiştirebilir ve koşulu oluşmayan aşamayı
+    gerekçeyle atlayabilir.
 
 ---
 

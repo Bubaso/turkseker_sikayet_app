@@ -69,28 +69,6 @@ export const KATEGORI_AILE_ETIKET = {
   DIGER: "Diğer",
 };
 
-/** Laboratuvar analiz parametreleri. Spesifikasyon değerleri TS 861 kristal
- *  şeker standardı ve kurum içi kabul kriterlerine göre ön tanımlıdır;
- *  Tanımlar ekranından güncellenebilir. productGroup null ise tüm gruplar. */
-export const LAB_PARAMETRELERI = [
-  { code: "POL",          name: "Polarizasyon",                        unit: "°Z",    group: null,            min: 99.7,  max: null, text: "en az 99,70 °Z" },
-  { code: "RENK",         name: "Renk (ICUMSA)",                       unit: "IU",    group: null,            min: null,  max: 45,   text: "en çok 45 IU" },
-  { code: "NEM",          name: "Nem",                                 unit: "%",     group: null,            min: null,  max: 0.06, text: "en çok %0,06" },
-  { code: "ILETKEN_KUL",  name: "İletkenlik külü",                     unit: "%",     group: null,            min: null,  max: 0.027,text: "en çok %0,027" },
-  { code: "INVERT",       name: "İnvert şeker",                        unit: "%",     group: null,            min: null,  max: 0.04, text: "en çok %0,04" },
-  { code: "TANE",         name: "Ortalama tane büyüklüğü",             unit: "mm",    group: "DOKME_SEKER",   min: 0.5,   max: 1.2,  text: "0,50 - 1,20 mm" },
-  { code: "SO2",          name: "Kükürt dioksit (SO₂)",                unit: "mg/kg", group: null,            min: null,  max: 10,   text: "en çok 10 mg/kg" },
-  { code: "YABANCI",      name: "Yabancı madde",                       unit: null,    group: null,            min: null,  max: null, text: "Bulunmamalı" },
-  { code: "GORUNUM",      name: "Görünüm (duyusal)",                   unit: null,    group: null,            min: null,  max: null, text: "Beyaz, homojen, topaksız" },
-  { code: "KOKU_TAT",     name: "Koku ve tat (duyusal)",               unit: null,    group: null,            min: null,  max: null, text: "Kendine has, yabancı koku/tat yok" },
-  { code: "TMAB",         name: "Toplam mezofilik aerob bakteri",      unit: "kob/g", group: null,            min: null,  max: 200,  text: "en çok 200 kob/g" },
-  { code: "MAYA_KUF",     name: "Maya ve küf",                         unit: "kob/g", group: null,            min: null,  max: 10,   text: "en çok 10 kob/g" },
-  { code: "KURU_MADDE",   name: "Toplam kuru madde",                   unit: "%",     group: "MELAS",         min: 75,    max: null, text: "en az %75" },
-  { code: "TOPLAM_SEKER", name: "Toplam şeker oranı",                  unit: "%",     group: "MELAS",         min: 44,    max: null, text: "en az %44" },
-  { code: "HAM_PROTEIN",  name: "Ham protein",                         unit: "%",     group: "POSA",          min: 8,     max: null, text: "en az %8" },
-  { code: "POSA_NEM",     name: "Nem (küspe)",                         unit: "%",     group: "POSA",          min: null,  max: 12,   text: "en çok %12" },
-].map((p, i) => ({ ...p, sort: i + 1 }));
-
 /**
  * Türkiye resmî tatilleri.
  * DİKKAT: Dinî bayram tarihleri astronomik hesaba göre ön tanımlıdır.

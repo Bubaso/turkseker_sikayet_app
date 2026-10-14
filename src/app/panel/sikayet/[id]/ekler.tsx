@@ -5,11 +5,18 @@ import { fmtDateTime } from "@/lib/dates";
 import { fmtBytes } from "@/lib/format";
 import type { AttachmentView } from "@/lib/types";
 import { ActionButton, ActionForm } from "@/components/action-form";
-import { Card, Chip, EmptyState } from "@/components/ui";
+import { Chip } from "@/components/ui";
 import { deleteAttachmentAction, uploadAction } from "@/app/panel/actions";
 
-/** Kanıt görselleri, analiz raporları ve ıslak imzalı tutanak taramaları. */
-export function EklerTab({
+/* ===========================================================================
+   Dosyanın bütün ekleri.
+
+   Her aşama kendi belgesini aşama kutusunda gösterir; burası dosyadaki tüm
+   dosyaların tek listesi ve serbest yükleme yeridir. Günlük işte gerekmediği
+   için katlanmış durur.
+   =========================================================================== */
+
+export function Ekler({
   complaintId, attachments, canUpload, accept, maxMb,
 }: {
   complaintId: number;
@@ -18,15 +25,20 @@ export function EklerTab({
   accept: string;
   maxMb: number;
 }) {
-  const images = attachments.filter((a) => a.mime.startsWith("image/") && a.mime !== "image/heic");
-  const others = attachments.filter((a) => !images.includes(a));
+  const gorseller = attachments.filter(
+    (a) => a.mime.startsWith("image/") && a.mime !== "image/heic",
+  );
 
   return (
-    <div className="space-y-5">
-      {images.length > 0 && (
-        <Card title="Görseller">
+    <details className="card overflow-hidden">
+      <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+        Bütün ekler ({attachments.length})
+      </summary>
+
+      <div className="space-y-4 p-4 sm:p-5">
+        {gorseller.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {images.map((a) => (
+            {gorseller.map((a) => (
               <figure key={a.id} className="overflow-hidden rounded-[5px] border border-ink-200">
                 <a href={`/api/ek/${a.id}`} target="_blank" rel="noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -44,12 +56,13 @@ export function EklerTab({
               </figure>
             ))}
           </div>
-        </Card>
-      )}
+        )}
 
-      <Card title="Tüm ekler" bodyClass="">
         {attachments.length === 0 ? (
-          <EmptyState title="Ek dosya yok" hint="Kanıt görselleri, analiz raporları ve imzalı tutanak taramaları buraya yüklenir." />
+          <p className="text-sm text-ink-500">
+            Dosyada henüz ek yok. Müşterinin ilettiği görseller ve aşama kayıtlarında yüklenen
+            belgeler burada toplanır.
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="tbl">
@@ -57,7 +70,7 @@ export function EklerTab({
                 <tr><th>Dosya</th><th>Tür</th><th>Boyut</th><th>Yükleyen</th><th>Tarih</th><th></th></tr>
               </thead>
               <tbody>
-                {[...images, ...others].map((a) => (
+                {attachments.map((a) => (
                   <tr key={a.id}>
                     <td>
                       <a href={`/api/ek/${a.id}`} target="_blank" rel="noreferrer" className="link">
@@ -66,7 +79,7 @@ export function EklerTab({
                       {a.caption && <span className="block text-xs text-ink-500">{a.caption}</span>}
                     </td>
                     <td>
-                      <Chip tone={a.kind === "ANALIZ_RAPORU" ? "brand" : a.kind === "IMZALI_TUTANAK" ? "ok" : "ink"}>
+                      <Chip tone={a.kind === "KANIT" ? "ink" : "brand"}>
                         {ATTACHMENT_KIND_LABEL[a.kind as AttachmentKind] ?? a.kind}
                       </Chip>
                     </td>
@@ -86,35 +99,35 @@ export function EklerTab({
             </table>
           </div>
         )}
-      </Card>
 
-      {canUpload && (
-        <Card title="Dosya yükle">
-          <ActionForm action={uploadAction} complaintId={complaintId} submitLabel="Yükle">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {canUpload && (
+          <div className="border-t border-ink-100 pt-4">
+            <ActionForm action={uploadAction} complaintId={complaintId} submitLabel="Yükle" compact>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="label" htmlFor="kind">Dosya türü</label>
+                  <select id="kind" name="kind" className="input" defaultValue="DIGER">
+                    {(Object.keys(ATTACHMENT_KIND_LABEL) as AttachmentKind[]).map((k) => (
+                      <option key={k} value={k}>{ATTACHMENT_KIND_LABEL[k]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="label" htmlFor="caption">Açıklama</label>
+                  <input id="caption" name="caption" className="input"
+                         placeholder="Örnek: Müşteriden gelen ek fotoğraflar" />
+                </div>
+              </div>
               <div>
-                <label className="label" htmlFor="kind">Dosya türü</label>
-                <select id="kind" name="kind" className="input" defaultValue="KANIT">
-                  {(Object.keys(ATTACHMENT_KIND_LABEL) as AttachmentKind[]).map((k) => (
-                    <option key={k} value={k}>{ATTACHMENT_KIND_LABEL[k]}</option>
-                  ))}
-                </select>
+                <label className="label" htmlFor="dosya">Dosyalar</label>
+                <input id="dosya" name="dosya" type="file" multiple accept={accept} required
+                       className="input file:mr-3 file:rounded file:border-0 file:bg-ink-100 file:px-3 file:py-1.5 file:text-sm" />
+                <span className="hint">Her dosya en çok {maxMb} MB. JPG, PNG, WEBP, PDF, Word, Excel.</span>
               </div>
-              <div className="sm:col-span-2">
-                <label className="label" htmlFor="caption">Açıklama</label>
-                <input id="caption" name="caption" className="input"
-                       placeholder="Örnek: Fabrika Müdürü onaylı ıslak imzalı tutanak taraması" />
-              </div>
-            </div>
-            <div>
-              <label className="label" htmlFor="dosya">Dosyalar</label>
-              <input id="dosya" name="dosya" type="file" multiple accept={accept} required
-                     className="input file:mr-3 file:rounded file:border-0 file:bg-ink-100 file:px-3 file:py-1.5 file:text-sm" />
-              <span className="hint">Her dosya en çok {maxMb} MB. JPG, PNG, WEBP, PDF, Word, Excel.</span>
-            </div>
-          </ActionForm>
-        </Card>
-      )}
-    </div>
+            </ActionForm>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
