@@ -7,12 +7,15 @@ import { fmtDateLong, fmtDateTime } from "@/lib/dates";
 import { fmtQuantity, fmtTl, maskPhone } from "@/lib/format";
 import type { ComplaintView } from "@/lib/types";
 import { Chip, Notice } from "./ui";
+import { SurecSeridi } from "./surec-seridi";
 
 interface Milestone {
   label: string;
   date: string | null;
   note?: string | null;
   done: boolean;
+  /** Koşulu oluşmadığı için atlanan adım (ör. analiz gerekmedi). */
+  atlandi?: boolean;
 }
 
 /** Müşteriye gösterilecek kilometre taşları — iç yazışma ve notlar yer almaz. */
@@ -25,7 +28,7 @@ function milestones(c: ComplaintView): Milestone[] {
   )[0];
 
   const out: Milestone[] = [
-    { label: "Şikâyet kaydı alındı", date: c.received_at, done: true },
+    { label: "Şikâyetiniz kaydedildi", date: c.received_at, done: true },
   ];
 
   if (c.redirected_at) {
@@ -38,14 +41,14 @@ function milestones(c: ComplaintView): Milestone[] {
   }
 
   out.push({
-    label: "İnceleme ekibi oluşturuldu",
+    label: "İnceleme ekibi görevlendirildi",
     date: c.team_formed_at,
     note: c.team_formed_at ? null : `En geç ${fmtDateLong(c.due_team_at)} tarihine kadar`,
     done: !!c.team_formed_at,
   });
 
   out.push({
-    label: "Yerinde / görsel üzerinden inceleme",
+    label: "Ürününüz incelendi",
     date: c.visited_at,
     note: c.visited_at ? null : `En geç ${fmtDateLong(c.due_inspection_at)} tarihine kadar`,
     done: !!c.visited_at,
@@ -60,19 +63,20 @@ function milestones(c: ComplaintView): Milestone[] {
     });
   } else if (c.lab_skip_reason) {
     out.push({
-      label: "Analiz yapılmadı",
+      label: "Laboratuvar analizi",
       date: c.visited_at,
       note: c.lab_skip_reason,
       done: !!c.visited_at,
+      atlandi: true,
     });
   }
 
   out.push({
     label: c.verdict
       ? c.verdict === "HAKLI"
-        ? "Karar: şikâyet haklı bulundu"
-        : "Karar: şikâyet haklı bulunmadı"
-      : "İnceleme sonucu ve karar",
+        ? "İnceleme sonucu: şikâyet haklı bulundu"
+        : "İnceleme sonucu: şikâyet haklı bulunmadı"
+      : "İnceleme sonuçlanır",
     date: c.verdict_at,
     note: c.verdict_reason,
     done: !!c.verdict_at,
@@ -106,20 +110,31 @@ function milestones(c: ComplaintView): Milestone[] {
       c.freight_amount ? `Ödenen nakliye bedeli: ${fmtTl(c.freight_amount)}` : null,
     ].filter(Boolean).join(" · ");
     out.push({
-      label: "İade / değişim işlemi",
+      label: "Sonuç uygulandı: iade / değişim",
       date: c.transaction_date,
       note: detay || (c.transaction_date ? null : `En geç ${fmtDateLong(c.due_resolution_at)} tarihine kadar`),
       done: !!c.transaction_date,
     });
   }
 
+  if (c.verdict === "HAKLI" && c.demands_freight === 1) {
+    out.push({
+      label: "Nakliye bedeli ödendi",
+      date: c.freight_paid_at,
+      note: c.freight_amount
+        ? `Ödenen tutar: ${fmtTl(c.freight_amount)}`
+        : `En geç ${fmtDateLong(c.due_resolution_at)} tarihine kadar`,
+      done: !!c.freight_paid_at,
+    });
+  }
+
   out.push({
-    label: "Müşteri bilgilendirmesi",
+    label: "Müşteri Bilgilendirme Formu gönderildi",
     date: c.customer_informed_at,
     done: !!c.customer_informed_at,
   });
   out.push({
-    label: "Dosya kapatıldı",
+    label: "Dosyanız kapatıldı",
     date: c.closed_at,
     note: c.closing_note,
     done: !!c.closed_at,
@@ -200,34 +215,14 @@ export function TrackingView({ c }: { c: ComplaintView }) {
 
       <section className="card">
         <h2 className="card-title">Süreç adımları</h2>
-        <ol className="divide-y divide-ink-100">
-          {steps.map((m, i) => (
-            <li key={`${m.label}-${i}`} className="flex gap-3.5 px-4 py-3 sm:px-5">
-              <span
-                className={
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold " +
-                  (m.done
-                    ? "border-ok-600 bg-ok-600 text-white"
-                    : "border-ink-300 bg-white text-ink-400")
-                }
-                aria-hidden
-              >
-                {m.done ? "✓" : i + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium ${m.done ? "text-ink-900" : "text-ink-500"}`}>
-                  {m.label}
-                </p>
-                {m.date && <p className="text-xs text-ink-500">{fmtDateTime(m.date)}</p>}
-                {m.note && (
-                  <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-ink-600">
-                    {m.note}
-                  </p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <SurecSeridi
+          adimlar={steps.map((m) => ({
+            baslik: m.label,
+            zaman: m.date ? fmtDateTime(m.date) : null,
+            aciklama: m.note ?? null,
+            durum: m.atlandi ? "atlandi" : m.done ? "tamam" : "bekliyor",
+          }))}
+        />
       </section>
 
       {notifications.length > 0 && (

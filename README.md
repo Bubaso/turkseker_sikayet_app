@@ -288,6 +288,7 @@ src/
     api/ek/[id]/            yetkili dosya servisi
     api/rapor/aylik/        Excel çıktısı
   components/               ortak arayüz bileşenleri, grafikler
+    surec-seridi.tsx        süreç adımı şeridi — ana sayfa ve müşteri takip sayfasının ortağı
   lib/
     db/schema.sql           veritabanı şeması (24 tablo)
     db/driver.ts            node:sqlite sürücü katmanı (işlem, SAVEPOINT, parametre normalleştirme)
@@ -298,6 +299,8 @@ src/
     roles.ts                roller ve yetki matrisi
   server/                   iş mantığı (sunucuya özel)
     process.ts              süreç motoru — tüm iş akışı adımları
+    task-guard.ts           tek sorumlu ve sıra bekçisi (requireTaskTurn)
+    tasks.ts                görev kartları, adım görünümü, atama adayları
     complaints.ts           kayıt oluşturma ve sorgular
     documents.ts            belgeler ve imza zinciri
     lab.ts                  numune ve analiz
@@ -314,7 +317,29 @@ scripts/
 tests/
   surucu.mjs                sürücü davranış testi (işlem, SAVEPOINT, tip dönüşümleri)
   senaryo.mjs               uçtan uca senaryo testi
+  sahiplik.mjs              tek sorumlu ve sıra kuralı testi
+  lib/tarayici.mjs          testlerin Playwright çözümlemesi
 ```
+
+### Müşteriye gösterilen süreç
+
+Ana sayfadaki "Şikâyetiniz nasıl ilerler?" bölümü ile müşteri takip sayfasındaki
+"Süreç adımları" şeridi **aynı bileşeni** (`src/components/surec-seridi.tsx`) ve
+aynı başlık sözlüğünü kullanır. Müşteri başvurmadan önce gördüğü resmi,
+başvurduktan sonra takip sayfasında tanır; tek fark adımların durumudur:
+
+- **Ana sayfa** — bütün adımlar nötr, yanlarında tahmini süre (`1. iş günü`,
+  `3. iş günü`…). Sonuç adımı iki çıkışı birlikte gösterir: şikâyet haklı
+  bulunursa iade/değişim, bulunmazsa gerekçeli bildirim ve miktar eşiği
+  aşılmışsa Genel Müdürlük değerlendirmesi.
+- **Takip sayfası** — tamamlanan adımlar yeşil onay işaretli ve gerçekleşme
+  tarihli, koşulu oluşmayan adımlar (ör. analiz gerekmedi) atlanmış olarak
+  işaretli.
+
+Telefonda adım açıklamaları varsayılan olarak kapalıdır; tek düğmeyle açılır.
+Metinler kurum unvanlarıyla değil müşterinin başına gelenle yazılır: imza
+zincirindeki altı unvan sayılmaz, "tutanak altı yetkilinin imzasından geçer"
+denir.
 
 ### Tek sorumlu ve sıra kuralı
 

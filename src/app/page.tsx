@@ -2,8 +2,82 @@ import Link from "next/link";
 import { scalar } from "@/lib/db";
 import { PublicShell } from "@/components/public-shell";
 import { Notice } from "@/components/ui";
+import { SurecSeridi, type SurecAdimi } from "@/components/surec-seridi";
 
 export const dynamic = "force-dynamic";
+
+/*
+ * Ana sayfadaki süreç özeti, müşteri takip sayfasındaki şeritle aynı bileşeni
+ * ve aynı başlıkları kullanır: müşteri başvurmadan önce burada gördüğü resmi,
+ * başvurduktan sonra takip sayfasında tanır. Adım metinleri kurum unvanlarıyla
+ * değil, müşterinin başına gelenle yazılmıştır.
+ */
+const SURECTE_ADIMLAR: SurecAdimi[] = [
+  {
+    baslik: "Şikâyetiniz kaydedilir",
+    zaman: "Anında",
+    durum: "bekliyor",
+    aciklama:
+      "Şikâyet numaranız SMS ile gönderilir; süreci baştan sona bu numarayla takip edebilirsiniz.",
+  },
+  {
+    baslik: "İnceleme ekibi görevlendirilir",
+    zaman: "1. iş günü",
+    durum: "bekliyor",
+    aciklama:
+      "Fabrika Müdürü inceleme ekibini kurar. Adresinize daha yakın bir fabrikamız varsa " +
+      "dosyanız incelenmek üzere oraya yönlendirilir ve bu da size bildirilir.",
+  },
+  {
+    baslik: "Ürününüz incelenir",
+    zaman: "3. iş günü",
+    durum: "bekliyor",
+    aciklama:
+      "Ekip işletmenize gelir ve gerekirse numune alıp laboratuvara gönderir. Yerinde inceleme " +
+      "yapılamazsa inceleme, ilettiğiniz ürün görselleri üzerinden yürütülür.",
+    sizden:
+      "Şikâyete konu ürünü, inceleme tamamlanana kadar tüketmeden ve ambalajını bozmadan saklayın.",
+  },
+  {
+    baslik: "İnceleme sonuçlanır",
+    zaman: "3. iş günü",
+    durum: "bekliyor",
+    aciklama:
+      "İnceleme ve analiz sonucu tutanağa bağlanır, Fabrika Müdürünün onayıyla kesinleşir ve " +
+      "karar size SMS ile bildirilir.",
+    dipnot: "Tutanak, fabrikada altı yetkilinin imzasından geçer.",
+  },
+  {
+    baslik: "Sonuç uygulanır",
+    zaman: "5. iş günü",
+    durum: "bekliyor",
+    dallar: [
+      {
+        ton: "ok",
+        baslik: "Şikâyetiniz haklı bulunursa",
+        aciklama:
+          "Ürünün iadesi alınır veya değişimi yapılır. Nakliye bedeli talep ettiyseniz ve kusur " +
+          "fabrikamızdan kaynaklanıyorsa geliş-gidiş nakliye masrafınız ödenir.",
+      },
+      {
+        ton: "ink",
+        baslik: "Haklı bulunmazsa",
+        aciklama:
+          "İnceleme sonucu ve gerekçesi size yazılı olarak bildirilir. Şikâyete konu miktar " +
+          "belirli bir eşiğin üzerindeyse dosyanız ayrıca Genel Müdürlüğümüzce yeniden " +
+          "değerlendirilir; bu değerlendirme 5 iş günü sürer.",
+      },
+    ],
+  },
+  {
+    baslik: "Dosyanız kapatılır",
+    zaman: "İşlemden +3 iş günü",
+    durum: "bekliyor",
+    aciklama:
+      "Yapılan işlemler Müşteri Bilgilendirme Formu ile tarafınıza iletilir, dosya Genel Müdürlük " +
+      "daire başkanlıklarına raporlanarak kapatılır.",
+  },
+];
 
 export default function HomePage() {
   const factoryCount = scalar<number>("SELECT COUNT(*) FROM factories WHERE is_active = 1") ?? 0;
@@ -11,12 +85,14 @@ export default function HomePage() {
 
   return (
     <PublicShell>
-      <div className="space-y-6">
-        <section className="card-pad">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+      <div className="space-y-5">
+        {/* Giriş kartı sayfanın giriş noktasıdır; diğer kartlardan ayrışması için
+            hafif marka zemini ve bir punto büyük başlık kullanır. */}
+        <section className="rounded-[6px] border border-brand-200 bg-brand-50 p-5 sm:p-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-[26px]">
             Müşteri şikâyetlerinizi buradan iletebilirsiniz
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-600">
+          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-700">
             Türkiye Şeker Fabrikaları A.Ş.’den aldığınız şeker, melas veya küspe ürünlerine ilişkin
             şikâyetinizi çevrim içi kaydedebilir, sürecin her aşamasını şikâyet numaranızla takip
             edebilirsiniz. Kaydınız {seeded ? factoryCount : 14} fabrikamızdan ilgili olanın ekibine
@@ -38,75 +114,47 @@ export default function HomePage() {
         )}
 
         <section className="card">
-          <h2 className="card-title">Şikâyetiniz nasıl ilerler?</h2>
-          <ol className="divide-y divide-ink-100">
-            {[
-              {
-                t: "Kayıt",
-                s: "Aynı gün",
-                d: "Şikâyetiniz sisteme kaydedilir, Müşteri Şikâyet Formu otomatik düzenlenir ve size şikâyet numaranız SMS ile gönderilir.",
-              },
-              {
-                t: "Ekip oluşturma",
-                s: "En geç 1 iş günü",
-                d: "Fabrika Müdürü; Kalite ve İşletme Kontrol, Teknik (İşletme), Muhasebe ve Ziraat birimlerinden inceleme ekibini görevlendirir. Adresinize daha yakın bir fabrikamız varsa dosya oraya yönlendirilir.",
-              },
-              {
-                t: "İnceleme ve analiz",
-                s: "En geç 3 iş günü",
-                d: "Ekip işletmenize gelir, gerekirse numune alır. Kalite ve İşletme Kontrol Laboratuvarı analizi yapar ve sonuç tutanağa bağlanır.",
-              },
-              {
-                t: "Karar",
-                s: "Tutanak onayıyla",
-                d: "Tutanak; Ambar Şefi, Satış Birim Şefi, Kalite Müdür Yardımcısı ve Fabrika Müdür Yardımcıları tarafından imzalanır, Fabrika Müdürü onaylar.",
-              },
-              {
-                t: "İade / değişim",
-                s: "En geç 5 iş günü",
-                d: "Şikâyetiniz haklı bulunursa ürünün iadesi alınır veya değişimi yapılır; nakliye bedeli talep ettiyseniz ve kusur fabrikamızdan kaynaklanıyorsa geliş-gidiş nakliye masrafınız ödenir.",
-              },
-              {
-                t: "Bilgilendirme ve kapanış",
-                s: "İşlemden sonra 3 iş günü",
-                d: "Yapılan işlemler Müşteri Bilgilendirme Formu ile tarafınıza iletilir; dosya Genel Müdürlük daire başkanlıklarına raporlanarak kapatılır.",
-              },
-            ].map((x, i) => (
-              <li key={x.t} className="flex gap-4 px-4 py-3.5 sm:px-5">
-                <span className="tnum flex size-7 shrink-0 items-center justify-center rounded-full border border-brand-200 bg-brand-50 text-xs font-semibold text-brand-700">
-                  {i + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
-                    {x.t}
-                    <span className="chip border-ink-200 bg-ink-100 text-ink-600">{x.s}</span>
-                  </p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-ink-600">{x.d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <div className="border-b border-ink-200 px-4 py-3 sm:px-5">
+            <h2 className="text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+              Şikâyetiniz nasıl ilerler?
+            </h2>
+            <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-ink-600">
+              Çoğu dosya başvuru tarihinden itibaren <strong className="font-semibold text-ink-900">8
+              iş günü</strong> içinde kapanır. Aşağıdaki süreler başvuru tarihinden sayılır;
+              hafta sonu ve resmî tatiller hesaba katılmaz.
+            </p>
+          </div>
+          <SurecSeridi adimlar={SURECTE_ADIMLAR} zamanTonu="vurgulu" katlanabilir />
         </section>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="card-pad">
-            <h2 className="text-sm font-semibold text-ink-900">Başvurunuz için hazır olması iyi olur</h2>
+            <h2 className="text-sm font-semibold text-ink-900">Başvurmadan önce hazırlayın</h2>
             <ul className="mt-2 space-y-1 text-sm text-ink-600">
               <li>• Ürünü aldığınız fabrika ve ürün bilgisi</li>
               <li>• Ambalaj üzerindeki parti / lot numarası</li>
               <li>• Fatura veya irsaliye numarası</li>
               <li>• Şikâyete konu miktar</li>
               <li>• Varsa sorunu gösteren fotoğraflar</li>
+              <li className="text-warn-700">
+                • <strong className="font-semibold">Şikâyete konu ürünün kendisi</strong> — ekip
+                yerinde inceleme için işletmenize gelecektir
+              </li>
             </ul>
           </div>
           <div className="card-pad">
-            <h2 className="text-sm font-semibold text-ink-900">Takip ve bilgilendirme</h2>
+            <h2 className="text-sm font-semibold text-ink-900">Şikâyetinizi nasıl takip edersiniz?</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-600">
-              Kaydınızdan sonra her kilometre taşında (ekip oluşturma, inceleme, karar, iade/değişim,
-              kapanış) cep telefonunuza SMS ve e-posta adresinize bilgilendirme gönderilir. SMS’teki
-              bağlantıdan ya da <Link href="/takip" className="link">şikâyet takibi</Link> sayfasından
-              şikâyet numaranız ve telefonunuzun son 4 hanesiyle durumu görebilirsiniz.
+              Her adımda cep telefonunuza SMS, e-posta adresinize bilgilendirme gönderilir.
+              Durumu istediğiniz an iki yoldan görebilirsiniz:
             </p>
+            <ul className="mt-2 space-y-1 text-sm text-ink-600">
+              <li>• Size gelen SMS’teki takip bağlantısına dokunarak</li>
+              <li>
+                • <Link href="/takip" className="link">Şikâyet takibi</Link> sayfasında şikâyet
+                numaranız ve telefonunuzun son 4 hanesiyle
+              </li>
+            </ul>
           </div>
         </section>
       </div>
