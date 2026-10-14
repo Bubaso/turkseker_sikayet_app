@@ -16,7 +16,9 @@ import {
 } from "@/lib/workflow";
 import type { Complaint, Department, TeamMemberView } from "@/lib/types";
 import { requireFactoryAccess, requirePermission, type SessionUser } from "./auth";
+import { fmtTl } from "@/lib/format";
 import { EVENT_TYPE, logEvent } from "./events";
+import { requireTaskTurn } from "./task-guard";
 import { completeTask, createTasks, skipTask, syncTaskDueDates } from "./tasks";
 import { createDocument, submitDocument } from "./documents";
 import { TEMPLATE, notifyCustomer } from "./notify";
@@ -72,9 +74,8 @@ export async function formTeam(
   members: TeamMemberInput[],
   note?: string | null,
 ): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.EKIP_YONET);
+  const user = await requireTaskTurn(complaintId, TASK.EKIP_KUR);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   if (members.length === 0) throw new Error("Ekibe en az bir personel eklenmelidir.");
   if (!members.some((m) => m.isLead)) members[0].isLead = true;
@@ -135,9 +136,8 @@ export async function redirectComplaint(
   toFactoryId: number,
   reason: string,
 ): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.EKIP_YONET);
+  const user = await requireTaskTurn(complaintId, TASK.EKIP_KUR);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   if (toFactoryId === c.factory_id) throw new Error("Dosya zaten bu fabrikada.");
   if (c.team_formed_at) throw new Error("Ekip oluşturulduktan sonra dosya yönlendirilemez.");
@@ -234,9 +234,8 @@ export interface InspectionInput {
 }
 
 export async function recordInspection(complaintId: number, input: InspectionInput): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.INCELEME_GIR);
+  const user = await requireTaskTurn(complaintId, TASK.YERINDE_INCELEME);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   const labRequired = input.labRequired ?? c.lab_required === 1;
   if (!labRequired && !input.labSkipReason?.trim()) {
@@ -306,9 +305,8 @@ export interface TutanakInput {
  * sokar. Karar, Fabrika Müdürü onayı ile resmîleşir (md. 4).
  */
 export async function prepareTutanak(complaintId: number, input: TutanakInput): Promise<number> {
-  const user = await requirePermission(PERMISSIONS.BELGE_HAZIRLA);
+  const user = await requireTaskTurn(complaintId, TASK.TUTANAK_HAZIRLA);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   if (!input.verdictReason.trim()) throw new Error("İnceleme sonucu / gerekçe zorunludur.");
   if (!input.decision.trim()) throw new Error("Karar / yapılan işlem zorunludur.");
@@ -433,9 +431,8 @@ export async function onTutanakApproved(complaintId: number, user: SessionUser):
 /* --- 5. İtiraz: Daire Başkanlığına gönderme (md. 5) --------------------- */
 
 export async function escalateComplaint(complaintId: number, note?: string | null): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.ITIRAZ_GONDER);
+  const user = await requireTaskTurn(complaintId, TASK.ITIRAZ_GONDER);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   if (c.verdict !== VERDICT.HAKSIZ) {
     throw new Error("Yalnızca haklı bulunmayan şikâyetler için itiraz gönderilir.");
@@ -494,7 +491,7 @@ export async function decideEscalation(
   result: "SIKAYET_HAKLI" | "SIKAYET_HAKSIZ",
   note: string,
 ): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.ITIRAZ_KARAR);
+  const user = await requireTaskTurn(complaintId, TASK.DAIRE_KARAR);
   const c = load(complaintId);
 
   if (!c.escalated_at) throw new Error("Dosya Daire Başkanlığı değerlendirmesinde değil.");
@@ -598,14 +595,12 @@ export interface TransactionInput {
   returnedKg?: number;
   exchangedKg?: number;
   refundAmount?: number;
-  freightAmount?: number;
   note?: string | null;
 }
 
 export async function recordTransaction(complaintId: number, input: TransactionInput): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.ISLEM_GIR);
+  const user = await requireTaskTurn(complaintId, TASK.IADE_DEGISIM);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   if (c.verdict !== VERDICT.HAKLI) {
     throw new Error("İade/değişim işlemi yalnızca haklı bulunan şikâyetler için kaydedilir.");
@@ -619,28 +614,19 @@ export async function recordTransaction(complaintId: number, input: TransactionI
   if (!tutanak || tutanak.status !== DOC_STATUS.ONAYLANDI) {
     throw new Error("İşlem kaydı için tutanağın imza süreci tamamlanmış olmalıdır.");
   }
-  if (c.demands_freight === 1 && !(input.freightAmount && input.freightAmount > 0)) {
-    throw new Error(
-      "Müşteri nakliye bedeli talep ettiği için ödenen nakliye bedeli girilmelidir (md. 6-b).",
-    );
-  }
-
   const holidays = holidaySet();
   const dueReport = addBusinessDays(input.transactionDate, SLA.RESMI_YAZI, holidays);
 
   tx(() => {
     run(
       `UPDATE complaints
-          SET returned_kg = ?, exchanged_kg = ?, refund_amount = ?, freight_amount = ?,
+          SET returned_kg = ?, exchanged_kg = ?, refund_amount = ?,
               transaction_date = ?, due_report_at = ?, updated_at = datetime('now')
         WHERE id = ?`,
       input.returnedKg ?? 0, input.exchangedKg ?? 0, input.refundAmount ?? 0,
-      input.freightAmount ?? 0, input.transactionDate, dueReport, complaintId,
+      input.transactionDate, dueReport, complaintId,
     );
     completeTask(complaintId, TASK.IADE_DEGISIM, user.id, input.note ?? null);
-    if (input.freightAmount && input.freightAmount > 0) {
-      completeTask(complaintId, TASK.NAKLIYE_ODEME, user.id, `Ödenen: ${input.freightAmount} TL`);
-    }
     syncTaskDueDates(load(complaintId));
 
     logEvent({
@@ -651,7 +637,6 @@ export async function recordTransaction(complaintId: number, input: TransactionI
         input.returnedKg ? `İade: ${input.returnedKg} kg` : null,
         input.exchangedKg ? `Değişim: ${input.exchangedKg} kg` : null,
         input.refundAmount ? `İade/mahsup bedeli: ${input.refundAmount} TL` : null,
-        input.freightAmount ? `Nakliye bedeli: ${input.freightAmount} TL` : null,
         input.note,
       ].filter(Boolean).join(" · "),
       actorId: user.id,
@@ -668,17 +653,50 @@ export async function recordTransaction(complaintId: number, input: TransactionI
       date: input.transactionDate,
       returnedKg: input.returnedKg,
       exchangedKg: input.exchangedKg,
-      freightAmount: input.freightAmount,
     }),
+  });
+}
+
+/**
+ * Nakliye bedelinin ödenmesi (md. 6-b) — Muhasebe'nin kendi adımı.
+ * İade/değişim ambarda, ödeme muhasebede yapıldığı için iki iş ayrı görev
+ * kartı olarak yürür; böylece her adımın sorumlusu tek kişi olur.
+ */
+export async function recordFreightPayment(
+  complaintId: number,
+  input: { amount: number; paidAt: string; note?: string | null },
+): Promise<void> {
+  const user = await requireTaskTurn(complaintId, TASK.NAKLIYE_ODEME);
+
+  if (!(input.amount > 0)) {
+    throw new Error("Ödenen nakliye bedeli sıfırdan büyük olmalıdır (md. 6-b).");
+  }
+  if (!input.paidAt) throw new Error("Ödeme tarihi zorunludur.");
+
+  run(
+    `UPDATE complaints SET freight_amount = ?, freight_paid_at = ?, updated_at = datetime('now')
+      WHERE id = ?`,
+    input.amount, input.paidAt, complaintId,
+  );
+  completeTask(
+    complaintId, TASK.NAKLIYE_ODEME, user.id,
+    `Ödenen: ${fmtTl(input.amount)}${input.note ? ` — ${input.note}` : ""}`,
+  );
+  logEvent({
+    complaintId,
+    type: EVENT_TYPE.ISLEM,
+    title: "Nakliye bedeli ödendi",
+    note: [`Tutar: ${fmtTl(input.amount)}`, `Ödeme tarihi: ${input.paidAt}`, input.note]
+      .filter(Boolean).join(" · "),
+    actorId: user.id,
+    payload: { ...input },
   });
 }
 
 /* --- 8. FSSC 22000 düzeltici faaliyet (md. 4) --------------------------- */
 
 export async function startCapa(complaintId: number, capaNo: string, note: string): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.BELGE_HAZIRLA);
-  const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
+  const user = await requireTaskTurn(complaintId, TASK.CAPA_BASLAT);
 
   run(
     `UPDATE complaints SET capa_started_at = datetime('now'), capa_no = ?, capa_note = ?,
@@ -703,9 +721,8 @@ export async function sendOfficialLetter(
   letterNo: string,
   note?: string | null,
 ): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.RESMI_YAZI);
+  const user = await requireTaskTurn(complaintId, TASK.RESMI_YAZI);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
   if (!letterNo.trim()) throw new Error("Resmî yazı sayısı zorunludur.");
 
   const codes = letterRecipients(c.product_group);
@@ -740,9 +757,8 @@ export async function sendOfficialLetter(
 /* --- 10. Müşteri Bilgilendirme Formu (md. 7) ---------------------------- */
 
 export async function sendCustomerInfo(complaintId: number, explanation: string): Promise<number> {
-  const user = await requirePermission(PERMISSIONS.BELGE_HAZIRLA);
+  const user = await requireTaskTurn(complaintId, TASK.MUSTERI_BILGI);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
   if (!explanation.trim()) throw new Error("Açıklama metni zorunludur.");
 
   const docId = createDocument(complaintId, "MUSTERI_BILGILENDIRME", user.id, {
@@ -779,9 +795,8 @@ export async function sendCustomerInfo(complaintId: number, explanation: string)
 /* --- 11. Kapanış --------------------------------------------------------- */
 
 export async function closeComplaint(complaintId: number, note: string): Promise<void> {
-  const user = await requirePermission(PERMISSIONS.SIKAYET_KAPAT);
+  const user = await requireTaskTurn(complaintId, TASK.DOSYA_KAPAT);
   const c = load(complaintId);
-  await requireFactoryAccess(c.factory_id);
 
   const openTasks = all<{ title: string }>(
     `SELECT title FROM tasks

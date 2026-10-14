@@ -166,10 +166,12 @@ sunucu tarafında rol değiştirme reddedilir.
 | 5 | Tutanak düzenleme, 6 imza + Fabrika Müdürü onayı | ≤ 3 | İmza zinciri | md. 4 |
 | 6 | FSSC 22000 düzeltici faaliyet | — | Gıda Güvenliği Ekibi | md. 4 |
 | 7 | Haksız + eşik aşımı → Daire Başkanlığı itiraz değerlendirmesi | ≤ 5 | İlgili daire | md. 5 |
-| 8 | İade / değişim ve nakliye bedeli ödemesi | ≤ 5 | Ambar + Muhasebe | md. 6 |
-| 9 | Resmî yazı + ekleri 4 Daire Başkanlığına | işlemden ≤ 3 | Kalite Sorumlusu | md. 6 |
-| 10 | Müşteri Bilgilendirme Formu | — | Kalite Sorumlusu | md. 7 |
-| 11 | Aylık Müşteri Şikâyetleri Tablosu | aylık | Fabrika | md. 8 |
+| 8 | İade / değişim işlemi | ≤ 5 | Ambar Şefi | md. 6-a/b |
+| 9 | Nakliye bedelinin ödenmesi | ≤ 5 | Muhasebe | md. 6-b |
+| 10 | Resmî yazı + ekleri 4 Daire Başkanlığına | işlemden ≤ 3 | Kalite Sorumlusu | md. 6 |
+| 11 | Müşteri Bilgilendirme Formu | — | Kalite Sorumlusu | md. 7 |
+| 12 | Dosyanın kapatılması | işlemden ≤ 3 | Fabrika Müdürü | md. 8 |
+| 13 | Aylık Müşteri Şikâyetleri Tablosu | aylık | Fabrika | md. 8 |
 
 **Tüm süreler iş günü bazlıdır.** Hafta sonları ve Tanımlar sayfasında kayıtlı
 resmî tatiller hesaba katılmaz.
@@ -314,16 +316,55 @@ tests/
   senaryo.mjs               uçtan uca senaryo testi
 ```
 
-### Yetki matrisi
+### Tek sorumlu ve sıra kuralı
+
+Sistemin temel kuralı: **her süreç adımı tek bir kişinin üzerindedir ve adımlar
+sırayla işlenir.** Rol yetkisi yalnızca "bu adıma kim atanabilir" sorusunu
+yanıtlar; işi fiilen yapma hakkı görev kartının üzerindeki kişiye aittir.
+
+Bir adımı işleyebilmek için dört koşul birlikte sağlanmalıdır
+(`src/server/task-guard.ts` — `requireTaskTurn`):
+
+1. Kullanıcı dosyanın fabrikasına erişebiliyor,
+2. adım bu dosyada açık,
+3. öncül adımların tamamı kapanmış (sırası gelmiş),
+4. işlemi yapan kişi, görevin atanmış sorumlusu.
+
+Arayüz aynı kuralı gösterir: bir adımın formu ve düğmeleri yalnızca sırası
+gelmiş ve sorumlusu o kişi olan adımda çıkar. Diğer personel adımı görür ama
+"Sıra: Ad Soyad" yazar; sırası gelmeyen adımda "Sırada bekliyor — önce şu adım"
+görünür. Sunucu tarafı, arayüz ne gösterirse göstersin kuralı yeniden uygular.
+
+Adımların sırası `src/lib/workflow.ts` içindeki `dependsOn` alanlarında
+tanımlıdır. Dosyada bulunmayan öncül sağlanmış sayılır; böylece haklı, haksız
+ve itiraz dalları tek bir bağımlılık grafiğiyle yürür.
+
+**Fabrika Müdürünün rolü** süreci yönetmektir, adımları işlemek değil: şikâyeti
+görür, inceleme ekibini kurar ya da dosyayı daha yakın fabrikaya yönlendirir,
+bir adımın sorumlusunu değiştirir (izin, rapor, görevden ayrılma hâllerinde),
+gerekmeyen bir adımı atlar ve süreci izler. Talimatın doğrudan kendisine
+verdiği üç iş kendisinde kalır: **tutanağın son onayı** (imza zincirinin 6.
+sırası), **itirazın Daire Başkanlığına gönderilmesi** ve **dosyanın
+kapatılması**. Bunların dışındaki hiçbir adımı kendi işleyemez.
+
+Bir adım görev kartından elle "tamamlandı" yapılamaz; tamamlanma yalnızca o
+adımın kendi formu işlendiğinde gerçekleşir.
+
+#### Diğer yetki kuralları
 
 12 fabrika unvanı, Genel Müdürlük üst yönetimi, 5 daire başkanlığı ve sistem
-yöneticisi için ayrı yetkiler tanımlıdır (`src/lib/roles.ts`). Örnekler:
+yöneticisi için ayrı yetkiler tanımlıdır (`src/lib/roles.ts`):
 
 - Laboratuvar Sorumlusu analiz girer, tutanak **imzalayamaz**
+- Ambar Şefi iade/değişimi kaydeder; **nakliye bedelini Muhasebe öder** (md. 6-b)
 - Ambar Şefi imza zincirinin ilk halkasıdır, karar veremez
+- Müdür yardımcıları imza zincirinin üyeleridir; Teknik ve Ziraat ayrıca
+  inceleme ekibine girip ekip lideri olabilir (md. 3)
 - Daire Başkanı yalnızca **kendi dairesine** düşen itirazı karara bağlar
 - Fabrika personeli yalnızca **kendi fabrikasının** dosyalarını görür
 - Genel Müdürlük tüm fabrikaları görür, fabrika süreç işlemlerini yapamaz
+- Yeniden atama listesinde yalnızca o adımı yürütme yetkisi olan personel
+  görünür; iş yapamayacak bir kişiye adım atanamaz
 
 ---
 
@@ -459,7 +500,7 @@ Müşteri takibi için ikinci bir bağlantı:
 
 ```bash
 npm run typecheck      # TypeScript tür kontrolü
-npm run test:surucu    # SQLite sürücü davranış testi (20 kontrol, saniyeler sürer)
+npm run test:surucu    # SQLite sürücü davranış testi (21 kontrol, saniyeler sürer)
 npm run build          # üretim derlemesi
 ```
 
@@ -481,8 +522,23 @@ npm run test:senaryo                 # varsayılan http://localhost:3000
 npm run test:senaryo -- http://localhost:3100   # başka adres
 ```
 
-Test 29 kontrolün tamamını doğrular ve başarısızlık hâlinde sıfırdan farklı
+Test 31 kontrolün tamamını doğrular ve başarısızlık hâlinde sıfırdan farklı
 çıkış kodu döndürür.
+
+**Tek sorumlu ve sıra kuralı testi.** Süreç adımlarının tek kişide durduğunu ve
+sırayla işlendiğini doğrular: adımın sorumlusu "Sıra sizde" görür ve düğmesi
+vardır, aynı fabrikadaki başka personel aynı adımda düğme görmez ve adımın
+kimde olduğunu okur, sırası gelmeyen adım hangi adımı beklediğini yazar, Fabrika
+Müdürü başkasının adımının formunu görmez ama sorumluyu değiştirebilir, başka
+fabrikanın personeli dosyayı hiç açamaz.
+
+```bash
+npm run test:sahiplik                       # varsayılan http://localhost:3100
+TEST_BASE=http://localhost:3000 npm run test:sahiplik
+```
+
+Test, dosyayı veritabanından kendisi seçer; öncesinde **Tanımlar > Demo Verisi**
+ekranından demo verisi üretilmiş olmalıdır. 17 kontrolü doğrular.
 
 > Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
 > indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu
@@ -531,6 +587,21 @@ eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
 8. **PDF üretimi** tarayıcının yazdırma işleviyle yapılır. Sunucu tarafında
    doğrudan PDF üretimi gerekirse Playwright/Puppeteer ile `/belge/[id]`
    sayfasının çıktısı alınabilir.
+
+9. **Nakliye bedeli ayrı bir adımdır.** Talimat md. 6'da iade/değişim ile
+   nakliye bedelinin ödenmesi aynı maddede geçer. Fiiliyatta iade/değişimi
+   ambar, ödemeyi muhasebe yapar; her adımın sorumlusu tek kişi olsun diye iki
+   iş ayrı görev kartına bölünmüştür. Her ikisi de şikâyet tarihinden itibaren
+   5 iş günü içinde tamamlanır ve ikisi de kapanmadan dosya kapatılamaz.
+
+10. **Fabrika Müdürü adımları kendi işlemez.** Talimat kimin hangi işi yapacağını
+    unvan düzeyinde belirler ama bir üstün astının işini yapıp yapamayacağına
+    değinmez. Sorumluluk zincirinin izlenebilir kalması için müdüre yalnızca
+    talimatın doğrudan kendisine verdiği üç iş bırakılmıştır (tutanak onayı,
+    itirazın gönderilmesi, dosyanın kapatılması); personelin müsait olmadığı
+    hâllerde adımı başka bir personele **yeniden atar**. Bu kurumsal bir
+    tercihtir; kurum isterse müdüre gerekçeli "vekâleten işle" yetkisi
+    tanınabilir.
 
 ---
 

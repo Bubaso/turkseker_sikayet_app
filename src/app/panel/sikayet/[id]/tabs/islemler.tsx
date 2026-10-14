@@ -5,7 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { Basis, Card, Notice } from "@/components/ui";
 import {
   capaAction, cancelAction, closeAction, customerInfoAction, escalateAction,
-  inspectionAction, letterAction, transactionAction, tutanakAction,
+  freightPaymentAction, inspectionAction, letterAction, transactionAction, tutanakAction,
 } from "@/app/panel/actions";
 
 export interface ActionCtx {
@@ -27,20 +27,24 @@ export interface ActionCtx {
   closed: boolean;
   recipients: string[];
   suggestedLetterNo: string;
-  perms: {
-    inceleme: boolean; belge: boolean; islem: boolean;
-    itiraz: boolean; yazi: boolean; kapat: boolean;
-  };
+  /**
+   * Şu anda bu kullanıcının işleyebileceği adım kodları: açık + sırası gelmiş +
+   * sorumlusu kendisi. Sunucu tarafı aynı kuralı requireTaskTurn ile yeniden
+   * uygular; buradaki liste yalnızca neyin gösterileceğini belirler.
+   */
+  actionable: string[];
+  /** Dosyayı iptal etme yetkisi (süreç adımı değil, yönetsel karar). */
+  canCancel: boolean;
 }
 
-/** Dosyanın o anki durumuna göre yapılabilecek işlemleri gösterir. */
+/** Sırası gelen ve sorumlusu bu kullanıcı olan adımların formlarını gösterir. */
 export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
-  const has = (code: string) => ctx.openTasks.includes(code);
+  const has = (code: string) => ctx.actionable.includes(code);
   const cid = ctx.complaintId;
   const blocks: React.ReactNode[] = [];
 
   /* --- Yerinde inceleme --- */
-  if (has("YERINDE_INCELEME") && ctx.perms.inceleme) {
+  if (has("YERINDE_INCELEME")) {
     blocks.push(
       <Card key="inceleme" title="Yerinde inceleme sonucunu kaydet">
         <ActionForm action={inspectionAction} complaintId={cid} submitLabel="İncelemeyi kaydet">
@@ -86,7 +90,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- Tutanak ve karar --- */
-  if (has("TUTANAK_HAZIRLA") && ctx.perms.belge) {
+  if (has("TUTANAK_HAZIRLA")) {
     blocks.push(
       <Card key="tutanak" title="İnceleme tutanağını düzenle ve kararı ver">
         <ActionForm action={tutanakAction} complaintId={cid}
@@ -142,7 +146,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- İtiraz gönderimi --- */
-  if (has("ITIRAZ_GONDER") && ctx.perms.itiraz && !ctx.escalated) {
+  if (has("ITIRAZ_GONDER") && !ctx.escalated) {
     blocks.push(
       <Card key="itiraz" title="İtirazı Daire Başkanlığına gönder">
         <ActionForm action={escalateAction} complaintId={cid}
@@ -161,7 +165,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- İade / değişim / nakliye --- */
-  if ((has("IADE_DEGISIM") || has("NAKLIYE_ODEME")) && ctx.perms.islem) {
+  if (has("IADE_DEGISIM")) {
     const blocked = !ctx.hasApprovedTutanak;
     blocks.push(
       <Card key="islem" title="İade / değişim işlemini kaydet">
@@ -195,18 +199,6 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
               <label className="label" htmlFor="exchangedKg">Değişimi yapılan miktar (kg)</label>
               <input id="exchangedKg" name="exchangedKg" inputMode="decimal" className="input" />
             </div>
-            <div className="sm:col-span-2">
-              <label className="label" htmlFor="freightAmount">
-                Ödenen nakliye bedeli (TL)
-                {ctx.demandsFreight && <span className="ml-1 text-danger-600">* zorunlu</span>}
-              </label>
-              <input id="freightAmount" name="freightAmount" inputMode="decimal" className="input" />
-              <span className="hint">
-                {ctx.demandsFreight
-                  ? "Müşteri nakliye bedeli talep ettiği için bu alan zorunludur (md. 6-b)."
-                  : "Müşteri nakliye bedeli talep etmemiştir; boş bırakabilirsiniz."}
-              </span>
-            </div>
           </div>
           <div>
             <label className="label" htmlFor="note">Açıklama</label>
@@ -219,8 +211,39 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
     );
   }
 
+  /* --- Nakliye bedelinin ödenmesi (Muhasebe adımı, md. 6-b) --- */
+  if (has("NAKLIYE_ODEME")) {
+    blocks.push(
+      <Card key="nakliye" title="Nakliye bedeli ödemesini kaydet">
+        <ActionForm action={freightPaymentAction} complaintId={cid}
+                    submitLabel="Ödemeyi kaydet">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="amount">Ödenen tutar (TL)</label>
+              <input id="amount" name="amount" inputMode="decimal" required className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="paidAt">Ödeme tarihi</label>
+              <input id="paidAt" name="paidAt" type="date" required defaultValue={ctx.today}
+                     className="input" />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="note">Açıklama</label>
+            <textarea id="note" name="note" rows={2} className="input"
+                      placeholder="Ödeme referansı, banka, dekont no…" />
+          </div>
+          <Basis>
+            TL PASAT 004 md. 6-b — kusur fabrikadan kaynaklandığından firmanın geliş-gidiş
+            nakliye masrafları ödenir. Ödeme Muhasebe tarafından kaydedilir.
+          </Basis>
+        </ActionForm>
+      </Card>,
+    );
+  }
+
   /* --- Düzeltici faaliyet --- */
-  if (has("CAPA_BASLAT") && ctx.perms.belge) {
+  if (has("CAPA_BASLAT")) {
     blocks.push(
       <Card key="capa" title="FSSC 22000 düzeltici faaliyeti başlat">
         <ActionForm action={capaAction} complaintId={cid} submitLabel="Düzeltici faaliyeti kaydet">
@@ -245,7 +268,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- Resmî yazı --- */
-  if (has("RESMI_YAZI") && ctx.perms.yazi) {
+  if (has("RESMI_YAZI")) {
     blocks.push(
       <Card key="yazi" title="Resmî yazıyı Daire Başkanlıklarına gönder">
         <ActionForm action={letterAction} complaintId={cid} submitLabel="Gönderimi kaydet">
@@ -274,7 +297,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- Müşteri bilgilendirme --- */
-  if (has("MUSTERI_BILGI") && ctx.perms.belge) {
+  if (has("MUSTERI_BILGI")) {
     blocks.push(
       <Card key="bilgi" title="Müşteri Bilgilendirme Formunu düzenle">
         <ActionForm action={customerInfoAction} complaintId={cid}
@@ -294,7 +317,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   }
 
   /* --- Kapanış --- */
-  if (has("DOSYA_KAPAT") && ctx.perms.kapat) {
+  if (has("DOSYA_KAPAT")) {
     const otherOpen = ctx.openTasks.filter((t) => t !== "DOSYA_KAPAT");
     blocks.push(
       <Card key="kapat" title="Dosyayı kapat">
@@ -331,7 +354,7 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
         blocks
       )}
 
-      {!ctx.closed && ctx.perms.kapat && (
+      {!ctx.closed && ctx.canCancel && (
         <Card title="Dosyayı iptal et">
           <ActionForm action={cancelAction} complaintId={cid} submitLabel="Dosyayı iptal et"
                       submitTone="danger"

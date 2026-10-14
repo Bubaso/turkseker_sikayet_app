@@ -17,7 +17,8 @@ import { CHANNEL, DEMAND, SLA, VERDICT } from "@/lib/domain";
 import { TASK, checkEscalation } from "@/lib/workflow";
 import { currentUser, runAs, runAsRole } from "./auth";
 import { createComplaint } from "./complaints";
-import { formTeam, prepareTutanak, recordInspection, recordTransaction, redirectComplaint,
+import { formTeam, prepareTutanak, recordFreightPayment, recordInspection,
+         recordTransaction, redirectComplaint,
          sendCustomerInfo, sendOfficialLetter, startCapa, closeComplaint, escalateComplaint,
          decideEscalation, onTutanakApproved } from "./process";
 import { addAnalysis, addSample, type AnalysisResultInput } from "./lab";
@@ -254,9 +255,11 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
       MUHASEBE: "MUHASEBE",
       ZIRAAT: "ZIRAAT",
     };
+    // Ekip lideri daima Kalite Sorumlusudur: yerinde inceleme ve numune görevleri
+    // formTeam tarafından lidere devredildiği için sorumlu tek kişi olarak belirlenir.
     const members = staff
       .filter((s) => s.role === "KALITE_SORUMLUSU" || rnd() < 0.7)
-      .map((s, idx) => ({ userId: s.id, unit: unitOf[s.role]!, isLead: idx === 0 }));
+      .map((s) => ({ userId: s.id, unit: unitOf[s.role]!, isLead: s.role === "KALITE_SORUMLUSU" }));
 
     await runAsRole(fid, ROLES.FABRIKA_MUDURU, () =>
       formTeam(cid, members, "Şikâyetin mahiyetine göre ekip görevlendirilmiştir."),
@@ -403,8 +406,9 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
 
       // Dairelerin bir kısmı itirazı kabul etsin
       const dept = scalar<number>("SELECT escalated_dept_id FROM complaints WHERE id = ?", cid)!;
+      // createTasks ile aynı seçim: görevin sorumlusu dairenin ilk etkin kullanıcısıdır.
       const deptUser = one<{ id: number }>(
-        "SELECT id FROM users WHERE department_id = ? LIMIT 1", dept,
+        "SELECT id FROM users WHERE department_id = ? AND is_active = 1 ORDER BY id LIMIT 1", dept,
       );
       if (deptUser && rnd() < 0.7) {
         const kabul = rnd() < 0.35;
@@ -545,12 +549,22 @@ async function finishJustified(
       returnedKg: exchange ? 0 : affected,
       exchangedKg: exchange ? affected : 0,
       refundAmount: exchange ? 0 : Math.round(affected * (18 + rnd() * 10)),
-      freightAmount: freight ? Math.round(3500 + rnd() * 14000) : 0,
       note: exchange
         ? "Ürün değişimi tamamlanmış, yeni parti firma deposuna teslim edilmiştir."
         : "Ürün iadesi alınmış, fatura mahsuplaştırılmıştır.",
     }),
   );
+
+  // Nakliye bedelinin ödenmesi Muhasebe'nin kendi adımıdır (md. 6-b).
+  if (freight) {
+    await runAsRole(fid, ROLES.MUHASEBE, () =>
+      recordFreightPayment(cid, {
+        amount: Math.round(3500 + rnd() * 14000),
+        paidAt: tl.transaction!,
+        note: "Firmanın geliş-gidiş nakliye masrafı banka havalesiyle ödenmiştir.",
+      }),
+    );
+  }
 
   tl.letter = addBusinessDays(tl.transaction!, 2, holidays);
   await runAsRole(fid, ROLES.KALITE_SORUMLUSU, () =>

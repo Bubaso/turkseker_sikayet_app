@@ -13,7 +13,9 @@
      3) node tests/senaryo.mjs [temel-adres]
    =========================================================================== */
 
-import { chromium } from "playwright";
+import { chromiumYukle } from "./lib/tarayici.mjs";
+
+const chromium = await chromiumYukle();
 
 const BASE = (process.argv[2] || process.env.APP_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const SIFRE = process.env.SEED_PASSWORD || "Demo2026!";
@@ -140,7 +142,12 @@ try {
   const uyeler = mudur.locator('input[name="member"]');
   const uyeSayisi = await uyeler.count();
   for (let i = 0; i < Math.min(4, uyeSayisi); i++) await uyeler.nth(i).check();
-  await mudur.locator('input[name="lead"]').first().check();
+  // Ekip lideri açıkça Kalite Sorumlusu seçilir: yerinde inceleme ve numune
+  // görevleri lidere devredilir ve bir adımı yalnızca sorumlusu işleyebilir.
+  const liderSatiri = mudur.locator("div").filter({
+    has: mudur.locator('span:text-is("Kalite Sorumlusu")'),
+  }).filter({ has: mudur.locator('input[name="lead"]') }).last();
+  await liderSatiri.locator('input[name="lead"]').check();
   await mudur.fill("#note", "Ekip görevlendirilmiş, 15 Ekim sabahı firma deposuna gidilecektir.");
   await eylem(mudur, "Ekibi oluştur ve incelemeyi başlat");
   const ekipSatir = await mudur.locator("table tbody tr").count();
@@ -217,13 +224,15 @@ try {
   for (const [kullanici, unvan] of zincir) {
     const s = await girisYap(kullanici);
     await s.goto(`${BASE}${dosyaYolu}?sekme=belgeler`, { waitUntil: "domcontentloaded" });
-    const siraSizde = await s.locator("text=/Sıra sizde/").count();
-    if (siraSizde === 0) {
+    const imzaDugmesi = s
+      .locator('button:has-text("İmzalıyorum"), button:has-text("Onaylıyorum")')
+      .first();
+    if ((await imzaDugmesi.count()) === 0) {
       hata(`${unvan} (${kullanici}) için imza sırası açılmadı`);
       await s.context().close();
       continue;
     }
-    await s.locator('button:has-text("İmzalıyorum"), button:has-text("Onaylıyorum")').first().click();
+    await imzaDugmesi.click();
     await s.waitForLoadState("networkidle");
     await s.waitForTimeout(400);
     ok(`${unvan} imzaladı`);
@@ -243,17 +252,32 @@ try {
   await eylem(kalite, "Düzeltici faaliyeti kaydet");
   ok("Düzeltici faaliyet kaydedildi");
 
-  /* --- 9. İade ve nakliye bedeli ------------------------------------------- */
-  baslik("İade işlemi ve nakliye bedeli kaydediliyor (md. 6-b)");
+  /* --- 9. İade: Ambar Şefinin adımı --------------------------------------- */
+  baslik("Ambar Şefi iade işlemini kaydediyor (md. 6-a)");
   const ambar = await girisYap("ank.ambar");
   await ambar.goto(`${BASE}${dosyaYolu}?sekme=islemler`, { waitUntil: "domcontentloaded" });
   await ambar.fill("#returnedKg", "28000");
   await ambar.fill("#refundAmount", "742000");
-  await ambar.fill("#freightAmount", "11500");
   await ambar.locator('form:has(#transactionDate) #note').fill(
-    "Ürün iadesi alınmış, fatura mahsuplaştırılmış, nakliye bedeli firmaya ödenmiştir.");
+    "Ürün iadesi alınmış, fatura mahsuplaştırılmıştır.");
   await eylem(ambar, "İşlemi kaydet");
-  ok("İade (28.000 kg) ve nakliye bedeli (11.500 ₺) kaydedildi");
+  ok("İade (28.000 kg) kaydedildi");
+
+  // Ambar Şefi nakliye ödemesini göremez: o adım Muhasebe'nin üzerindedir.
+  await ambar.goto(`${BASE}${dosyaYolu}?sekme=islemler`, { waitUntil: "domcontentloaded" });
+  (await ambar.locator("#amount").count()) === 0
+    ? ok("Ambar Şefine nakliye ödemesi formu çıkmıyor (adım Muhasebe'de)")
+    : hata("Ambar Şefi başkasının adımını görüyor");
+
+  /* --- 9b. Nakliye bedeli: Muhasebe'nin adımı ----------------------------- */
+  baslik("Muhasebe nakliye bedelini ödüyor (md. 6-b)");
+  const muhasebe = await girisYap("ank.muhasebe");
+  await muhasebe.goto(`${BASE}${dosyaYolu}?sekme=islemler`, { waitUntil: "domcontentloaded" });
+  await muhasebe.fill("#amount", "11500");
+  await muhasebe.locator('form:has(#amount) #note').fill(
+    "Firmanın geliş-gidiş nakliye masrafı banka havalesiyle ödenmiştir.");
+  await eylem(muhasebe, "Ödemeyi kaydet");
+  ok("Nakliye bedeli (11.500 ₺) Muhasebe tarafından kaydedildi");
 
   /* --- 10. Resmî yazı ------------------------------------------------------ */
   baslik("Resmî yazı Daire Başkanlıklarına gönderiliyor (md. 6)");
@@ -276,8 +300,11 @@ try {
   for (const kullanici of ["ank.kalite", "ank.mudur"]) {
     const s = await girisYap(kullanici);
     await s.goto(`${BASE}${dosyaYolu}?sekme=belgeler`, { waitUntil: "domcontentloaded" });
-    if (await s.locator("text=/Sıra sizde/").count()) {
-      await s.locator('button:has-text("İmzalıyorum"), button:has-text("Onaylıyorum")').first().click();
+    const dugme = s
+      .locator('button:has-text("İmzalıyorum"), button:has-text("Onaylıyorum")')
+      .first();
+    if ((await dugme.count()) > 0) {
+      await dugme.click();
       await s.waitForLoadState("networkidle");
       await s.waitForTimeout(300);
     }

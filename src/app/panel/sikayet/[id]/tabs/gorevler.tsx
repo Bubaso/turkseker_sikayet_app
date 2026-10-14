@@ -1,158 +1,289 @@
 import { fmtDate, fmtDateTime, slaInfo, type HolidaySet } from "@/lib/dates";
 import { TASK_CATALOG, type TaskCode } from "@/lib/workflow";
-import { ROLE_LABEL, type Role } from "@/lib/roles";
+import type { StepView } from "@/server/tasks";
 import type { TaskView } from "@/lib/types";
 import { ActionButton, ActionForm } from "@/components/action-form";
-import { Card, Chip, EmptyState, SlaChip, TaskStatusChip } from "@/components/ui";
-import { noteAction, taskStatusAction } from "@/app/panel/actions";
+import { Card, Chip, EmptyState } from "@/components/ui";
+import { assignTaskAction, noteAction, taskStatusAction } from "@/app/panel/actions";
 
-/** Görev kartları listesi — her kartın sorumlusu, son tarihi ve dayanağı. */
+export interface AssigneeOption {
+  id: number;
+  full_name: string;
+  title: string;
+}
+
+/** Bir adımın gösterim durumu — şeritteki renk ve etiket buradan gelir. */
+type StepState = "tamam" | "atlandi" | "sirasizde" | "sirada-baskasinda" | "bekliyor";
+
+function stateOf(s: StepView): StepState {
+  if (s.status === "TAMAMLANDI") return "tamam";
+  if (s.status === "GEREKSIZ") return "atlandi";
+  if (!s.ready) return "bekliyor";
+  return s.mine ? "sirasizde" : "sirada-baskasinda";
+}
+
+/**
+ * Süreç adımları şeridi. Her adım sırayla ve tek sorumluyla gösterilir:
+ * düğmeler yalnızca sırası gelmiş ve sorumlusu o kişi olan adımda çıkar.
+ * Sorumluyu değiştirmek Fabrika Müdürüne aittir.
+ */
 export function GorevlerTab({
-  complaintId, tasks, holidays, canUpdate,
+  complaintId, steps, holidays, assignableBy, canAssign, canAddNote,
 }: {
   complaintId: number;
-  tasks: TaskView[];
+  steps: StepView[];
   holidays: HolidaySet;
-  canUpdate: boolean;
+  /** Adım kodu → o adıma atanabilecek personel. */
+  assignableBy: Record<string, AssigneeOption[]>;
+  canAssign: boolean;
+  canAddNote: boolean;
 }) {
-  const open = tasks.filter((t) => t.status === "BEKLEMEDE" || t.status === "DEVAM_EDIYOR");
-  const done = tasks.filter((t) => t.status !== "BEKLEMEDE" && t.status !== "DEVAM_EDIYOR");
-
-  function card(t: TaskView) {
-    const sla = slaInfo(t.due_at, t.completed_at, holidays);
-    const tpl = TASK_CATALOG[t.code as TaskCode];
-    return (
-      <li key={t.id} className="p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-ink-900">{t.title}</h3>
-              <TaskStatusChip status={t.status} />
-              <SlaChip sla={sla} compact />
-            </div>
-            <p className="mt-1 text-sm leading-relaxed text-ink-600">
-              {t.description ?? tpl?.description}
-            </p>
-            <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-500">
-              <div>
-                <dt className="inline font-medium">Sorumlu: </dt>
-                <dd className="inline">
-                  {t.assignee_name
-                    ? `${t.assignee_name} (${t.assignee_title})`
-                    : t.assignee_role
-                      ? `${ROLE_LABEL[t.assignee_role as Role] ?? t.assignee_role} (atanmadı)`
-                      : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="inline font-medium">Son tarih: </dt>
-                <dd className="tnum inline">{fmtDate(t.due_at)}</dd>
-              </div>
-              {t.completed_at && (
-                <div>
-                  <dt className="inline font-medium">Tamamlanma: </dt>
-                  <dd className="inline">
-                    {fmtDateTime(t.completed_at)}
-                    {t.completed_by_name && ` — ${t.completed_by_name}`}
-                  </dd>
-                </div>
-              )}
-              {tpl?.basis && (
-                <div>
-                  <dt className="inline font-medium">Dayanak: </dt>
-                  <dd className="inline">{tpl.basis}</dd>
-                </div>
-              )}
-            </dl>
-            {t.result_note && (
-              <p className="mt-2 rounded-[5px] border border-ink-200 bg-ink-50 px-2.5 py-1.5 text-xs whitespace-pre-wrap text-ink-700">
-                {t.result_note}
-              </p>
-            )}
-          </div>
-
-          {canUpdate && (t.status === "BEKLEMEDE" || t.status === "DEVAM_EDIYOR") && (
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {t.status === "BEKLEMEDE" && (
-                <ActionButton action={taskStatusAction} complaintId={complaintId}
-                              label="Başladım" fields={{ taskId: t.id, status: "DEVAM_EDIYOR" }} />
-              )}
-              <ActionButton action={taskStatusAction} complaintId={complaintId}
-                            label="Gerek yok" tone="secondary"
-                            fields={{ taskId: t.id, status: "GEREKSIZ", note: "Fabrika tarafından gereksiz görüldü" }}
-                            confirm="Bu görev kapatılacak ve süreçte atlanmış sayılacak. Onaylıyor musunuz?" />
-            </div>
-          )}
-        </div>
-      </li>
-    );
-  }
+  const openCount = steps.filter((s) => !s.settled).length;
 
   return (
     <div className="space-y-5">
-      <Card title={`Açık görevler (${open.length})`} bodyClass="">
-        {open.length === 0 ? (
-          <EmptyState title="Açık görev yok" hint="Dosyadaki tüm adımlar tamamlanmış." />
+      <Card
+        title={`Süreç adımları (${steps.length - openCount} / ${steps.length} tamamlandı)`}
+        bodyClass=""
+      >
+        {steps.length === 0 ? (
+          <EmptyState title="Adım yok" hint="Bu dosyada henüz süreç adımı açılmamış." />
         ) : (
-          <ul className="divide-y divide-ink-200">{open.map(card)}</ul>
+          <ol className="divide-y divide-ink-200">
+            {steps.map((s, i) => (
+              <StepRow
+                key={s.id}
+                index={i + 1}
+                step={s}
+                complaintId={complaintId}
+                holidays={holidays}
+                candidates={assignableBy[s.code] ?? []}
+                canAssign={canAssign}
+              />
+            ))}
+          </ol>
         )}
       </Card>
 
-      {done.length > 0 && (
-        <Card title={`Tamamlanan görevler (${done.length})`} bodyClass="">
-          <ul className="divide-y divide-ink-200">{done.map(card)}</ul>
+      {canAddNote && (
+        <Card title="Dosya notu ekle">
+          <ActionForm action={noteAction} complaintId={complaintId} submitLabel="Notu kaydet">
+            <div>
+              <label className="label" htmlFor="note">Not</label>
+              <textarea id="note" name="note" rows={3} required className="input"
+                        placeholder="Dosyaya ilişkin açıklama, telefon görüşmesi özeti vb." />
+            </div>
+          </ActionForm>
         </Card>
       )}
-
-      <Card title="Dosya notu ekle">
-        <ActionForm action={noteAction} complaintId={complaintId} submitLabel="Notu kaydet">
-          <div>
-            <label className="label" htmlFor="note">Not</label>
-            <textarea id="note" name="note" rows={3} required className="input"
-                      placeholder="Dosyayla ilgili iç not. Geçmiş sekmesinde görünür, müşteriye gönderilmez." />
-          </div>
-        </ActionForm>
-      </Card>
     </div>
   );
 }
 
-/** Sağ kolondaki kompakt görev özeti. */
-export function TaskSummary({ tasks, holidays }: { tasks: TaskView[]; holidays: HolidaySet }) {
+function StepRow({
+  index, step, complaintId, holidays, candidates, canAssign,
+}: {
+  index: number;
+  step: StepView;
+  complaintId: number;
+  holidays: HolidaySet;
+  candidates: AssigneeOption[];
+  canAssign: boolean;
+}) {
+  const state = stateOf(step);
+  const sla = slaInfo(step.due_at, step.completed_at, holidays);
+  const tpl = TASK_CATALOG[step.code as TaskCode];
+  const geciken = !step.settled && sla.state === "GECIKTI";
+
+  return (
+    <li className={`flex gap-3 p-4 sm:gap-4 sm:p-5 ${state === "sirasizde" ? "bg-brand-50/60" : ""}`}>
+      <StepMarker index={index} state={state} overdue={geciken} />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className={`text-sm font-semibold ${step.settled ? "text-ink-500" : "text-ink-900"}`}>
+            {step.title}
+          </h3>
+          <StateChip state={state} ownerName={step.assignee_name} />
+          {geciken && <Chip tone="danger" dot>Gecikti</Chip>}
+        </div>
+
+        <p className="mt-1 text-sm leading-relaxed text-ink-600">
+          {step.description ?? tpl?.description}
+        </p>
+
+        <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-500">
+          <div>
+            <dt className="inline font-medium">Sorumlu: </dt>
+            <dd className="inline">
+              {step.assignee_name
+                ? `${step.assignee_name} (${step.assignee_title})`
+                : "atanmadı — Fabrika Müdürü atamalı"}
+            </dd>
+          </div>
+          {!step.settled && step.due_at && (
+            <div>
+              <dt className="inline font-medium">En geç: </dt>
+              <dd className="tnum inline">{fmtDate(step.due_at)}</dd>
+            </div>
+          )}
+          {step.completed_at && (
+            <div>
+              <dt className="inline font-medium">
+                {step.status === "GEREKSIZ" ? "Atlandı: " : "Tamamlandı: "}
+              </dt>
+              <dd className="inline">
+                {fmtDateTime(step.completed_at)}
+                {step.completed_by_name && ` — ${step.completed_by_name}`}
+              </dd>
+            </div>
+          )}
+          {tpl?.basis && (
+            <div>
+              <dt className="inline font-medium">Dayanak: </dt>
+              <dd className="inline">{tpl.basis}</dd>
+            </div>
+          )}
+        </dl>
+
+        {state === "bekliyor" && step.blockedBy.length > 0 && (
+          <p className="mt-2 rounded-[5px] border border-ink-200 bg-ink-50 px-2.5 py-1.5 text-xs text-ink-600">
+            Sırası gelmedi. Önce tamamlanmalı:{" "}
+            {step.blockedBy.map((b) => `${b.title}${b.owner ? ` — ${b.owner}` : ""}`).join("; ")}
+          </p>
+        )}
+
+        {step.result_note && (
+          <p className="mt-2 rounded-[5px] border border-ink-200 bg-ink-50 px-2.5 py-1.5 text-xs whitespace-pre-wrap text-ink-700">
+            {step.result_note}
+          </p>
+        )}
+
+        {(step.actionable || (canAssign && !step.settled)) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {step.actionable && step.status === "BEKLEMEDE" && (
+              <ActionButton action={taskStatusAction} complaintId={complaintId}
+                            label="Başladım" tone="primary"
+                            fields={{ taskId: step.id, status: "DEVAM_EDIYOR" }} />
+            )}
+            {canAssign && !step.settled && (
+              <ActionButton action={taskStatusAction} complaintId={complaintId}
+                            label="Bu adım gerekmiyor" tone="secondary"
+                            fields={{ taskId: step.id, status: "GEREKSIZ",
+                                      note: "Fabrika Müdürü tarafından gerekli görülmedi" }}
+                            confirm="Bu adım atlanmış sayılacak ve süreçte kapatılacak. Onaylıyor musunuz?" />
+            )}
+          </div>
+        )}
+
+        {canAssign && !step.settled && candidates.length > 0 && (
+          <details className="mt-2.5">
+            <summary className="cursor-pointer text-xs font-medium text-brand-700 hover:underline">
+              Sorumluyu değiştir
+            </summary>
+            <div className="mt-2 max-w-md">
+              <ActionForm action={assignTaskAction} complaintId={complaintId}
+                         submitLabel="Sorumluyu güncelle" submitTone="secondary"
+                         className="flex flex-wrap items-end gap-2" compact>
+                <input type="hidden" name="taskId" value={step.id} />
+                <div className="min-w-[14rem] flex-1">
+                  <label className="label" htmlFor={`assignee-${step.id}`}>
+                    Bu adımı yürütecek personel
+                  </label>
+                  <select id={`assignee-${step.id}`} name="assigneeId" required className="input"
+                          defaultValue={step.assignee_id ?? ""}>
+                    <option value="" disabled>Seçiniz</option>
+                    {candidates.map((u) => (
+                      <option key={u.id} value={u.id}>{u.full_name} — {u.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </ActionForm>
+              <p className="hint mt-1">
+                Listede yalnızca bu adımı yürütme yetkisi olan personel görünür.
+              </p>
+            </div>
+          </details>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function StepMarker({
+  index, state, overdue,
+}: { index: number; state: StepState; overdue: boolean }) {
+  const base = "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold";
+  const look =
+    state === "tamam" ? "border-ok-600 bg-ok-600 text-white"
+    : state === "atlandi" ? "border-ink-300 bg-ink-200 text-ink-500"
+    : state === "sirasizde" ? "border-brand-600 bg-brand-600 text-white"
+    : overdue ? "border-danger-600 bg-danger-50 text-danger-700"
+    : state === "sirada-baskasinda" ? "border-brand-600 bg-white text-brand-700"
+    : "border-ink-300 bg-white text-ink-400";
+
+  return (
+    <span className={`${base} ${look}`} aria-hidden>
+      {state === "tamam" ? "✓" : state === "atlandi" ? "–" : index}
+    </span>
+  );
+}
+
+function StateChip({ state, ownerName }: { state: StepState; ownerName?: string | null }) {
+  switch (state) {
+    case "tamam": return <Chip tone="ok">Tamamlandı</Chip>;
+    case "atlandi": return <Chip tone="ink">Atlandı</Chip>;
+    case "sirasizde": return <Chip tone="brand" dot>Sıra sizde</Chip>;
+    case "sirada-baskasinda":
+      return <Chip tone="warn">Sıra: {ownerName ?? "sorumlu atanmadı"}</Chip>;
+    default: return <Chip tone="ink">Sırada bekliyor</Chip>;
+  }
+}
+
+/** Kenar çubuğundaki kısa özet şeridi. */
+export function TaskSummary({
+  steps, holidays,
+}: { steps: StepView[]; holidays: HolidaySet }) {
   return (
     <ol className="divide-y divide-ink-100">
-      {tasks.map((t) => {
-        const sla = slaInfo(t.due_at, t.completed_at, holidays);
-        const closed = t.status === "TAMAMLANDI" || t.status === "GEREKSIZ";
+      {steps.map((s, i) => {
+        const sla = slaInfo(s.due_at, s.completed_at, holidays);
+        const state = stateOf(s);
         return (
-          <li key={t.id} className="flex items-start gap-2.5 px-4 py-2">
+          <li key={s.id} className="flex items-start gap-2.5 px-4 py-2">
             <span
               className={
-                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px] " +
-                (t.status === "TAMAMLANDI" ? "border-ok-600 bg-ok-600 text-white"
-                  : t.status === "GEREKSIZ" ? "border-ink-300 bg-ink-200 text-ink-500"
-                  : sla.state === "GECIKTI" ? "border-danger-600 bg-danger-600 text-white"
-                  : "border-ink-300 bg-white")
+                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold " +
+                (state === "tamam" ? "border-ok-600 bg-ok-600 text-white"
+                  : state === "atlandi" ? "border-ink-300 bg-ink-200 text-ink-500"
+                  : state === "sirasizde" ? "border-brand-600 bg-brand-600 text-white"
+                  : !s.settled && sla.state === "GECIKTI" ? "border-danger-600 bg-danger-600 text-white"
+                  : "border-ink-300 bg-white text-ink-400")
               }
               aria-hidden
             >
-              {closed ? (t.status === "TAMAMLANDI" ? "✓" : "–") : ""}
+              {state === "tamam" ? "✓" : state === "atlandi" ? "–" : i + 1}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-xs ${closed ? "text-ink-500" : "font-medium text-ink-800"}`}
-                 title={t.title}>
-                {t.title}
+              <p className={`truncate text-xs ${s.settled ? "text-ink-500" : "font-medium text-ink-800"}`}
+                 title={s.title}>
+                {s.title}
               </p>
-              {!closed && (
+              {!s.settled && (
                 <p className="text-[11px] text-ink-500">
-                  {t.assignee_name ?? "atanmadı"} · {fmtDate(t.due_at)}
+                  {state === "bekliyor"
+                    ? "sırada bekliyor"
+                    : `${s.assignee_name ?? "atanmadı"} · ${fmtDate(s.due_at)}`}
                 </p>
               )}
             </div>
-            {!closed && sla.state === "GECIKTI" && <Chip tone="danger">gecikme</Chip>}
+            {!s.settled && sla.state === "GECIKTI" && <Chip tone="danger">gecikme</Chip>}
           </li>
         );
       })}
     </ol>
   );
 }
+
+/** Eski imza ile çağrılan yerler için — artık kullanılmıyor. */
+export type { TaskView };

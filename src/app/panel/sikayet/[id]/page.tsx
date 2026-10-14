@@ -4,11 +4,11 @@ import { all } from "@/lib/db";
 import { DEPT, STATUS_STEP, TOTAL_STEPS } from "@/lib/domain";
 import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { fmtDate, today } from "@/lib/dates";
-import { checkEscalation, letterRecipients } from "@/lib/workflow";
+import { checkEscalation, letterRecipients, type TaskCode } from "@/lib/workflow";
 import {canAccessFactory, requirePageUser} from "@/server/auth";
 import { complaintTeam, assignableStaff } from "@/server/process";
 import { getComplaint, listFactories, suggestNearerFactory } from "@/server/complaints";
-import { complaintTasks } from "@/server/tasks";
+import { complaintSteps, eligibleAssignees } from "@/server/tasks";
 import { complaintSamples, complaintAnalyses, labParameters } from "@/server/lab";
 import { canSignNow, complaintDocuments } from "@/server/documents";
 import { ACCEPT_ATTR, complaintAttachments } from "@/server/attachments";
@@ -16,7 +16,7 @@ import { complaintEvents } from "@/server/events";
 import { holidaySet, getSettingNum } from "@/server/settings";
 import { Card, Chip, Notice, PageHeader, StatusChip, Tabs, VerdictChip } from "@/components/ui";
 import { OzetTab } from "./tabs/ozet";
-import { GorevlerTab, TaskSummary } from "./tabs/gorevler";
+import { GorevlerTab, TaskSummary, type AssigneeOption } from "./tabs/gorevler";
 import { EkipTab } from "./tabs/ekip";
 import { LabTab } from "./tabs/lab";
 import { BelgelerTab } from "./tabs/belgeler";
@@ -44,7 +44,7 @@ export default async function ComplaintDetailPage({
 
   const holidays = holidaySet();
   const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
-  const tasks = complaintTasks(c.id);
+  const steps = complaintSteps(c.id, user);
   const documents = complaintDocuments(c.id);
   const attachments = complaintAttachments(c.id);
   const samples = complaintSamples(c.id);
@@ -57,9 +57,22 @@ export default async function ComplaintDetailPage({
     c.id,
   );
 
-  const openTasks = tasks
-    .filter((t) => t.status === "BEKLEMEDE" || t.status === "DEVAM_EDIYOR")
-    .map((t) => t.code);
+  const openTasks = steps.filter((t) => !t.settled).map((t) => t.code);
+  // Şu anda bu kullanıcının işleyebileceği adımlar: açık + sırası gelmiş + sorumlusu kendisi.
+  const actionable = steps.filter((t) => t.actionable).map((t) => t.code);
+  // Sırası gelmiş açık adımlar — kimde olduğundan bağımsız olarak "dosya nerede" sorusunu yanıtlar.
+  const currentSteps = steps.filter((t) => !t.settled && t.ready);
+  const canAssign = !gm && can(user.role, PERMISSIONS.GOREV_ATA);
+  const assignableBy: Record<string, AssigneeOption[]> = {};
+  if (canAssign) {
+    for (const t of steps) {
+      if (t.settled || t.department_id !== null) continue;
+      assignableBy[t.code] = eligibleAssignees(c.factory_id, t.code as TaskCode)
+        .map((u) => ({ id: u.id, full_name: u.full_name, title: u.title }));
+    }
+  }
+  const stepOf = (code: string) => steps.find((t) => t.code === code);
+  const canDo = (code: string) => stepOf(code)?.actionable === true;
   const signableIds = documents.filter((d) => canSignNow(d.id, user)).map((d) => d.id);
   const esc = checkEscalation(c.product_group, c.quantity_kg);
   const deptNames = all<{ code: string; name: string }>("SELECT code, name FROM departments");
@@ -72,8 +85,8 @@ export default async function ComplaintDetailPage({
   const tab = sekme ?? "ozet";
   const tabs = [
     { key: "ozet", label: "Özet" },
-    { key: "islemler", label: "Yapılacak işlem", count: gm ? 0 : openTasks.length },
-    { key: "gorevler", label: "Görevler", count: openTasks.length },
+    { key: "islemler", label: "Yapılacak işlem", count: gm ? 0 : actionable.length },
+    { key: "gorevler", label: "Süreç adımları", count: openTasks.length },
     { key: "ekip", label: "Ekip", count: team.length },
     { key: "lab", label: "Numune ve analiz", count: samples.length + analyses.length },
     { key: "belgeler", label: "Tutanaklar", count: documents.length },
@@ -101,14 +114,8 @@ export default async function ComplaintDetailPage({
     closed: !!c.closed_at,
     recipients,
     suggestedLetterNo: `${c.factory_code}-${c.complaint_no.replace(/-/g, "")}`,
-    perms: {
-      inceleme: can(user.role, PERMISSIONS.INCELEME_GIR),
-      belge: can(user.role, PERMISSIONS.BELGE_HAZIRLA),
-      islem: can(user.role, PERMISSIONS.ISLEM_GIR),
-      itiraz: can(user.role, PERMISSIONS.ITIRAZ_GONDER),
-      yazi: can(user.role, PERMISSIONS.RESMI_YAZI),
-      kapat: can(user.role, PERMISSIONS.SIKAYET_KAPAT),
-    },
+    actionable,
+    canCancel: !gm && can(user.role, PERMISSIONS.SIKAYET_KAPAT),
   };
 
   const step = STATUS_STEP[c.status as keyof typeof STATUS_STEP] ?? 1;
@@ -162,6 +169,32 @@ export default async function ComplaintDetailPage({
         </div>
       </div>
 
+      {/* Dosya şu an kimde: sırası gelmiş açık adımlar */}
+      {currentSteps.length > 0 && !c.closed_at && (
+        <div className="card px-4 py-3">
+          <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+            Şu anki adım
+          </p>
+          <ul className="mt-1.5 space-y-1.5">
+            {currentSteps.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+                <span className="font-semibold text-ink-900">{t.title}</span>
+                <span className="text-ink-600">
+                  — Sorumlu:{" "}
+                  {t.assignee_name
+                    ? `${t.assignee_name} (${t.assignee_title})`
+                    : "atanmadı, Fabrika Müdürü atamalı"}
+                </span>
+                {t.due_at && (
+                  <span className="tnum text-ink-500">· en geç {fmtDate(t.due_at)}</span>
+                )}
+                {t.mine && <Chip tone="brand" dot>Sıra sizde</Chip>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {c.escalated_at && !c.escalation_decided_at && (
         <Notice tone="warn" title="Daire Başkanlığı değerlendirmesinde">
           Dosya {c.department_name} birimine gönderildi. Karar en geç{" "}
@@ -189,7 +222,8 @@ export default async function ComplaintDetailPage({
           )}
 
           {tab === "gorevler" && (
-            <GorevlerTab complaintId={c.id} tasks={tasks} holidays={holidays} canUpdate={!gm} />
+            <GorevlerTab complaintId={c.id} steps={steps} holidays={holidays}
+                         assignableBy={assignableBy} canAssign={canAssign} canAddNote={!gm} />
           )}
 
           {tab === "ekip" && (
@@ -197,7 +231,7 @@ export default async function ComplaintDetailPage({
               complaintId={c.id}
               team={team}
               staff={assignableStaff(c.factory_id)}
-              canManage={!gm && can(user.role, PERMISSIONS.EKIP_YONET)}
+              canManage={canDo("EKIP_KUR")}
               factories={listFactories().map((f) => ({ id: f.id, name: f.name }))}
               currentFactoryId={c.factory_id}
               suggestion={suggestNearerFactory(c.id)}
@@ -221,15 +255,15 @@ export default async function ComplaintDetailPage({
               parameters={labParameters(c.product_group)}
               productGroup={c.product_group}
               today={today()}
-              canSample={!gm && can(user.role, PERMISSIONS.INCELEME_GIR)}
-              canAnalyze={!gm && can(user.role, PERMISSIONS.ANALIZ_GIR)}
+              canSample={canDo("NUMUNE_AL")}
+              canAnalyze={canDo("ANALIZ_GIR")}
               accept={ACCEPT_ATTR}
             />
           )}
 
           {tab === "belgeler" && (
             <BelgelerTab complaintId={c.id} documents={documents} signableIds={signableIds}
-                         canPrepare={!gm && can(user.role, PERMISSIONS.BELGE_HAZIRLA)} />
+                         canPrepare={canDo("TUTANAK_HAZIRLA") || canDo("MUSTERI_BILGI")} />
           )}
 
           {tab === "ekler" && (
@@ -243,7 +277,7 @@ export default async function ComplaintDetailPage({
 
         <aside className="min-w-0 space-y-5">
           <Card title="Süreç adımları" bodyClass="">
-            <TaskSummary tasks={tasks} holidays={holidays} />
+            <TaskSummary steps={steps} holidays={holidays} />
           </Card>
 
           {signableIds.length > 0 && (

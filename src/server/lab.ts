@@ -6,10 +6,9 @@
 
 import { all, one, run, scalar, tx } from "@/lib/db";
 import { CONFORMITY } from "@/lib/domain";
-import { PERMISSIONS } from "@/lib/roles";
 import { TASK } from "@/lib/workflow";
 import type { AnalysisResultRow, AnalysisView, LabParameter, SampleView } from "@/lib/types";
-import { requireFactoryAccess, requirePermission } from "./auth";
+import { requireTaskTurn } from "./task-guard";
 import { EVENT_TYPE, logEvent } from "./events";
 import { completeTask } from "./tasks";
 import { TEMPLATE, notifyCustomer } from "./notify";
@@ -35,14 +34,13 @@ function nextSampleNo(complaintId: number): string {
 }
 
 export async function addSample(complaintId: number, input: SampleInput): Promise<number> {
-  const user = await requirePermission(PERMISSIONS.INCELEME_GIR);
+  const user = await requireTaskTurn(complaintId, TASK.NUMUNE_AL);
   const c = one<{ factory_id: number; customer_phone: string; customer_email: string | null;
                   complaint_no: string; tracking_token: string; customer_company: string }>(
     "SELECT factory_id, customer_phone, customer_email, complaint_no, tracking_token, customer_company FROM complaints WHERE id = ?",
     complaintId,
   );
   if (!c) throw new Error("Şikâyet kaydı bulunamadı.");
-  await requireFactoryAccess(c.factory_id);
 
   const sampleNo = nextSampleNo(complaintId);
   const id = tx(() => {
@@ -115,10 +113,9 @@ export interface AnalysisInput {
  * otomatik türetilir: bir parametre bile uygun değilse sonuç "uygun değil".
  */
 export async function addAnalysis(complaintId: number, input: AnalysisInput): Promise<number> {
-  const user = await requirePermission(PERMISSIONS.ANALIZ_GIR);
+  const user = await requireTaskTurn(complaintId, TASK.ANALIZ_GIR);
   const c = one<{ factory_id: number }>("SELECT factory_id FROM complaints WHERE id = ?", complaintId);
   if (!c) throw new Error("Şikâyet kaydı bulunamadı.");
-  await requireFactoryAccess(c.factory_id);
   if (!input.reportNo.trim()) throw new Error("Analiz rapor numarası zorunludur.");
   if (input.results.length === 0) throw new Error("En az bir analiz parametresi girilmelidir.");
 

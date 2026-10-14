@@ -5,8 +5,10 @@
    =========================================================================== */
 
 import { all, one, run } from "@/lib/db";
-import { isGmRole } from "@/lib/roles";
-import { TASK_CATALOG, dueFieldFor, type TaskCode } from "@/lib/workflow";
+import { ROLE_LABEL, can, isGmRole, type Role } from "@/lib/roles";
+import {
+  TASK_CATALOG, blockingPrerequisites, dueFieldFor, toTaskStatusMap, type TaskCode,
+} from "@/lib/workflow";
 import { TASK_STATUS } from "@/lib/domain";
 import type { Complaint, TaskView } from "@/lib/types";
 import type { SessionUser } from "./auth";
@@ -207,13 +209,25 @@ export function myTasks(user: SessionUser, filter: MyTaskFilter = {}): TaskView[
     );
   }
 
+  // Bir görev tek kişinin üzerindedir: yalnızca kendisine atananlar döner.
+  // Görev atama yetkisi olan (Fabrika Müdürü) ayrıca fabrikasındaki sorumlusuz
+  // görevleri görür; onları bir personele atayabilmesi gerekir.
+  if (can(user.role, "GOREV_ATA")) {
+    return all<TaskView>(
+      `${TASK_SELECT}
+        WHERE (t.assignee_id = ? OR (t.assignee_id IS NULL AND t.factory_id = ?))
+          ${statusClause}
+        ORDER BY (t.due_at IS NULL), t.due_at, t.sort_order ${limit}`,
+      user.id, user.factory_id,
+    );
+  }
+
   return all<TaskView>(
     `${TASK_SELECT}
-      WHERE (t.assignee_id = ?
-             OR (t.assignee_id IS NULL AND t.factory_id = ? AND t.assignee_role = ?))
+      WHERE t.assignee_id = ?
         ${statusClause}
       ORDER BY (t.due_at IS NULL), t.due_at, t.sort_order ${limit}`,
-    user.id, user.factory_id, user.role,
+    user.id,
   );
 }
 
@@ -237,4 +251,84 @@ export function openTasksFor(factoryId: number | null, limit = 500): TaskView[] 
 
 export function taskById(id: number): TaskView | undefined {
   return one<TaskView>(`${TASK_SELECT} WHERE t.id = ?`, id);
+}
+
+/* --- Sıralı adım görünümü ------------------------------------------------ */
+
+/** Bir adımın şu anki sorumlusunu arayüz metni olarak verir. */
+export function taskOwnerLabel(task: {
+  assignee_name?: string | null;
+  assignee_title?: string | null;
+  assignee_role: string | null;
+}): string {
+  if (task.assignee_name) {
+    return task.assignee_title ? `${task.assignee_name} (${task.assignee_title})` : task.assignee_name;
+  }
+  if (task.assignee_role) {
+    return `${ROLE_LABEL[task.assignee_role as Role] ?? task.assignee_role} — sorumlu atanmadı`;
+  }
+  return "sorumlu atanmadı";
+}
+
+export interface StepView extends TaskView {
+  /** Kapanmış (tamamlandı veya gerek yok). */
+  settled: boolean;
+  /** Öncül adımların tamamı kapandı, sırası geldi. */
+  ready: boolean;
+  /** Görevin sorumlusu, bu oturumdaki kullanıcı. */
+  mine: boolean;
+  /** Şu anda işlenebilir: açık + sırası gelmiş + sorumlusu ben. */
+  actionable: boolean;
+  /** Sırası gelmediyse beklenen öncül adımlar. */
+  blockedBy: { code: string; title: string; owner: string }[];
+}
+
+/**
+ * Dosyanın adımlarını süreç sırasıyla ve her birinin "kimde / sırası geldi mi"
+ * durumuyla verir. Arayüz düğmelerini ve "Yapılacak işlem" formlarını bu model
+ * belirler; sunucu tarafı aynı kuralı requireTaskTurn ile yeniden uygular.
+ */
+export function complaintSteps(complaintId: number, user: SessionUser): StepView[] {
+  const tasks = complaintTasks(complaintId);
+  const statuses = toTaskStatusMap(tasks);
+
+  return tasks.map((t) => {
+    const settled = t.status === TASK_STATUS.TAMAMLANDI || t.status === TASK_STATUS.GEREKSIZ;
+    const blocking = blockingPrerequisites(t.code as TaskCode, statuses);
+    const ready = blocking.length === 0;
+    const mine = t.assignee_id !== null && t.assignee_id === user.id;
+    return {
+      ...t,
+      settled,
+      ready,
+      mine,
+      actionable: !settled && ready && mine,
+      blockedBy: blocking.map((code) => {
+        const row = tasks.find((x) => x.code === code);
+        return {
+          code,
+          title: TASK_CATALOG[code]?.title ?? code,
+          owner: row ? taskOwnerLabel(row) : "",
+        };
+      }),
+    };
+  });
+}
+
+/**
+ * Bir adıma atanabilecek personel: dosyanın fabrikasındaki etkin kullanıcılar
+ * arasından, o adımın gerektirdiği yetkiyi taşıyanlar. Böylece yeniden atama
+ * işi yapamayacak bir kişiye düşmez.
+ */
+export function eligibleAssignees(
+  factoryId: number,
+  code: TaskCode,
+): { id: number; full_name: string; title: string; role: string }[] {
+  const tpl = TASK_CATALOG[code];
+  if (!tpl) return [];
+  return all<{ id: number; full_name: string; title: string; role: string }>(
+    `SELECT id, full_name, title, role FROM users
+      WHERE factory_id = ? AND is_active = 1 ORDER BY id`,
+    factoryId,
+  ).filter((u) => can(u.role, tpl.permission));
 }

@@ -128,6 +128,7 @@ export interface Complaint {
   exchanged_kg: number;
   refund_amount: number;
   freight_amount: number;
+  freight_paid_at: string | null;
   transaction_date: string | null;
 
   capa_started_at: string | null;

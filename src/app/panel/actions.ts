@@ -13,17 +13,21 @@ import { PERMISSIONS, can } from "@/lib/roles";
 import { requireFactoryAccess, requirePermission, requireUser } from "@/server/auth";
 import {
   cancelComplaint, closeComplaint, decideEscalation, escalateComplaint, formTeam,
-  onTutanakApproved, prepareTutanak, recordInspection, recordTransaction, redirectComplaint,
+  onTutanakApproved, prepareTutanak, recordFreightPayment, recordInspection,
+  recordTransaction, redirectComplaint,
   sendCustomerInfo, sendOfficialLetter, startCapa,
 } from "@/server/process";
 import { addAnalysis, addSample, evaluateParameter, labParameters } from "@/server/lab";
 import { getDocument, reopenDocument, signDocument } from "@/server/documents";
 import { createComplaint } from "@/server/complaints";
 import { deleteAttachment, recordAttachment, storeFile } from "@/server/attachments";
-import { setTaskStatus } from "@/server/tasks";
+import {
+  assignTask, complaintSteps, eligibleAssignees, setTaskStatus,
+} from "@/server/tasks";
 import { EVENT_TYPE, logEvent } from "@/server/events";
 import { deliver, retryFailed } from "@/server/notify";
 import { setSetting } from "@/server/settings";
+import type { TaskCode } from "@/lib/workflow";
 import type { LabParameter } from "@/lib/types";
 
 export interface ActionResult {
@@ -279,10 +283,21 @@ export async function transactionAction(_p: ActionResult, fd: FormData): Promise
       returnedKg: n(fd, "returnedKg") ?? 0,
       exchangedKg: n(fd, "exchangedKg") ?? 0,
       refundAmount: n(fd, "refundAmount") ?? 0,
-      freightAmount: n(fd, "freightAmount") ?? 0,
       note: s(fd, "note") || null,
     });
     return "İşlem kaydedildi. Resmî yazı için 3 iş günlük süre başladı.";
+  }, detail(cid), s(fd, "returnTo"));
+}
+
+export async function freightPaymentAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const cid = id(fd);
+  return guard(async () => {
+    await recordFreightPayment(cid, {
+      amount: n(fd, "amount") ?? 0,
+      paidAt: s(fd, "paidAt"),
+      note: s(fd, "note") || null,
+    });
+    return "Nakliye bedeli ödemesi kaydedildi.";
   }, detail(cid), s(fd, "returnTo"));
 }
 
@@ -332,12 +347,93 @@ export async function cancelAction(_p: ActionResult, fd: FormData): Promise<Acti
 
 /* --- 8. Görev, not, dosya ----------------------------------------------- */
 
+interface TaskRef {
+  complaint_id: number;
+  factory_id: number;
+  code: string;
+  title: string;
+  status: string;
+  assignee_id: number | null;
+}
+
+/** Formdan gelen görev kimliğini dosyaya ve fabrikaya bağlayarak doğrular. */
+function loadTaskRef(taskId: number, complaintId: number): TaskRef {
+  const t = one<TaskRef>(
+    `SELECT t.complaint_id, c.factory_id, t.code, t.title, t.status, t.assignee_id
+       FROM tasks t JOIN complaints c ON c.id = t.complaint_id
+      WHERE t.id = ?`,
+    taskId,
+  );
+  if (!t || t.complaint_id !== complaintId) throw new Error("Görev bulunamadı.");
+  if (t.status === "TAMAMLANDI" || t.status === "GEREKSIZ") {
+    throw new Error(`"${t.title}" adımı daha önce kapatılmış.`);
+  }
+  return t;
+}
+
+/**
+ * Görev kartı düğmeleri. İki işlem vardır ve yetkileri farklıdır:
+ *  - "Başladım" (DEVAM_EDIYOR): yalnızca görevin sorumlusu, sırası gelmiş adımda.
+ *  - "Gerek yok" (GEREKSIZ): süreçte bir adımı atlamak olduğundan Fabrika Müdürüne aittir.
+ * Bir adım bu uçtan "tamamlandı" yapılamaz; tamamlanma yalnızca adımın kendi
+ * formu işlendiğinde gerçekleşir.
+ */
 export async function taskStatusAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   const cid = id(fd);
   return guard(async () => {
     const user = await requireUser();
-    setTaskStatus(Number(s(fd, "taskId")), s(fd, "status"), user, s(fd, "note") || null);
-    return "Görev güncellendi.";
+    const status = s(fd, "status");
+    const t = loadTaskRef(Number(s(fd, "taskId")), cid);
+    await requireFactoryAccess(t.factory_id);
+
+    if (status === "TAMAMLANDI") {
+      throw new Error(
+        `"${t.title}" adımı buradan tamamlanamaz; adımın kendi formu doldurulduğunda kapanır.`,
+      );
+    }
+    if (status === "GEREKSIZ") {
+      if (!can(user.role, PERMISSIONS.GOREV_ATA)) {
+        throw new Error("Bir adımı atlama yetkisi Fabrika Müdürüne aittir.");
+      }
+    } else if (status === "DEVAM_EDIYOR") {
+      if (t.assignee_id !== user.id) {
+        throw new Error("Bir adımı yalnızca sorumlusu başlatabilir.");
+      }
+      const steps = complaintSteps(cid, user);
+      const step = steps.find((x) => x.code === t.code);
+      if (step && !step.ready) {
+        throw new Error(
+          `Bu adımın sırası gelmedi. Önce: ${step.blockedBy.map((b) => b.title).join("; ")}.`,
+        );
+      }
+    } else {
+      throw new Error("Geçersiz görev durumu.");
+    }
+
+    setTaskStatus(Number(s(fd, "taskId")), status, user, s(fd, "note") || null);
+    return status === "GEREKSIZ" ? "Adım atlandı olarak işaretlendi." : "Görev başlatıldı.";
+  }, detail(cid), s(fd, "returnTo"));
+}
+
+/** Bir adımın sorumlusunu değiştirir — yalnızca Fabrika Müdürü. */
+export async function assignTaskAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  const cid = id(fd);
+  return guard(async () => {
+    const user = await requirePermission(PERMISSIONS.GOREV_ATA);
+    const taskId = Number(s(fd, "taskId"));
+    const assigneeId = Number(s(fd, "assigneeId"));
+    const t = loadTaskRef(taskId, cid);
+    await requireFactoryAccess(t.factory_id);
+
+    const eligible = eligibleAssignees(t.factory_id, t.code as TaskCode);
+    const target = eligible.find((e) => e.id === assigneeId);
+    if (!target) {
+      throw new Error(
+        `Bu personel "${t.title}" adımını yürütemez; adımın gerektirdiği yetkiyi taşımıyor.`,
+      );
+    }
+    assignTask(taskId, assigneeId, user);
+    return `"${t.title}" adımının sorumlusu ${target.full_name} olarak güncellendi.`;
   }, detail(cid), s(fd, "returnTo"));
 }
 

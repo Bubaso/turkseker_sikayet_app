@@ -102,6 +102,8 @@ export const PERMISSIONS = {
   SIKAYET_KAYDET: "SIKAYET_KAYDET",
   /** Ekip kurabilir veya dosyayı başka fabrikaya yönlendirebilir. */
   EKIP_YONET: "EKIP_YONET",
+  /** Bir görevin sorumlusunu değiştirebilir (izin, rapor, ayrılma hâlleri). */
+  GOREV_ATA: "GOREV_ATA",
   /** Yerinde inceleme ve numune kaydı girebilir. */
   INCELEME_GIR: "INCELEME_GIR",
   /** Laboratuvar analiz sonucu girebilir. */
@@ -141,28 +143,35 @@ const P = PERMISSIONS;
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SISTEM_YONETICISI: Object.values(P),
 
+  // Fabrika Müdürü süreci yönetir, adımları kendisi işlemez: şikâyeti görür,
+  // ekibi kurar ya da dosyayı yönlendirir, görevlerin sorumlusunu değiştirir ve
+  // süreci izler. Talimatın doğrudan kendisine verdiği üç iş kendisinde kalır:
+  // tutanağın son onayı (imza zincirinin 6. sırası), itirazın Daire
+  // Başkanlığına gönderilmesi ve dosyanın kapatılması.
   FABRIKA_MUDURU: [
-    P.SIKAYET_KAYDET, P.EKIP_YONET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA,
-    P.BELGE_ONAYLA, P.KARAR_VER, P.ISLEM_GIR, P.ITIRAZ_GONDER, P.RESMI_YAZI,
-    P.SIKAYET_KAPAT, P.BILDIRIM_GOR, P.RAPOR_URET,
+    P.SIKAYET_KAYDET, P.EKIP_YONET, P.GOREV_ATA, P.BELGE_IMZALA, P.BELGE_ONAYLA,
+    P.ITIRAZ_GONDER, P.SIKAYET_KAPAT, P.BILDIRIM_GOR, P.RAPOR_URET,
   ],
-  MUDUR_YRD_TEKNIK: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA, P.BILDIRIM_GOR],
-  MUDUR_YRD_ZIRAAT: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA, P.BILDIRIM_GOR],
-  MUDUR_YRD_IDARI: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA, P.ISLEM_GIR, P.BILDIRIM_GOR],
+  // Müdür yardımcıları imza zincirinin üyeleridir; Teknik ve Ziraat ayrıca
+  // inceleme ekibine girip ekip lideri olabilir (md. 3).
+  MUDUR_YRD_TEKNIK: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_IMZALA, P.BILDIRIM_GOR],
+  MUDUR_YRD_ZIRAAT: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_IMZALA, P.BILDIRIM_GOR],
+  MUDUR_YRD_IDARI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.BILDIRIM_GOR],
   KALITE_MUDUR_YRD: [
     P.SIKAYET_KAYDET, P.INCELEME_GIR, P.ANALIZ_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA,
-    P.KARAR_VER, P.BILDIRIM_GOR, P.RAPOR_URET,
+    P.KARAR_VER, P.RESMI_YAZI, P.BILDIRIM_GOR, P.RAPOR_URET,
   ],
   KALITE_SORUMLUSU: [
     P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.KARAR_VER, P.RESMI_YAZI,
     P.BILDIRIM_GOR, P.RAPOR_URET,
   ],
+  // İade/değişim ambarda, nakliye bedelinin ödenmesi muhasebede.
   AMBAR_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.ISLEM_GIR],
-  SATIS_BIRIM_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.ISLEM_GIR],
+  SATIS_BIRIM_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA],
   LABORATUVAR: [P.INCELEME_GIR, P.ANALIZ_GIR],
-  MUHASEBE: [P.ISLEM_GIR, P.INCELEME_GIR],
-  ZIRAAT: [P.INCELEME_GIR],
-  TEKNIK_ISLETME: [P.INCELEME_GIR],
+  MUHASEBE: [P.SIKAYET_KAYDET, P.INCELEME_GIR, P.ISLEM_GIR],
+  ZIRAAT: [P.SIKAYET_KAYDET, P.INCELEME_GIR],
+  TEKNIK_ISLETME: [P.SIKAYET_KAYDET, P.INCELEME_GIR],
 
   GM_UST_YONETIM: [P.TUM_FABRIKALAR, P.BILDIRIM_GOR, P.RAPOR_URET, P.ITIRAZ_KARAR],
   GM_DAIRE: [P.TUM_FABRIKALAR, P.ITIRAZ_KARAR, P.BILDIRIM_GOR, P.RAPOR_URET],

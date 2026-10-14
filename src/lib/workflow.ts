@@ -3,9 +3,9 @@
    Görev kartı kataloğu, imza zincirleri, itiraz eşikleri, daire yönlendirmesi.
    =========================================================================== */
 
-import { ROLES, type Role } from "./roles";
+import { PERMISSIONS, ROLES, type Permission, type Role } from "./roles";
 import {
-  DEPT, DOC_TYPE, ESCALATION_THRESHOLD_KG, PRODUCT_GROUP, SLA, STATUS,
+  DEPT, DOC_TYPE, ESCALATION_THRESHOLD_KG, PRODUCT_GROUP, SLA, STATUS, TASK_STATUS,
   demandIncludesFreight, demandIsExchange,
   type DeptCode, type DocType, type ProductGroup, type Status,
 } from "./domain";
@@ -37,8 +37,20 @@ export interface TaskTemplate {
   code: TaskCode;
   title: string;
   description: string;
-  /** Görevi yapabilecek rol havuzu; görev bu role atanır. */
+  /** Görevin varsayılan sorumlusunun unvanı; görev bu role atanır. */
   role: Role;
+  /**
+   * Görevi işleyebilmek için gereken yetki. Yetki yalnızca "bu göreve kim
+   * atanabilir" sorusunu yanıtlar; işi fiilen yapma hakkı görevin üzerindeki
+   * kişidedir (bkz. requireTaskTurn).
+   */
+  permission: Permission;
+  /**
+   * Bu adımdan önce tamamlanmış olması gereken adımlar. Dosyada bulunmayan
+   * öncül (ör. haksız dalda iade/değişim) sağlanmış sayılır; böylece tek bir
+   * bağımlılık grafiği bütün dalları karşılar.
+   */
+  dependsOn: TaskCode[];
   dueSource: DueSource;
   sortOrder: number;
   /** Dayanak madde — arayüzde gösterilir. */
@@ -54,6 +66,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Teknik (İşletme), Muhasebe ve Ziraat birimlerinden uygun görülen personel ile ekip " +
       "oluşturulur. Firma adresine daha yakın bir fabrikamız varsa dosya o fabrikaya yönlendirilir.",
     role: ROLES.FABRIKA_MUDURU,
+    permission: PERMISSIONS.EKIP_YONET,
+    dependsOn: [],
     dueSource: "EKIP",
     sortOrder: 10,
     basis: "TL PASAT 004 md. 2-3",
@@ -66,6 +80,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Yerinde inceleme yapılamıyorsa ürün görselleri üzerinden inceleme yapılır ve gerekçesi " +
       "tutanakta belirtilir.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.INCELEME_GIR,
+    dependsOn: [TASK.EKIP_KUR],
     dueSource: "INCELEME",
     sortOrder: 20,
     basis: "TL PASAT 004 md. 4",
@@ -77,6 +93,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Gerektiğinde numune alınır; numune numarası, alınma tarihi, parti/lot bilgisi ve " +
       "miktar kayda geçirilir.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.INCELEME_GIR,
+    dependsOn: [TASK.YERINDE_INCELEME],
     dueSource: "INCELEME",
     sortOrder: 30,
     basis: "TL PASAT 004 md. 4",
@@ -88,6 +106,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Kalite ve İşletme Kontrol Laboratuvarı numune alınan gün, mümkün olmazsa takip eden " +
       "iş günü analizi yapar; sonuç analiz raporu ile birlikte kayda geçirilir.",
     role: ROLES.LABORATUVAR,
+    permission: PERMISSIONS.ANALIZ_GIR,
+    dependsOn: [TASK.NUMUNE_AL],
     dueSource: "INCELEME",
     sortOrder: 40,
     basis: "TL PASAT 004 md. 4",
@@ -99,6 +119,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "İnceleme ve analiz sonucu en geç 3 iş günü içinde tutanak altına alınır. Analiz " +
       "alınmamışsa gerekçesi tutanakta belirtilir.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.BELGE_HAZIRLA,
+    dependsOn: [TASK.YERINDE_INCELEME, TASK.ANALIZ_GIR],
     dueSource: "INCELEME",
     sortOrder: 50,
     basis: "TL PASAT 004 md. 4",
@@ -110,6 +132,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Ambar Şefi, Satışı Yapan Birim Şefi, Kalite ve İşletme Kontrol Müdür Yardımcısı, " +
       "Fabrika Müdür Yardımcıları (Teknik/Ziraat ve İdari) imzalar; Fabrika Müdürü onaylar.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.BELGE_HAZIRLA,
+    dependsOn: [TASK.TUTANAK_HAZIRLA],
     dueSource: "INCELEME",
     sortOrder: 60,
     basis: "FR PASAT 004 / FR PASAT 005",
@@ -121,6 +145,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Tutanaklar Fabrika Müdürünün onayından sonra Gıda Güvenliği Ekibi, FSSC 22000 Gıda " +
       "Güvenliği Yönetim Sistemi kapsamında gerekli düzeltici faaliyeti başlatır.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.BELGE_HAZIRLA,
+    dependsOn: [TASK.TUTANAK_IMZA],
     dueSource: "ISLEM",
     sortOrder: 80,
     basis: "TL PASAT 004 md. 4",
@@ -132,6 +158,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Şikâyet haklı bulunmadığı ve miktar eşiği aşıldığı durumda müşteri itirazı ilgili " +
       "Daire Başkanlığına gönderilir.",
     role: ROLES.FABRIKA_MUDURU,
+    permission: PERMISSIONS.ITIRAZ_GONDER,
+    dependsOn: [TASK.TUTANAK_IMZA],
     dueSource: "ISLEM",
     sortOrder: 90,
     basis: "TL PASAT 004 md. 5",
@@ -143,6 +171,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "İlgili Daire Başkanlığı, itirazın yapıldığı tarihten itibaren 5 iş günü içinde itirazı " +
       "değerlendirir ve karar verir.",
     role: ROLES.GM_DAIRE,
+    permission: PERMISSIONS.ITIRAZ_KARAR,
+    dependsOn: [TASK.ITIRAZ_GONDER],
     dueSource: "ITIRAZ",
     sortOrder: 100,
     basis: "TL PASAT 004 md. 5",
@@ -154,6 +184,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Müşteri memnuniyeti çerçevesinde, şikâyet tarihinden itibaren 5 iş günü içinde ürünün " +
       "iadesi alınır veya değişimi gerçekleştirilir.",
     role: ROLES.AMBAR_SEFI,
+    permission: PERMISSIONS.ISLEM_GIR,
+    dependsOn: [TASK.TUTANAK_IMZA],
     dueSource: "ISLEM",
     sortOrder: 110,
     basis: "TL PASAT 004 md. 6-a/b",
@@ -165,6 +197,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Kusurun fabrikadan kaynaklandığı tespit edildiğinden, firmanın geliş-gidiş nakliye " +
       "masrafları şikâyet tarihinden itibaren 5 iş günü içinde ödenir.",
     role: ROLES.MUHASEBE,
+    permission: PERMISSIONS.ISLEM_GIR,
+    dependsOn: [TASK.IADE_DEGISIM],
     dueSource: "ISLEM",
     sortOrder: 120,
     basis: "TL PASAT 004 md. 6-b",
@@ -176,6 +210,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Şikâyet formu, analiz raporları, tutanaklar ve yapılan işlemlerin sonucu, iade/değişim " +
       "tarihinden itibaren 3 iş günü içinde ilgili Daire Başkanlıklarına PDF ekleriyle iletilir.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.RESMI_YAZI,
+    dependsOn: [TASK.IADE_DEGISIM],
     dueSource: "RESMI_YAZI",
     sortOrder: 130,
     basis: "TL PASAT 004 md. 6",
@@ -187,6 +223,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
       "Fabrika tarafından yapılan işlemler Müşteri Bilgilendirme Formunun açıklama kısmına " +
       "yazılarak müşteriye gönderilir ve gerekli bilgilendirmeler yapılır.",
     role: ROLES.KALITE_SORUMLUSU,
+    permission: PERMISSIONS.BELGE_HAZIRLA,
+    dependsOn: [TASK.TUTANAK_IMZA, TASK.RESMI_YAZI, TASK.DAIRE_KARAR],
     dueSource: "RESMI_YAZI",
     sortOrder: 140,
     basis: "TL PASAT 004 md. 7",
@@ -197,6 +235,8 @@ export const TASK_CATALOG: Record<TaskCode, TaskTemplate> = {
     description:
       "Tüm adımlar tamamlandıktan sonra dosya kapatılır ve aylık raporlama tablosuna işlenir.",
     role: ROLES.FABRIKA_MUDURU,
+    permission: PERMISSIONS.SIKAYET_KAPAT,
+    dependsOn: [TASK.MUSTERI_BILGI],
     dueSource: "RESMI_YAZI",
     sortOrder: 150,
     basis: "TL PASAT 004 md. 8",
@@ -406,3 +446,54 @@ export function dueFieldFor(source: DueSource):
 
 export const SLA_DAYS = SLA;
 export { demandIncludesFreight, demandIsExchange };
+
+/* --- Sıra bekçisi: hangi adım şu an işlenebilir? ------------------------- */
+
+const SETTLED_TASK_STATUSES: readonly string[] = [
+  TASK_STATUS.TAMAMLANDI,
+  TASK_STATUS.GEREKSIZ,
+];
+
+/** Dosyadaki görevlerin kod → durum eşlemesi. */
+export type TaskStatusMap = Record<string, string | undefined>;
+
+export function toTaskStatusMap(
+  tasks: readonly { code: string; status: string }[],
+): TaskStatusMap {
+  const map: TaskStatusMap = {};
+  for (const t of tasks) map[t.code] = t.status;
+  return map;
+}
+
+/**
+ * Bu adımın sırasının gelmesi için tamamlanması gereken, hâlâ açık öncül
+ * adımlar. Dosyada hiç bulunmayan öncül sağlanmış sayılır: haklı bulunmayan
+ * dosyada iade/değişim adımı açılmadığı için müşteri bilgilendirmesi onu
+ * beklemez.
+ */
+export function blockingPrerequisites(code: TaskCode, statuses: TaskStatusMap): TaskCode[] {
+  const tpl = TASK_CATALOG[code];
+  if (!tpl) return [];
+  return tpl.dependsOn.filter((prev) => {
+    const status = statuses[prev];
+    if (status === undefined) return false;
+    return !SETTLED_TASK_STATUSES.includes(status);
+  });
+}
+
+/** Adımın sırası geldi mi (öncüllerinin tamamı kapanmış mı)? */
+export function isTaskReady(code: TaskCode, statuses: TaskStatusMap): boolean {
+  return blockingPrerequisites(code, statuses).length === 0;
+}
+
+/** Açık görevi olan adımlardan sırası gelmiş olanlar — "şu anki adım". */
+export function currentTaskCodes(
+  tasks: readonly { code: string; status: string }[],
+): TaskCode[] {
+  const statuses = toTaskStatusMap(tasks);
+  return tasks
+    .filter((t) => !SETTLED_TASK_STATUSES.includes(t.status))
+    .map((t) => t.code as TaskCode)
+    .filter((code) => TASK_CATALOG[code] && isTaskReady(code, statuses))
+    .sort((a, b) => TASK_CATALOG[a].sortOrder - TASK_CATALOG[b].sortOrder);
+}

@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS complaints (
   exchanged_kg       REAL NOT NULL DEFAULT 0,
   refund_amount      REAL NOT NULL DEFAULT 0,     -- iade / mahsup bedeli (TL)
   freight_amount     REAL NOT NULL DEFAULT 0,     -- ödenen nakliye bedeli (TL)
+  freight_paid_at    TEXT,                        -- nakliye bedelinin ödendiği tarih (md. 6-b)
   transaction_date   TEXT,                        -- işlem tarihi
 
   -- FSSC 22000 düzeltici faaliyet (md. 4)
