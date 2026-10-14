@@ -468,6 +468,15 @@ CREATE TABLE IF NOT EXISTS official_letters (
 );
 CREATE INDEX IF NOT EXISTS idx_letters_complaint ON official_letters(complaint_id);
 
+-- Resmî yazının ilgili daire tarafından okunduğu kaydı (md. 6 ve 8)
+CREATE TABLE IF NOT EXISTS official_letter_reads (
+  letter_id     INTEGER NOT NULL REFERENCES official_letters(id) ON DELETE CASCADE,
+  department_id INTEGER NOT NULL REFERENCES departments(id),
+  user_id       INTEGER REFERENCES users(id),
+  read_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (letter_id, department_id)
+);
+
 -- --- Aylık raporlar (md. 8) ----------------------------------------------
 
 CREATE TABLE IF NOT EXISTS monthly_reports (

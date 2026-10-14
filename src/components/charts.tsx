@@ -317,6 +317,12 @@ export function bandOf(rate: number | null): MeterBand {
   return "critical";
 }
 
+/** Ölçer bandının Chip tonu karşılığı — kart ve listelerde aynı anlam. */
+export function bandTone(band: MeterBand): "ok" | "warn" | "danger" | "ink" {
+  return band === "good" ? "ok" : band === "warning" ? "warn"
+    : band === "critical" ? "danger" : "ink";
+}
+
 const BAND_FILL: Record<MeterBand, string> = {
   good: "var(--viz-good)",
   warning: "var(--viz-warn)",

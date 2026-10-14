@@ -189,6 +189,69 @@ export function Stat({
   return <div className="card p-4">{body}</div>;
 }
 
+/**
+ * Önceki dönemle kıyaslamalı gösterge kartı. Üst yönetim için mutlak sayı tek
+ * başına bilgi değildir; yön ve değişim oranı olmadan "iyi mi kötü mü"
+ * sorusu yanıtsız kalır.
+ */
+export function StatDelta({
+  label, value, previous, current, unit = "", hint, href, iyiYon = "artis", format,
+}: {
+  label: string;
+  /** Gösterilecek biçimlenmiş değer. */
+  value: ReactNode;
+  /** Kıyas için sayısal değerler. */
+  previous: number | null;
+  current: number | null;
+  unit?: string;
+  hint?: ReactNode;
+  href?: string;
+  /** Artışın iyi mi kötü mü olduğu. */
+  iyiYon?: "artis" | "azalis" | "yok";
+  format?: (v: number) => string;
+}) {
+  const fark = previous != null && current != null ? current - previous : null;
+  // Önceki dönemde hiç veri yoksa oran sonsuza gider; yüzde yerine yalnızca
+  // "önceki dönem: 0" bilgisi verilir.
+  const oran = fark != null && previous ? Math.round((fark / Math.abs(previous)) * 1000) / 10 : null;
+  const oncekiBos = previous === 0 || previous == null;
+  const yonTone: Tone =
+    fark == null || fark === 0 || iyiYon === "yok" ? "ink"
+    : (fark > 0) === (iyiYon === "artis") ? "ok" : "danger";
+  const ok = fark == null || fark === 0 ? "→" : fark > 0 ? "↑" : "↓";
+
+  const body = (
+    <>
+      <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>
+      <p className="tnum mt-1 text-2xl leading-tight font-semibold text-ink-900">
+        {value}{unit && <span className="ml-1 text-sm font-normal text-ink-500">{unit}</span>}
+      </p>
+      {fark != null && !oncekiBos && (
+        <p className={`tnum mt-1 text-xs font-medium ${
+          yonTone === "ok" ? "text-ok-700" : yonTone === "danger" ? "text-danger-700" : "text-ink-500"
+        }`}>
+          {ok} {format ? format(Math.abs(fark)) : Math.abs(Math.round(fark * 10) / 10)}
+          {oran != null && ` (%${Math.abs(oran)})`}
+          <span className="font-normal text-ink-500"> — önceki döneme göre</span>
+        </p>
+      )}
+      {fark != null && oncekiBos && (
+        <p className="mt-1 text-xs text-ink-500">Önceki dönemde kayıt yok</p>
+      )}
+      {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="card block p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+        {body}
+      </Link>
+    );
+  }
+  return <div className="card p-4">{body}</div>;
+}
+
 /* --- Bildirim kutuları --------------------------------------------------- */
 
 export function Notice({

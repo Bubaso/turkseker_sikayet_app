@@ -7,7 +7,9 @@ import { fmtQuantity } from "@/lib/format";
 import { ESCALATION_THRESHOLD_TEXT } from "@/lib/domain";
 import {requirePageUser} from "@/server/auth";
 import { holidaySet } from "@/server/settings";
-import { Card, Chip, EmptyState, Notice, PageHeader, SlaChip } from "@/components/ui";
+import { Card, Chip, EmptyState, Notice, PageHeader, SlaChip, Stat } from "@/components/ui";
+import { LineChart, TableView } from "@/components/charts";
+import { daireKararOzeti, itirazSeyri } from "@/server/yonetim";
 import type { ComplaintView } from "@/lib/types";
 import { EscalationDecision } from "./decision";
 
@@ -42,6 +44,9 @@ export default async function EscalationsPage({
   );
 
   const canDecide = can(user.role, PERMISSIONS.ITIRAZ_KARAR);
+  // Daire Başkanının kendi tutarlılığını görebilmesi için karar geçmişi özeti.
+  const ozet = mine ? daireKararOzeti(Number(mine)) : null;
+  const seyir = mine ? itirazSeyri(12, Number(mine)) : [];
 
   return (
     <div className="space-y-5">
@@ -65,6 +70,42 @@ export default async function EscalationsPage({
           </div>
         }
       />
+
+      {ozet && ozet.toplam > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Karara bağladığım" value={ozet.toplam} />
+            <Stat label="Kabul oranı"
+                  value={`%${Math.round((ozet.kabul / ozet.toplam) * 1000) / 10}`}
+                  hint={`${ozet.kabul} kabul · ${ozet.ret} ret`} />
+            <Stat label="Ortalama karar süresi"
+                  value={ozet.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
+                  tone={ozet.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
+                  hint="Hedef: 5 iş günü" />
+            <Stat label="Süreye uyum"
+                  value={ozet.sureyeUyum == null ? "—" : `%${ozet.sureyeUyum}`}
+                  tone={ozet.sureyeUyum != null && ozet.sureyeUyum < 95 ? "danger" : "ok"}
+                  hint="5 iş günü içinde karara bağlanan" />
+          </div>
+
+          {seyir.length > 1 && (
+            <Card title="İtirazların 12 aylık seyri" bodyClass="p-4 sm:p-5">
+              <LineChart
+                labels={seyir.map((a) => a.ay)}
+                series={[
+                  { name: "Gelen itiraz", slot: 1, values: seyir.map((a) => a.gelen) },
+                  { name: "Kabul edilen", slot: 2, values: seyir.map((a) => a.kabul) },
+                ]}
+                caption="Dairenize gelen itiraz sayısı ve kabul edilen itirazlar."
+              />
+              <TableView
+                headers={["Ay", "Gelen", "Kabul"]}
+                rows={seyir.map((a) => [a.ay, a.gelen, a.kabul])}
+              />
+            </Card>
+          )}
+        </>
+      )}
 
       {!showHistory && (
         <Notice tone="info" title="İtiraz hangi dosyalar için gelir?">

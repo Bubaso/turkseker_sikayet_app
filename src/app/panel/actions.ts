@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { CHANNEL, DEMAND, VERDICT, type Verdict } from "@/lib/domain";
-import { PERMISSIONS, can } from "@/lib/roles";
+import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { requireFactoryAccess, requirePermission, requireUser } from "@/server/auth";
 import {
   cancelComplaint, closeComplaint, decideEscalation, escalateComplaint, formTeam,
@@ -27,6 +27,7 @@ import {
 import { EVENT_TYPE, logEvent } from "@/server/events";
 import { deliver, retryFailed } from "@/server/notify";
 import { setSetting } from "@/server/settings";
+import { yaziyiOkunduIsaretle } from "@/server/yonetim";
 import type { TaskCode } from "@/lib/workflow";
 import type { LabParameter } from "@/lib/types";
 
@@ -549,6 +550,22 @@ export async function staffComplaintAction(_p: ActionResult, fd: FormData): Prom
 }
 
 /* --- 10. Bildirim giden kutusu ------------------------------------------ */
+
+/** Daireye gelen resmî yazıyı okundu olarak işaretler (md. 6 ve 8). */
+export async function letterReadAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const user = await requireUser();
+    const departmentId = Number(s(fd, "departmentId"));
+    if (!isGmRole(user.role) && user.role !== "SISTEM_YONETICISI") {
+      throw new Error("Resmî yazı kutusu Genel Müdürlük kullanıcılarına açıktır.");
+    }
+    if (user.department_id && user.department_id !== departmentId) {
+      throw new Error("Bu yazı başka bir Daire Başkanlığına gönderilmiş.");
+    }
+    yaziyiOkunduIsaretle(Number(s(fd, "letterId")), departmentId, user.id);
+    return "Yazı okundu olarak işaretlendi.";
+  }, ["/panel/resmi-yazilar", "/panel"], s(fd, "returnTo"));
+}
 
 export async function retryNotificationAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return guard(async () => {

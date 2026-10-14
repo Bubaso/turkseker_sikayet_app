@@ -215,6 +215,18 @@ export function defaultRange(): PerfRange {
   return { from: `${t.slice(0, 4)}-01-01`, to: t };
 }
 
+/**
+ * Üst yönetim ekranlarının varsayılan aralığı: içinde bulunulan ay dâhil son
+ * üç ay. Yılbaşından bugüne aralığında kıyas dönemi bir önceki yıla düştüğü
+ * için karşılaştırma anlamsızlaşıyordu.
+ */
+export function yonetimAraligi(): PerfRange {
+  const t = today();
+  const d = new Date(`${t}T00:00:00Z`);
+  const bas = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1));
+  return { from: bas.toISOString().slice(0, 10), to: t };
+}
+
 export function totalRow(rows: FactoryPerf[]): FactoryPerf {
   const sum = (k: keyof FactoryPerf) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
   const totalTasks = sum("total_tasks");

@@ -12,10 +12,15 @@ interface NavItem {
 }
 
 export function PanelNav({
-  gm, counts, canManageDefs, canSeeNotifications, canDecideEscalation,
+  gm, kademe, counts, canManageDefs, canSeeNotifications, canDecideEscalation,
 }: {
   gm: boolean;
-  counts: { open: number; overdue: number; myTasks: number; escalations: number };
+  /** Menünün hangi role göre kurulacağı. */
+  kademe: "fabrika" | "ustyonetim" | "daire";
+  counts: {
+    open: number; overdue: number; myTasks: number; escalations: number;
+    dikkat: number; yazilar: number;
+  };
   canManageDefs: boolean;
   canSeeNotifications: boolean;
   canDecideEscalation: boolean;
@@ -23,26 +28,54 @@ export function PanelNav({
   const path = usePathname();
   const search = useSearchParams();
 
+  const ustYonetim = kademe === "ustyonetim";
+  const daire = kademe === "daire";
+
+  /*
+   * Menü kademeye göre kurulur. Üst yönetimin görev kartı ve takvimi yoktur;
+   * onun yerine gözetim ekranları gelir. Daire Başkanının kendi karar kuyruğu
+   * ve resmî yazı kutusu öne çıkar.
+   */
   const groups: { title: string; items: NavItem[] }[] = [
     {
-      title: "Günlük iş",
+      title: ustYonetim ? "Gözetim" : "Günlük iş",
       items: [
         { href: "/panel", label: "Gösterge paneli" },
-        { href: "/panel/gorevler", label: "Görevlerim", count: counts.myTasks, tone: "brand" },
+        {
+          href: "/panel/dikkat",
+          label: "Dikkat gerektirenler",
+          count: counts.dikkat,
+          tone: "danger",
+          show: gm,
+        },
+        {
+          href: "/panel/gorevler",
+          label: "Görevlerim",
+          count: counts.myTasks,
+          tone: "brand",
+          show: !ustYonetim,
+        },
         { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
         { href: "/panel/sikayetler?gecikme=1", label: "Geciken dosyalar", count: counts.overdue, tone: "danger" },
-        { href: "/panel/takvim", label: "Takvim" },
+        { href: "/panel/takvim", label: "Takvim", show: !ustYonetim },
       ],
     },
     {
-      title: gm ? "Genel Müdürlük" : "Süreç",
+      title: daire ? "Daire Başkanlığı" : ustYonetim ? "Değerlendirme" : "Süreç",
       items: [
         {
           href: "/panel/itirazlar",
-          label: "İtiraz değerlendirmeleri",
+          label: daire ? "Kararımı bekleyenler" : "İtiraz değerlendirmeleri",
           count: counts.escalations,
           tone: "warn",
           show: gm || canDecideEscalation,
+        },
+        {
+          href: "/panel/resmi-yazilar",
+          label: "Resmî yazılar",
+          count: counts.yazilar,
+          tone: "brand",
+          show: gm,
         },
         { href: "/panel/belgeler", label: "İmza bekleyen belgeler", show: !gm },
         { href: "/panel/bildirimler", label: "SMS / e-posta giden kutusu", show: canSeeNotifications },
@@ -51,8 +84,10 @@ export function PanelNav({
     {
       title: "Raporlama",
       items: [
+        { href: "/panel/fabrikalar", label: "Fabrika karşılaştırma", show: gm },
         { href: "/panel/raporlar", label: "Performans panosu" },
         { href: "/panel/raporlar/aylik", label: "Aylık şikâyet tablosu" },
+        { href: "/panel/ozet", label: "Yönetim özeti", show: gm },
       ],
     },
     {
