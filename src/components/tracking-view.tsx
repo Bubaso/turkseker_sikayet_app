@@ -6,6 +6,7 @@ import {
 import { fmtDateLong, fmtDateTime } from "@/lib/dates";
 import { fmtQuantity, fmtTl, maskPhone } from "@/lib/format";
 import type { ComplaintView } from "@/lib/types";
+import { TEMPLATE_LABEL, type TemplateCode } from "@/server/notify";
 import { Chip, Notice } from "./ui";
 import { SurecSeridi } from "./surec-seridi";
 
@@ -111,15 +112,27 @@ function milestones(c: ComplaintView): Milestone[] {
 export function TrackingView({ c }: { c: ComplaintView }) {
   const steps = milestones(c);
   const status = c.status as Status;
-  const notifications = all<{
-    id: number; channel: string; body: string; subject: string | null;
-    created_at: string; status: string;
-  }>(
-    `SELECT id, channel, body, subject, created_at, status FROM notifications
+  /*
+   * Bildirim kaydı müşteriye "ne zaman haberdar edildim" sorusunu yanıtlar;
+   * mesajların metni zaten telefonunda ve e-posta kutusundadır. Bu yüzden
+   * gövdeler değil, kilometre taşının adı, tarihi ve hangi kanaldan gittiği
+   * gösterilir. Aynı taşın SMS'i ve e-postası tek satırda birleşir.
+   */
+  const bildirimler = all<{ template_code: string; channel: string; created_at: string }>(
+    `SELECT template_code, channel, created_at FROM notifications
       WHERE complaint_id = ? AND template_code <> 'OTP' AND status = 'GONDERILDI'
-      ORDER BY id DESC LIMIT 20`,
+      ORDER BY id`,
     c.id,
   );
+  const gruplar: { kod: string; tarih: string; kanallar: string[] }[] = [];
+  for (const b of bildirimler) {
+    const son = gruplar[gruplar.length - 1];
+    if (son && son.kod === b.template_code) {
+      if (!son.kanallar.includes(b.channel)) son.kanallar.push(b.channel);
+    } else {
+      gruplar.push({ kod: b.template_code, tarih: b.created_at, kanallar: [b.channel] });
+    }
+  }
 
   const step = STATUS_STEP[status] ?? 1;
 
@@ -190,26 +203,26 @@ export function TrackingView({ c }: { c: ComplaintView }) {
         />
       </section>
 
-      {notifications.length > 0 && (
-        <section className="card">
-          <h2 className="card-title">Size gönderilen bilgilendirmeler</h2>
+      {gruplar.length > 0 && (
+        <details className="card overflow-hidden">
+          <summary className="card-title cursor-pointer normal-case">
+            Size gönderilen bilgilendirmeler ({gruplar.length})
+          </summary>
           <ul className="divide-y divide-ink-100">
-            {notifications.map((n) => (
-              <li key={n.id} className="px-4 py-3 sm:px-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Chip tone={n.channel === "SMS" ? "brand" : "info"}>
-                    {n.channel === "SMS" ? "SMS" : "E-posta"}
-                  </Chip>
-                  <span className="text-xs text-ink-500">{fmtDateTime(n.created_at)}</span>
-                </div>
-                {n.subject && <p className="mt-1 text-sm font-medium text-ink-800">{n.subject}</p>}
-                <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-ink-600">
-                  {n.body}
-                </p>
+            {gruplar.map((g) => (
+              <li key={g.kod + g.tarih}
+                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-2.5 sm:px-5">
+                <span className="text-sm text-ink-800">
+                  {TEMPLATE_LABEL[g.kod as TemplateCode] ?? g.kod}
+                </span>
+                <span className="tnum text-xs text-ink-500">
+                  {fmtDateTime(g.tarih)} ·{" "}
+                  {g.kanallar.map((k) => (k === "SMS" ? "SMS" : "e-posta")).join(" ve ")}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
       {c.status === "KAPANDI" && (

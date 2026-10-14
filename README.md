@@ -234,7 +234,8 @@ ile değiştirilebilir.
 - 4 adımlı şikâyet formu — başvuru sahibi, ürün, şikâyet, KVKK + SMS doğrulama
 - Kanıt dosyası yükleme (görsel, PDF, Word, Excel)
 - Takip sayfası: şikâyet no + telefonun son 4 hanesi, ya da SMS'teki bağlantı
-- Süreç adımları, kalan süreler ve gönderilen tüm bilgilendirmeler
+- Süreç adımları, kalan süreler ve bilgilendirme kaydı (hangi kilometre taşında,
+  ne zaman, hangi kanaldan)
 
 **Fabrika paneli**
 - Gösterge paneli, şikâyet dosyaları (filtre/arama/SLA renk kodu), bana düşen
@@ -363,7 +364,13 @@ sayfasında** görür.
 
 Takip sayfasındaki şerit (`src/components/surec-seridi.tsx`) tamamlanan adımı
 yeşil onay işaretiyle ve tarihiyle, koşulu oluşmayan adımı çizgiyle, bekleyeni
-numarayla gösterir.
+numarayla gösterir. Sayfanın tamamı tek ekrana sığar.
+
+Bildirim kaydı mesajların **metnini basmaz**: metinler zaten müşterinin
+telefonunda ve e-posta kutusundadır, sayfada tekrarlanmaları dosyanın durumunu
+görünmez hâle getiriyordu. Onun yerine katlanmış tek satırın altında kilometre
+taşı başına bir satır durur — ne zaman, hangi kanaldan haberdar edildiği. Aynı
+taşın SMS'i ve e-postası tek satırda birleşir.
 
 Metinlerde **kurum iç işleyişi yer almaz**: hangi unvanın ne yaptığı, tutanak,
 imza, Daire Başkanlıklarına raporlama gibi ayrıntılar müşteriyi ilgilendirmediği

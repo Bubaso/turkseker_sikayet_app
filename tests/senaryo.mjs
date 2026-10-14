@@ -293,9 +293,10 @@ try {
     ? ok(`Müşteri "${musteriDurum.trim()}" görüyor`)
     : hata(`Müşteri tarafında beklenmeyen durum: ${musteriDurum.trim()}`);
 
-  const bildirimler = await musteri.locator("section:has-text('Size gönderilen bilgilendirmeler') li").count();
-  bildirimler >= 5
-    ? ok(`Müşteriye ${bildirimler} bildirim gönderildi (SMS + e-posta)`)
+  const bildirimler = await musteri
+    .locator("details:has-text('Size gönderilen bilgilendirmeler') li").count();
+  bildirimler >= 4
+    ? ok(`Müşteri ${bildirimler} kilometre taşında bilgilendirildi`)
     : hata(`Beklenenden az bildirim: ${bildirimler}`);
 
   /* --- 11. Form çıktısı ve aylık rapor ---------------------------------- */
