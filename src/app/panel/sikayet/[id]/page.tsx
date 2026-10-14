@@ -71,6 +71,17 @@ export default async function ComplaintDetailPage({
         .map((u) => ({ id: u.id, full_name: u.full_name, title: u.title }));
     }
   }
+  const factories = listFactories().map((f) => ({ id: f.id, name: f.name }));
+  const ekipVerisi = {
+    staff: assignableStaff(c.factory_id),
+    factories,
+    currentFactoryId: c.factory_id,
+    suggestion: suggestNearerFactory(c.id),
+  };
+  // Sırası gelmiş ama bu kullanıcının olmayan adım — "size düşen işlem yok"
+  // mesajının doğru bilgi verebilmesi için.
+  const bekleyenAdim = currentSteps.find((t) => !t.mine) ?? null;
+
   const stepOf = (code: string) => steps.find((t) => t.code === code);
   const canDo = (code: string) => stepOf(code)?.actionable === true;
   const signableIds = documents.filter((d) => canSignNow(d.id, user)).map((d) => d.id);
@@ -115,6 +126,15 @@ export default async function ComplaintDetailPage({
     recipients,
     suggestedLetterNo: `${c.factory_code}-${c.complaint_no.replace(/-/g, "")}`,
     actionable,
+    ekip: c.team_formed_at ? null : ekipVerisi,
+    bekleyen: bekleyenAdim
+      ? {
+          baslik: bekleyenAdim.title,
+          sorumlu: bekleyenAdim.assignee_name
+            ? `${bekleyenAdim.assignee_name} (${bekleyenAdim.assignee_title})`
+            : "henüz sorumlusu atanmamış bir adım",
+        }
+      : null,
     canCancel: !gm && can(user.role, PERMISSIONS.SIKAYET_KAPAT),
   };
 
@@ -210,12 +230,28 @@ export default async function ComplaintDetailPage({
 
           {tab === "islemler" && (
             gm ? (
-              <Notice tone="ink" title="Genel Müdürlük görünümü">
-                Fabrika süreç işlemleri yalnızca ilgili fabrika personeli tarafından yapılır.
-                İtiraz değerlendirmeleri için{" "}
-                <Link href="/panel/itirazlar" className="link">İtiraz değerlendirmeleri</Link>{" "}
-                sayfasını kullanın.
-              </Notice>
+              // Daire kararı bu kullanıcıdaysa genel bir not yerine doğrudan işi gösterilir.
+              actionable.includes("DAIRE_KARAR") ? (
+                <Card title="Bu dosyanın itirazı sizin değerlendirmenizde">
+                  <p className="text-sm leading-relaxed text-ink-600">
+                    {c.escalation_reason}
+                    {c.escalation_due_at && (
+                      <> Karar en geç <strong>{fmtDate(c.escalation_due_at)}</strong> tarihine
+                      kadar verilmelidir.</>
+                    )}
+                  </p>
+                  <Link href="/panel/itirazlar" className="btn btn-primary mt-3">
+                    İtiraz değerlendirme sayfasına git
+                  </Link>
+                </Card>
+              ) : (
+                <Notice tone="ink" title="Genel Müdürlük görünümü">
+                  Fabrika süreç işlemleri yalnızca ilgili fabrika personeli tarafından yapılır.
+                  İtiraz değerlendirmeleri için{" "}
+                  <Link href="/panel/itirazlar" className="link">İtiraz değerlendirmeleri</Link>{" "}
+                  sayfasını kullanın.
+                </Notice>
+              )
             ) : (
               <IslemlerPanel ctx={ctx} />
             )
@@ -230,16 +266,16 @@ export default async function ComplaintDetailPage({
             <EkipTab
               complaintId={c.id}
               team={team}
-              staff={assignableStaff(c.factory_id)}
+              staff={ekipVerisi.staff}
               canManage={canDo("EKIP_KUR")}
-              factories={listFactories().map((f) => ({ id: f.id, name: f.name }))}
+              factories={factories}
               currentFactoryId={c.factory_id}
-              suggestion={suggestNearerFactory(c.id)}
+              suggestion={ekipVerisi.suggestion}
               teamFormed={c.team_formed_at}
               redirectedAt={c.redirected_at}
               redirectedFrom={
                 c.redirected_from_id
-                  ? (listFactories().find((f) => f.id === c.redirected_from_id)?.name ?? null)
+                  ? (factories.find((f) => f.id === c.redirected_from_id)?.name ?? null)
                   : null
               }
               redirectReason={c.redirect_reason}

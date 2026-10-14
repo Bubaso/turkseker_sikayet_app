@@ -161,6 +161,28 @@ try {
   );
 
 
+  /*
+   * Sorumluya "size düşen işlem yok" denmemeli. Bu, adımın formu başka
+   * sekmede olduğunda (numune, analiz, imza zinciri) ya da hiç eklenmediğinde
+   * (ekip kurma) ortaya çıkan hata sınıfını yakalar.
+   */
+  await sorumlu.goto(`${dosyaUrl}?sekme=islemler`, { waitUntil: "domcontentloaded" });
+  const sorumluMetni = await sorumlu.locator("body").innerText();
+  kontrol(
+    "Sorumluya 'size düşen işlem yok' denmiyor",
+    !sorumluMetni.includes("Şu anda size düşen bir işlem yok"),
+    ADIM,
+  );
+  const sorumluFormlar = await adimFormlari(sorumlu);
+  const yonlendirme = await sorumlu
+    .locator('a:has-text("sekmesine git")')
+    .count();
+  kontrol(
+    "Sorumluya ya formu ya da adımın sekmesine bağlantı gösteriliyor",
+    sorumluFormlar.length > 0 || yonlendirme > 0,
+    `form=${sorumluFormlar.length} bağlantı=${yonlendirme}`,
+  );
+
   /* --- 2. İlgisiz personel: düğme yok, kimde olduğu yazıyor -------------- */
   const ilgisiz = await girisYap(digeri.username);
   await ilgisiz.goto(`${dosyaUrl}?sekme=gorevler`, { waitUntil: "domcontentloaded" });
@@ -180,6 +202,12 @@ try {
     "İlgisiz personele hiç adım formu çıkmıyor",
     ilgisizFormlar.length === 0,
     ilgisizFormlar.join(" | "),
+  );
+  const ilgisizMetni = await ilgisiz.locator("body").innerText();
+  kontrol(
+    "İlgisiz personele adımın gerçek sorumlusu adıyla bildiriliyor",
+    ilgisizMetni.includes(dosya.full_name),
+    ilgisizMetni.split("\n").filter((l) => /Sıradaki adım/.test(l)).join(" ") || "(mesaj yok)",
   );
 
   /* --- 3. Sırası gelmemiş adım ------------------------------------------ */
@@ -252,6 +280,50 @@ try {
     /hata=yetki/.test(disFabrika.url()) || yanit.status() >= 400,
     disFabrika.url(),
   );
+
+  /* --- 7. Her açık adım türü: sorumlusuna iş gösteriliyor mu? ----------- */
+  /*
+   * Bazı adımların formu kendi sekmesinde durur (numune ve analiz laboratuvarda,
+   * imza zinciri tutanaklarda, daire kararı itiraz sayfasında). Sorumlusuna
+   * "size düşen işlem yok" denmemeli; ya formu ya da o sekmeye bir bağlantı
+   * görmeli. Veritabanındaki her açık adım türü için bir örnek denenir.
+   */
+  console.log("\n  Açık adım türleri:");
+  const ornekler = new Map();
+  for (const r of sorgu(`
+    SELECT c.id AS cid, t.code, u.username, u.full_name
+      FROM complaints c
+      JOIN tasks t ON t.complaint_id = c.id
+      JOIN users u ON u.id = t.assignee_id
+     WHERE t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+       AND t.sort_order = (SELECT MIN(x.sort_order) FROM tasks x
+                            WHERE x.complaint_id = c.id
+                              AND x.status IN ('BEKLEMEDE','DEVAM_EDIYOR'))
+     ORDER BY t.code, c.id`)) {
+    if (!ornekler.has(r.code)) ornekler.set(r.code, r);
+  }
+
+  const oturumlar = new Map();
+  for (const [kod, r] of ornekler) {
+    let sayfa = oturumlar.get(r.username);
+    if (!sayfa) {
+      sayfa = await girisYap(r.username);
+      oturumlar.set(r.username, sayfa);
+    }
+    await sayfa.goto(`${BASE}/panel/sikayet/${r.cid}?sekme=islemler`, { waitUntil: "networkidle" });
+    const metin = await sayfa.locator("body").innerText();
+    const formlar = await adimFormlari(sayfa);
+    const baglanti = await sayfa.locator('a.btn-primary, a:has-text("sekmesine git")').count();
+    kontrol(
+      `${kod}: sorumlusuna yapacak iş gösteriliyor`,
+      !metin.includes("Şu anda size düşen bir işlem yok") &&
+        (formlar.length > 0 || baglanti > 0),
+      `${r.full_name} — form=[${formlar.join(", ") || "-"}] bağlantı=${baglanti}`,
+    );
+  }
+  if (ornekler.size === 0) {
+    console.log("    (demo verisinde açık adım yok — bu bölüm atlandı)");
+  }
 
   console.log(`\nSonuç: ${gecen} geçti, ${kalan} kaldı\n`);
 } finally {

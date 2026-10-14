@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { DEMAND_LABEL, type Demand } from "@/lib/domain";
+import { TASK_CATALOG, type TaskCode } from "@/lib/workflow";
 import { ActionForm } from "@/components/action-form";
 import { Basis, Card, Notice } from "@/components/ui";
 import {
   capaAction, cancelAction, closeAction, customerInfoAction, escalateAction,
   freightPaymentAction, inspectionAction, letterAction, transactionAction, tutanakAction,
 } from "@/app/panel/actions";
+import { EkipKurmaFormlari, type Staff } from "./ekip";
 
 export interface ActionCtx {
   complaintId: number;
@@ -33,15 +36,59 @@ export interface ActionCtx {
    * uygular; buradaki liste yalnızca neyin gösterileceğini belirler.
    */
   actionable: string[];
+  /** Ekip kurma adımı sıradaysa gereken veriler. */
+  ekip: {
+    staff: Staff[];
+    factories: { id: number; name: string }[];
+    currentFactoryId: number;
+    suggestion: { id: number; name: string } | null;
+  } | null;
+  /** Sırası gelmiş ama başka bir personelin üzerinde olan adım. */
+  bekleyen: { baslik: string; sorumlu: string } | null;
   /** Dosyayı iptal etme yetkisi (süreç adımı değil, yönetsel karar). */
   canCancel: boolean;
 }
+
+/** Formu bu sekmede değil, kendi sekmesinde olan adımlar. */
+const BASKA_SEKMEDE: Record<string, { sekme: string; etiket: string; aciklama: string }> = {
+  NUMUNE_AL: {
+    sekme: "lab",
+    etiket: "Numune ve analiz sekmesine git",
+    aciklama: "Numune kaydı, numune numarası ve mühür bilgisiyle birlikte kendi sekmesinde alınır.",
+  },
+  ANALIZ_GIR: {
+    sekme: "lab",
+    etiket: "Numune ve analiz sekmesine git",
+    aciklama: "Analiz sonucu, ölçülen parametrelerle birlikte kendi sekmesinde girilir.",
+  },
+  TUTANAK_IMZA: {
+    sekme: "belgeler",
+    etiket: "Tutanaklar sekmesine git",
+    aciklama:
+      "Tutanak imza sürecindedir. Sıranın kimde olduğunu ve imza durumunu Tutanaklar " +
+      "sekmesinden izleyebilirsiniz; zincir tamamlandığında karar kesinleşir.",
+  },
+};
 
 /** Sırası gelen ve sorumlusu bu kullanıcı olan adımların formlarını gösterir. */
 export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
   const has = (code: string) => ctx.actionable.includes(code);
   const cid = ctx.complaintId;
   const blocks: React.ReactNode[] = [];
+
+  /* --- Ekip oluşturma / yönlendirme (md. 2-3) --- */
+  if (has("EKIP_KUR") && ctx.ekip) {
+    blocks.push(
+      <EkipKurmaFormlari
+        key="ekip"
+        complaintId={cid}
+        staff={ctx.ekip.staff}
+        factories={ctx.ekip.factories}
+        currentFactoryId={ctx.ekip.currentFactoryId}
+        suggestion={ctx.ekip.suggestion}
+      />,
+    );
+  }
 
   /* --- Yerinde inceleme --- */
   if (has("YERINDE_INCELEME")) {
@@ -342,13 +389,39 @@ export function IslemlerPanel({ ctx }: { ctx: ActionCtx }) {
     );
   }
 
+  /*
+   * Bazı adımların formu kendi sekmesinde durur (numune ve analiz laboratuvar
+   * sekmesinde, imza zinciri tutanaklar sekmesinde). Sırası gelmiş böyle bir
+   * adımın sorumlusuna "size düşen işlem yok" denmemesi için buraya o sekmeye
+   * götüren bir kart konur.
+   */
+  for (const code of ctx.actionable) {
+    const hedef = BASKA_SEKMEDE[code];
+    if (!hedef) continue;
+    blocks.push(
+      <Card key={`yonlendir-${code}`} title={TASK_CATALOG[code as TaskCode]?.title ?? code}>
+        <p className="text-sm leading-relaxed text-ink-600">{hedef.aciklama}</p>
+        <Link href={`/panel/sikayet/${cid}?sekme=${hedef.sekme}`} className="btn btn-primary mt-3">
+          {hedef.etiket}
+        </Link>
+      </Card>,
+    );
+  }
+
   return (
     <div className="space-y-5">
       {blocks.length === 0 ? (
         <Notice tone="ink" title="Şu anda size düşen bir işlem yok">
-          {ctx.closed
-            ? "Dosya kapatılmıştır."
-            : "Dosyanın sıradaki adımı başka bir unvanın sorumluluğunda. Görev listesinden kimde beklediğini görebilirsiniz."}
+          {ctx.closed ? (
+            "Dosya kapatılmıştır."
+          ) : ctx.bekleyen ? (
+            <>
+              Sıradaki adım <strong>{ctx.bekleyen.baslik}</strong>, {ctx.bekleyen.sorumlu} üzerinde.
+              Süreç adımları sekmesinden dosyanın tamamını görebilirsiniz.
+            </>
+          ) : (
+            "Bu dosyada sırası gelmiş açık adım kalmadı."
+          )}
         </Notice>
       ) : (
         blocks

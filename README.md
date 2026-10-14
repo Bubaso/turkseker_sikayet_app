@@ -571,7 +571,10 @@ TEST_BASE=http://localhost:3000 npm run test:sahiplik
 ```
 
 Test, dosyayı veritabanından kendisi seçer; öncesinde **Tanımlar > Demo Verisi**
-ekranından demo verisi üretilmiş olmalıdır. 17 kontrolü doğrular.
+ekranından demo verisi üretilmiş olmalıdır. Son bölümü veritabanındaki her açık
+adım türü için bir örnek alıp sorumlusuna gerçekten yapacak iş gösterildiğini
+doğrular: formu bu sekmede olmayan adımlarda (numune, analiz, imza zinciri,
+daire kararı) ilgili sekmeye bağlantı çıkmalıdır.
 
 > Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
 > indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu
