@@ -18,7 +18,7 @@ const PAGE_SIZE = 25;
 
 interface Q {
   ara?: string; durum?: string; grup?: string; karar?: string; urun?: string;
-  kategori?: string; fabrika?: string; gecikme?: string; itiraz?: string;
+  kategori?: string; fabrika?: string; gecikme?: string; itiraz?: string; kapanis?: string;
   bas?: string; bit?: string; s?: string;
 }
 
@@ -48,6 +48,7 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
     search: q.ara || null,
     from: q.bas || null,
     to: q.bit || null,
+    closedIn: q.kapanis || null,
     overdueOnly: q.gecikme === "1",
     escalatedOnly: q.itiraz === "1",
     limit: PAGE_SIZE,
@@ -73,7 +74,8 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
     "SELECT id, name FROM complaint_categories WHERE is_active = 1 ORDER BY sort_order",
   );
 
-  const title = q.gecikme === "1" ? "Geciken dosyalar"
+  const title = q.kapanis ? "Kapanan dosyalar"
+    : q.gecikme === "1" ? "Geciken dosyalar"
     : q.itiraz === "1" ? "İtiraza giden dosyalar"
     : "Şikâyet dosyaları";
 

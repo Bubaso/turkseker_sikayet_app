@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { isGmRole } from "@/lib/roles";
-import { fmtDate, slaInfo, today } from "@/lib/dates";
+import { fmtDate, fmtDateTime, slaInfo, today } from "@/lib/dates";
 import { TASK_CATALOG, type TaskCode } from "@/lib/workflow";
+import { DOC_TYPE_CODE, DOC_TYPE_LABEL, type DocType } from "@/lib/domain";
 import {requirePageUser} from "@/server/auth";
 import { myTasks, openTasksFor } from "@/server/tasks";
+import { documentsAwaitingUser } from "@/server/documents";
 import { holidaySet } from "@/server/settings";
-import { Card, Chip, EmptyState, PageHeader, SlaChip, StatusChip, TaskStatusChip } from "@/components/ui";
+import { Card, Chip, DocStatusChip, EmptyState, PageHeader, SlaChip, StatusChip, TaskStatusChip } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,10 @@ export default async function TasksPage({
   const rows = scope === "fabrika"
     ? openTasksFor(gm ? null : user.factory_id, 300)
     : myTasks(user, { onlyOpen: true });
+
+  // İmza sırası da bir iştir: belge imzası bekleyen kişi bunu görev listesinde
+  // görmeli. Ayrı bir kuyrukta durduğu için daha önce burada hiç görünmüyordu.
+  const imzalar = scope === "bana" ? documentsAwaitingUser(user) : [];
 
   const ref = today();
   const overdue = rows.filter((t) => t.due_at && t.due_at < ref);
@@ -85,7 +91,11 @@ export default async function TasksPage({
     <div className="space-y-5">
       <PageHeader
         title={scope === "bana" ? "Görevlerim" : gm ? "Tüm açık görevler" : `${user.factory_name} açık görevleri`}
-        subtitle={`${rows.length} açık görev · ${overdue.length} gecikmede`}
+        subtitle={
+          scope === "bana" && imzalar.length > 0
+            ? `${rows.length} açık görev · ${imzalar.length} imza · ${overdue.length} gecikmede`
+            : `${rows.length} açık görev · ${overdue.length} gecikmede`
+        }
         actions={
           <div className="flex gap-2">
             <Link href="/panel/gorevler"
@@ -100,7 +110,44 @@ export default async function TasksPage({
         }
       />
 
-      {rows.length === 0 ? (
+      {imzalar.length > 0 && (
+        <Card
+          title={
+            <span className="flex items-center gap-2">
+              İmzanızı bekleyen belgeler<Chip tone="warn">{imzalar.length}</Chip>
+            </span>
+          }
+          bodyClass=""
+        >
+          <ul className="divide-y divide-ink-100">
+            {imzalar.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <Link href={`/panel/sikayet/${d.complaint_id}?sekme=belgeler`}
+                        className="text-sm font-medium text-ink-800 hover:text-brand-700 hover:underline">
+                    {DOC_TYPE_LABEL[d.type as DocType] ?? d.type}
+                  </Link>
+                  <p className="text-xs text-ink-500">
+                    <span className="font-mono">{d.complaint_no}</span> · {d.customer_company}
+                    {d.factory_short && ` · ${d.factory_short}`} · Sıra {d.pending?.sort_order}:{" "}
+                    {d.pending?.expected_title}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-ink-500">{DOC_TYPE_CODE[d.type as DocType]}</span>
+                  <DocStatusChip status={d.status} />
+                  <Link href={`/panel/sikayet/${d.complaint_id}?sekme=belgeler`}
+                        className="btn btn-primary btn-sm">
+                    İmzala
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {rows.length === 0 && imzalar.length === 0 ? (
         <Card>
           <EmptyState
             title="Açık görev yok"

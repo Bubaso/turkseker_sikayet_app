@@ -35,16 +35,23 @@ export function createDocument(
   return tx(() => {
     const factoryId = scalar<number>("SELECT factory_id FROM complaints WHERE id = ?", complaintId);
     const docNo = nextDocNo(complaintId, type);
+    const chain = signatureChain(type);
+    // İmza zinciri olmayan belge (Müşteri Şikâyet Formu) bir kayıttır: taslak
+    // olarak beklemez, imza kuyruğuna düşmez, doğrudan kayda geçer.
+    const kayitBelgesi = chain.length === 0;
 
     const id = Number(
       run(
-        `INSERT INTO documents (complaint_id, type, doc_no, status, body, created_by)
-         VALUES (?, ?, ?, 'TASLAK', ?, ?)`,
-        complaintId, type, docNo, body === undefined ? null : JSON.stringify(body), createdBy,
+        `INSERT INTO documents (complaint_id, type, doc_no, status, body, created_by, approved_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        complaintId, type, docNo,
+        kayitBelgesi ? DOC_STATUS.ONAYLANDI : DOC_STATUS.TASLAK,
+        body === undefined ? null : JSON.stringify(body), createdBy,
+        kayitBelgesi ? new Date().toISOString().slice(0, 19).replace("T", " ") : null,
       ).lastInsertRowid,
     );
 
-    for (const slot of signatureChain(type)) {
+    for (const slot of chain) {
       const roles = rolesForSlot(slot);
       const placeholders = roles.map(() => "?").join(",");
       const u = factoryId
@@ -66,7 +73,9 @@ export function createDocument(
     logEvent({
       complaintId,
       type: EVENT_TYPE.BELGE,
-      title: `${DOC_TYPE_CODE[type]} düzenlendi (taslak)`,
+      title: kayitBelgesi
+        ? `${DOC_TYPE_CODE[type]} kayda geçirildi`
+        : `${DOC_TYPE_CODE[type]} düzenlendi (taslak)`,
       note: docNo,
       actorId: createdBy,
       payload: { documentId: id, docType: type },

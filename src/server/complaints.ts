@@ -260,6 +260,8 @@ export interface ComplaintFilter {
   search?: string | null;
   from?: string | null;
   to?: string | null;
+  /** Kapanış ayı (YYYY-MM) — "Bu ay kapanan" kartının filtresi. */
+  closedIn?: string | null;
   /** Yalnızca SLA'sı gecikmiş dosyalar. */
   overdueOnly?: boolean;
   escalatedOnly?: boolean;
@@ -287,6 +289,10 @@ function buildWhere(f: ComplaintFilter): { sql: string; params: unknown[] } {
   if (f.categoryId) { w.push("c.category_id = ?"); p.push(f.categoryId); }
   if (f.from) { w.push("c.received_at >= ?"); p.push(f.from); }
   if (f.to) { w.push("c.received_at <= ?"); p.push(f.to); }
+  if (f.closedIn) {
+    w.push("c.closed_at IS NOT NULL AND strftime('%Y-%m', c.closed_at) = ?");
+    p.push(f.closedIn);
+  }
   if (f.escalatedOnly) w.push("c.escalated_at IS NOT NULL");
   if (f.overdueOnly) {
     w.push(`c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')

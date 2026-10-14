@@ -364,11 +364,11 @@ export function signatureChain(docType: DocType): SignatureSlot[] {
     case DOC_TYPE.FR_PASAT_005:
     case DOC_TYPE.INCELEME_TUTANAGI:
       return TUTANAK_CHAIN;
+    // Müşteri Şikâyet Formu, müşterinin beyanını kayda geçiren belgedir; bir
+    // karar belgesi değildir ve personel imzası gerektirmez. Kayıt anında
+    // üretilir ve imza kuyruğuna hiç girmez.
     case DOC_TYPE.FR_PASAT_007:
-      return [
-        { order: 1, role: ROLES.KALITE_SORUMLUSU, title: "Şikâyeti Alan / Kalite Sorumlusu", isApproval: false },
-        { order: 2, role: ROLES.FABRIKA_MUDURU, title: "Fabrika Müdürü (Onay)", isApproval: true },
-      ];
+      return [];
     case DOC_TYPE.MUSTERI_BILGILENDIRME:
       return [
         { order: 1, role: ROLES.KALITE_SORUMLUSU, title: "Düzenleyen / Kalite Sorumlusu", isApproval: false },

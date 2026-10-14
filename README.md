@@ -349,6 +349,20 @@ durur; talimat numarası yer almaz.
 Talimat maddeleri (`TL PASAT 004 md. …`) yalnızca **personel panelinde** form ve
 ekranların altında dayanak olarak gösterilir.
 
+### İmza kuyruğu da bir iştir
+
+İmza sırası kendisine gelen kişi bunu **Görevlerim** sayfasında ve gösterge
+panelindeki görev kartında görür; gösterge panelindeki "İmzanızı bekleyen"
+sayacı yalnızca sırası o kişide olan belgeleri sayar, böylece karta tıklayınca
+açılan liste ile aynı sayıyı verir.
+
+Belge, imzalanmadan önce **Göster** düğmesiyle okunabilir: masaüstünde sayfanın
+üstünde açılan bir pencerede, telefonda tam ekran. Pencereden yazdırma ve yeni
+sekmede açma da yapılabilir.
+
+Bir dosya, imza süreci yarım kalmış belge varken kapatılamaz; aksi halde dosya
+kapandıktan sonra da imza kuyruğunda görünmeye devam ediyordu.
+
 ### Tek sorumlu ve sıra kuralı
 
 Sistemin temel kuralı: **her süreç adımı tek bir kişinin üzerindedir ve adımlar
@@ -624,13 +638,21 @@ eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
    doğrudan PDF üretimi gerekirse Playwright/Puppeteer ile `/belge/[id]`
    sayfasının çıktısı alınabilir.
 
-9. **Nakliye bedeli ayrı bir adımdır.** Talimat md. 6'da iade/değişim ile
+9. **Müşteri Şikâyet Formu (FR PASAT 007) bir kayıt belgesidir.** Müşterinin
+   beyanını kayda geçirir; bir karar belgesi değildir. Başvuru çevrim içi
+   yapıldığında imzalayacak bir personel bulunmadığından imza zinciri yoktur:
+   kayıt anında üretilir, doğrudan kayda geçer ve kimsenin imza kuyruğunda
+   beklemez. İmza disiplini karar belgelerinde kalır — tutanaklar ve Müşteri
+   Bilgilendirme Formu. Kurum bu formun da ıslak imzalı olmasını isterse iki
+   sıralı zincir (Kalite Sorumlusu → Fabrika Müdürü) geri açılabilir.
+
+10. **Nakliye bedeli ayrı bir adımdır.** Talimat md. 6'da iade/değişim ile
    nakliye bedelinin ödenmesi aynı maddede geçer. Fiiliyatta iade/değişimi
    ambar, ödemeyi muhasebe yapar; her adımın sorumlusu tek kişi olsun diye iki
    iş ayrı görev kartına bölünmüştür. Her ikisi de şikâyet tarihinden itibaren
    5 iş günü içinde tamamlanır ve ikisi de kapanmadan dosya kapatılamaz.
 
-10. **Fabrika Müdürü adımları kendi işlemez.** Talimat kimin hangi işi yapacağını
+11. **Fabrika Müdürü adımları kendi işlemez.** Talimat kimin hangi işi yapacağını
     unvan düzeyinde belirler ama bir üstün astının işini yapıp yapamayacağına
     değinmez. Sorumluluk zincirinin izlenebilir kalması için müdüre yalnızca
     talimatın doğrudan kendisine verdiği üç iş bırakılmıştır (tutanak onayı,

@@ -325,6 +325,50 @@ try {
     console.log("    (demo verisinde açık adım yok — bu bölüm atlandı)");
   }
 
+  /* --- 8. İmza kuyruğu ve belge yaşam döngüsü --------------------------- */
+  const asiliBelge = sorgu(`SELECT COUNT(*) n FROM documents d
+      JOIN complaints c ON c.id = d.complaint_id
+     WHERE d.status = 'IMZADA' AND c.closed_at IS NOT NULL`)[0].n;
+  kontrol(
+    "Kapanan dosyada imza süreci yarım belge kalmıyor",
+    asiliBelge === 0,
+    `${asiliBelge} belge`,
+  );
+
+  const formDurum = sorgu(
+    "SELECT status, COUNT(*) n FROM documents WHERE type = 'FR_PASAT_007' GROUP BY status",
+  );
+  kontrol(
+    "Müşteri Şikâyet Formu imza kuyruğunda beklemiyor",
+    formDurum.every((r) => r.status === "ONAYLANDI"),
+    formDurum.map((r) => `${r.status}=${r.n}`).join(" ") || "(belge yok)",
+  );
+
+  // İmza sırası kendisinde olan kişi bunu görev listesinde görmeli.
+  const [imzaci] = sorgu(`
+    SELECT u.username, u.full_name
+      FROM document_signatures s
+      JOIN documents d ON d.id = s.document_id
+      JOIN users u ON u.id = s.user_id
+     WHERE d.status = 'IMZADA' AND s.decision = 'BEKLIYOR'
+       AND s.sort_order = (SELECT MIN(x.sort_order) FROM document_signatures x
+                            WHERE x.document_id = d.id AND x.decision = 'BEKLIYOR')
+     GROUP BY u.id LIMIT 1`);
+  if (imzaci) {
+    const imzaSayfa = await girisYap(imzaci.username);
+    const pano = await imzaSayfa.locator("body").textContent();
+    kontrol(
+      `İmza bekleyen kişi panoda görüyor (${imzaci.full_name})`,
+      pano.includes("imzanız bekleniyor") && pano.includes("İmzanızı bekleyen"),
+    );
+    await imzaSayfa.goto(`${BASE}/panel/gorevler`, { waitUntil: "domcontentloaded" });
+    const gorevMetni = await imzaSayfa.locator("body").textContent();
+    kontrol(
+      "İmza bekleyen kişi Görevlerim sayfasında görüyor",
+      gorevMetni.includes("İmzanızı bekleyen belgeler"),
+    );
+  }
+
   console.log(`\nSonuç: ${gecen} geçti, ${kalan} kaldı\n`);
 } finally {
   await tarayici.close();

@@ -23,8 +23,15 @@ interface Body {
   returnedKg?: number; exchangedKg?: number; freightAmount?: number; transactionDate?: string | null;
 }
 
-export default async function DocumentPrintPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentPrintPage({
+  params, searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ gomulu?: string }>;
+}) {
   const { id } = await params;
+  // Önizleme penceresinde gömülü açıldığında yazdırma çubuğu gösterilmez.
+  const gomulu = (await searchParams).gomulu === "1";
   const user = await currentUser();
   if (!user) redirect(`/giris?next=/belge/${id}`);
 
@@ -48,8 +55,10 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     || type === DOC_TYPE.INCELEME_TUTANAGI;
 
   return (
-    <div className="min-h-screen bg-ink-200 py-6 print:bg-white print:py-0">
-      <PrintToolbar complaintId={c.id} docNo={doc.doc_no} />
+    <div className={`min-h-screen print:bg-white print:py-0 ${
+      gomulu ? "bg-white py-0" : "bg-ink-200 py-6"
+    }`}>
+      {!gomulu && <PrintToolbar complaintId={c.id} docNo={doc.doc_no} />}
 
       <article className="print-page mx-auto w-[210mm] max-w-full bg-white p-[18mm_16mm] text-[11pt] leading-relaxed text-black shadow-sm print:w-auto print:shadow-none">
         {/* Antet */}

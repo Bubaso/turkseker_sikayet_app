@@ -18,6 +18,7 @@ export const TEMPLATE = {
   EKIP: "EKIP",
   YONLENDIRME: "YONLENDIRME",
   ZIYARET: "ZIYARET",
+  UZAKTAN_INCELEME: "UZAKTAN_INCELEME",
   NUMUNE: "NUMUNE",
   KARAR_HAKLI: "KARAR_HAKLI",
   KARAR_HAKSIZ: "KARAR_HAKSIZ",
@@ -34,6 +35,7 @@ export const TEMPLATE_LABEL: Record<TemplateCode, string> = {
   EKIP: "İnceleme ekibi oluşturuldu",
   YONLENDIRME: "Daha yakın fabrikaya yönlendirildi",
   ZIYARET: "Yerinde inceleme yapıldı",
+  UZAKTAN_INCELEME: "Görseller üzerinden inceleme yapıldı",
   NUMUNE: "Numune alındı / analiz başladı",
   KARAR_HAKLI: "Şikâyet haklı bulundu",
   KARAR_HAKSIZ: "Şikâyet haklı bulunmadı",
@@ -88,6 +90,9 @@ function smsBody(code: TemplateCode, c: NotifyContext): string {
     case "ZIYARET":
       return `${c.complaintNo} nolu sikayetiniz icin ${fmtDate(c.date)} tarihinde yerinde ` +
              `inceleme yapildi. Takip: ${link}`;
+    case "UZAKTAN_INCELEME":
+      return `${c.complaintNo} nolu sikayetiniz, ${fmtDate(c.date)} tarihinde ilettiginiz urun ` +
+             `gorselleri ve belgeler uzerinden incelendi. Takip: ${link}`;
     case "NUMUNE":
       return `${c.complaintNo} nolu sikayetiniz icin numune alinmistir. Laboratuvar analizi ` +
              `surmektedir. Takip: ${link}`;
@@ -123,6 +128,7 @@ function mailSubject(code: TemplateCode, c: NotifyContext): string {
     case "EKIP": return `İnceleme ekibi oluşturuldu — ${no}`;
     case "YONLENDIRME": return `Şikâyetiniz yönlendirildi — ${no}`;
     case "ZIYARET": return `Yerinde inceleme yapıldı — ${no}`;
+    case "UZAKTAN_INCELEME": return `Şikâyetiniz incelendi — ${no}`;
     case "NUMUNE": return `Numune alındı, analiz sürüyor — ${no}`;
     case "KARAR_HAKLI": return `Şikâyetiniz haklı bulundu — ${no}`;
     case "KARAR_HAKSIZ": return `İnceleme sonucu — ${no}`;
@@ -170,6 +176,12 @@ function mailBody(code: TemplateCode, c: NotifyContext): string {
       govde =
         `${c.complaintNo} numaralı şikâyetiniz kapsamında ${fmtDateLong(c.date)} tarihinde ` +
         `yerinde inceleme gerçekleştirilmiştir.`;
+      break;
+    case "UZAKTAN_INCELEME":
+      govde =
+        `${c.complaintNo} numaralı şikâyetiniz, ${fmtDateLong(c.date)} tarihinde tarafınızca ` +
+        `iletilen ürün görselleri ve sevk belgeleri üzerinden incelenmiştir. Yerinde inceleme ` +
+        `yapılamamasının gerekçesi inceleme kaydına işlenmiştir.`;
       break;
     case "NUMUNE":
       govde =

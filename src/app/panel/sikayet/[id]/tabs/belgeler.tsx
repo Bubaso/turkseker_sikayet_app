@@ -5,6 +5,7 @@ import { DOC_TYPE_CODE, DOC_TYPE_LABEL, type DocType } from "@/lib/domain";
 import { fmtDateTime } from "@/lib/dates";
 import type { DocumentView } from "@/lib/types";
 import { ActionForm } from "@/components/action-form";
+import { BelgeOnizleme } from "@/components/belge-onizleme";
 import { Card, Chip, DocStatusChip, EmptyState, Notice } from "@/components/ui";
 import { reopenDocAction, signAction } from "@/app/panel/actions";
 
@@ -40,9 +41,16 @@ export function BelgelerTab({
               </span>
             }
             actions={
-              <Link href={`/belge/${d.id}`} target="_blank" className="btn btn-secondary btn-sm">
-                Yazdır / PDF
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <BelgeOnizleme
+                  documentId={d.id}
+                  baslik={DOC_TYPE_LABEL[d.type as DocType] ?? d.type}
+                  docNo={d.doc_no}
+                />
+                <Link href={`/belge/${d.id}`} target="_blank" className="btn btn-secondary btn-sm">
+                  Yazdır / PDF
+                </Link>
+              </div>
             }
             bodyClass=""
           >
@@ -103,10 +111,18 @@ export function BelgelerTab({
                   Sıra sizde — {d.pending.expected_title}
                   {d.pending.is_approval === 1 ? " olarak bu belgeyi onaylamanız bekleniyor." : " olarak bu belgeyi imzalamanız bekleniyor."}
                 </p>
-                <p className="mb-3 text-xs text-ink-600">
-                  Belgeyi “Yazdır / PDF” bağlantısından okuduktan sonra karar veriniz. Onayınız
-                  ad-soyad, unvan ve zaman damgasıyla kayda geçer.
-                </p>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <BelgeOnizleme
+                    documentId={d.id}
+                    baslik={DOC_TYPE_LABEL[d.type as DocType] ?? d.type}
+                    docNo={d.doc_no}
+                    label="Belgeyi oku"
+                  />
+                  <p className="text-xs text-ink-600">
+                    İmzalamadan önce belgeyi okuyunuz. Onayınız ad-soyad, unvan ve zaman
+                    damgasıyla kayda geçer.
+                  </p>
+                </div>
                 <ActionForm action={signAction} complaintId={complaintId}
                             submitLabel={d.pending.is_approval === 1 ? "Onaylıyorum" : "İmzalıyorum"}
                             className="space-y-2.5"

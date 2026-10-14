@@ -161,9 +161,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SIKAYET_KAYDET, P.INCELEME_GIR, P.ANALIZ_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA,
     P.KARAR_VER, P.RESMI_YAZI, P.BILDIRIM_GOR, P.RAPOR_URET,
   ],
+  // BELGE_IMZALA gerekir: Müşteri Bilgilendirme Formunun imza zincirinde ilk
+  // sıra Kalite Sorumlusudur. Yetki olmadan form hiçbir zaman onaylanamıyordu.
   KALITE_SORUMLUSU: [
-    P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.KARAR_VER, P.RESMI_YAZI,
-    P.BILDIRIM_GOR, P.RAPOR_URET,
+    P.SIKAYET_KAYDET, P.INCELEME_GIR, P.BELGE_HAZIRLA, P.BELGE_IMZALA, P.KARAR_VER,
+    P.RESMI_YAZI, P.BILDIRIM_GOR, P.RAPOR_URET,
   ],
   // İade/değişim ambarda, nakliye bedelinin ödenmesi muhasebede.
   AMBAR_SEFI: [P.SIKAYET_KAYDET, P.BELGE_IMZALA, P.ISLEM_GIR],

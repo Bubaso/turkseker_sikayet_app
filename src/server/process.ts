@@ -272,16 +272,21 @@ export async function recordInspection(complaintId: number, input: InspectionInp
         : "Şikâyetçi firmada yerinde inceleme yapıldı",
       note: input.note,
       actorId: user.id,
-      payload: { visitedAt: input.visitedAt, labRequired, labSkipReason: input.labSkipReason },
+      payload: {
+        visitedAt: input.visitedAt, labRequired, labSkipReason: input.labSkipReason,
+        remoteOnly: input.remoteOnly === true,
+      },
     });
     if (c.status === STATUS.YENI || c.status === STATUS.YONLENDIRILDI) {
       setStatus(c, STATUS.INCELEMEDE, user, "İnceleme başladı");
     }
   });
 
+  // Görseller üzerinden inceleme yapıldıysa müşteriye "yerinde inceleme yapıldı"
+  // denmez; gönderilen metin fiilen yapılan işi anlatır.
   await notifyCustomer({
     complaintId,
-    code: TEMPLATE.ZIYARET,
+    code: input.remoteOnly ? TEMPLATE.UZAKTAN_INCELEME : TEMPLATE.ZIYARET,
     phone: c.customer_phone,
     email: c.customer_email,
     ctx: notifyCtx(c, { date: input.visitedAt }),
@@ -807,6 +812,19 @@ export async function closeComplaint(complaintId: number, note: string): Promise
     throw new Error(
       `Kapatmadan önce tamamlanmayan ${openTasks.length} görev var: ` +
       openTasks.map((t) => t.title).join(", "),
+    );
+  }
+
+  // İmza süreci yarım kalan belge bırakılmaz; aksi halde dosya kapandıktan
+  // sonra da imza kuyruğunda görünmeye devam eder.
+  const imzadaBelgeler = all<{ doc_no: string; type: string }>(
+    "SELECT doc_no, type FROM documents WHERE complaint_id = ? AND status = ?",
+    complaintId, DOC_STATUS.IMZADA,
+  );
+  if (imzadaBelgeler.length > 0) {
+    throw new Error(
+      `Kapatmadan önce imza süreci tamamlanmamış ${imzadaBelgeler.length} belge var: ` +
+      imzadaBelgeler.map((d) => d.doc_no).join(", "),
     );
   }
 
