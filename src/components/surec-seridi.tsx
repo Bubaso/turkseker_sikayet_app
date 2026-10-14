@@ -31,8 +31,6 @@ export interface SurecAdimi {
   aciklama?: string | null;
   /** Müşterinin kendisinin yapması gereken şey. */
   sizden?: string | null;
-  /** Adımın altında küçük punto ek bilgi. */
-  dipnot?: string | null;
   /** Sonucun birden çok çıkışı varsa (haklı / haklı bulunmadı). */
   dallar?: AdimDali[];
   durum: AdimDurumu;
@@ -128,7 +126,6 @@ export function SurecSeridi({
                   </div>
                 )}
 
-                {a.dipnot && <p className="mt-1.5 text-xs text-ink-500">{a.dipnot}</p>}
               </div>
             </div>
           </li>

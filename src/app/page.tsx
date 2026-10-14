@@ -25,16 +25,16 @@ const SURECTE_ADIMLAR: SurecAdimi[] = [
     zaman: "1. iş günü",
     durum: "bekliyor",
     aciklama:
-      "Fabrika Müdürü inceleme ekibini kurar. Adresinize daha yakın bir fabrikamız varsa " +
-      "dosyanız incelenmek üzere oraya yönlendirilir ve bu da size bildirilir.",
+      "Adresinize daha yakın bir fabrikamız varsa dosyanız incelenmek üzere oraya yönlendirilir; " +
+      "bu da size bildirilir.",
   },
   {
     baslik: "Ürününüz incelenir",
     zaman: "3. iş günü",
     durum: "bekliyor",
     aciklama:
-      "Ekip işletmenize gelir ve gerekirse numune alıp laboratuvara gönderir. Yerinde inceleme " +
-      "yapılamazsa inceleme, ilettiğiniz ürün görselleri üzerinden yürütülür.",
+      "Ekip işletmenize gelir ve gerekirse numune alır. Yerinde inceleme yapılamazsa ürününüz, " +
+      "ilettiğiniz görseller üzerinden incelenir.",
     sizden:
       "Şikâyete konu ürünü, inceleme tamamlanana kadar tüketmeden ve ambalajını bozmadan saklayın.",
   },
@@ -43,9 +43,7 @@ const SURECTE_ADIMLAR: SurecAdimi[] = [
     zaman: "3. iş günü",
     durum: "bekliyor",
     aciklama:
-      "İnceleme ve analiz sonucu tutanağa bağlanır, Fabrika Müdürünün onayıyla kesinleşir ve " +
-      "karar size SMS ile bildirilir.",
-    dipnot: "Tutanak, fabrikada altı yetkilinin imzasından geçer.",
+      "Şikâyetinizin haklı bulunup bulunmadığı karara bağlanır ve sonuç size SMS ile bildirilir.",
   },
   {
     baslik: "Sonuç uygulanır",
@@ -74,8 +72,7 @@ const SURECTE_ADIMLAR: SurecAdimi[] = [
     zaman: "İşlemden +3 iş günü",
     durum: "bekliyor",
     aciklama:
-      "Yapılan işlemler Müşteri Bilgilendirme Formu ile tarafınıza iletilir, dosya Genel Müdürlük " +
-      "daire başkanlıklarına raporlanarak kapatılır.",
+      "Yapılan işlemlerin tamamı yazılı olarak tarafınıza iletilir ve dosyanız kapatılır.",
   },
 ];
 

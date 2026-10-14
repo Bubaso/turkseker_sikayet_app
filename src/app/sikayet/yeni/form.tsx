@@ -215,7 +215,7 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
             <input id="customer_email" name="customer_email" type="email" className={cls("customer_email")}
                    value={v.customer_email} onChange={set("customer_email")}
                    placeholder="ornek@firma.com.tr" autoComplete="email" />
-            <span className="hint">Tutanak ve bilgilendirme formu e-posta ile iletilir.</span>
+            <span className="hint">İnceleme sonucu ve bilgilendirme yazısı e-posta ile iletilir.</span>
             <Err k="customer_email" />
           </div>
 
@@ -494,7 +494,7 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
           <ul className="mt-1 list-inside list-disc space-y-0.5">
             <li>Size bir şikâyet numarası ve takip bağlantısı SMS ile gönderilir.</li>
             <li>En geç <strong>1 iş günü</strong> içinde inceleme ekibi oluşturulur.</li>
-            <li>En geç <strong>3 iş günü</strong> içinde inceleme tamamlanır ve tutanak düzenlenir.</li>
+            <li>En geç <strong>3 iş günü</strong> içinde inceleme tamamlanır ve sonuç size bildirilir.</li>
             <li>
               Şikâyetiniz haklı bulunursa en geç <strong>5 iş günü</strong> içinde iade veya değişim yapılır.
             </li>

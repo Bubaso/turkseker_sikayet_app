@@ -337,9 +337,13 @@ başvurduktan sonra takip sayfasında tanır; tek fark adımların durumudur:
   işaretli.
 
 Telefonda adım açıklamaları varsayılan olarak kapalıdır; tek düğmeyle açılır.
-Metinler kurum unvanlarıyla değil müşterinin başına gelenle yazılır: imza
-zincirindeki altı unvan sayılmaz, "tutanak altı yetkilinin imzasından geçer"
-denir.
+
+Metinlerde **kurum iç işleyişi yer almaz**: hangi unvanın ne yaptığı, tutanak,
+imza zinciri, Daire Başkanlıklarına raporlama gibi ayrıntılar müşteriyi
+ilgilendirmediği için yazılmaz. Her cümle müşterinin başına geleni anlatır
+("Şikâyetinizin haklı bulunup bulunmadığı karara bağlanır ve sonuç size SMS ile
+bildirilir"). Bu ölçüt halka açık üç sayfanın tamamı için geçerlidir: karşılama,
+şikâyet formu ve takip sayfası.
 
 ### Tek sorumlu ve sıra kuralı
 
