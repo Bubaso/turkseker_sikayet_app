@@ -168,13 +168,24 @@ try {
   ok(`Dosya Ankara Şeker Fabrikası paneline düştü: ${dosyaYolu}`);
 
   await mudur.goto(`${BASE}${dosyaYolu}`, { waitUntil: "domcontentloaded" });
-  const formBasligi = await mudur.locator("h2", { hasText: "Müşteri Şikâyet Formu" }).count();
+  const formBasligi = await mudur.locator("summary", { hasText: "Müşteri Şikâyet Formu" }).count();
   const formSatiri = await mudur.locator("th", { hasText: "ŞİKÂYET KONUSU" }).count();
   const formIcerik = (await mudur.locator("body").textContent()).includes(
     "50 kg çuvallarda yaygın topaklanma");
   formBasligi > 0 && formSatiri > 0 && formIcerik
     ? ok("Dosyanın en üstünde müşterinin doldurduğu formun kendisi görünüyor")
     : hata("Şikâyet formu dosyanın üstünde görünmüyor");
+
+  // Form aynı zamanda "Bütün ekler" listesinde uygulamanın ürettiği belge olarak durur.
+  await mudur.locator("summary:has-text('Bütün ekler')").click();
+  await mudur.waitForTimeout(300);
+  const formSatiri2 = await mudur
+    .locator('table.tbl tbody tr:has-text("Müşteri Şikâyet Formu")').count();
+  const gosterDugmesi = await mudur
+    .locator('table.tbl tbody tr:has-text("Müşteri Şikâyet Formu") button:has-text("Göster")').count();
+  formSatiri2 === 1 && gosterDugmesi === 1
+    ? ok("Form, ekler listesinde 'Göster' düğmesiyle birlikte görünüyor")
+    : hata(`Form ekler listesinde yok (satır: ${formSatiri2}, düğme: ${gosterDugmesi})`);
 
   const asamaSayisi = await mudur.locator('ol > li.card').count();
   asamaSayisi === 3

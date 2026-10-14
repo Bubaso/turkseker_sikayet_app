@@ -5,6 +5,7 @@ import { fmtDateTime } from "@/lib/dates";
 import { fmtBytes } from "@/lib/format";
 import type { AttachmentView } from "@/lib/types";
 import { ActionButton, ActionForm } from "@/components/action-form";
+import { BelgeOnizleme } from "@/components/belge-onizleme";
 import { Chip } from "@/components/ui";
 import { deleteAttachmentAction, uploadAction } from "@/app/panel/actions";
 
@@ -14,13 +15,24 @@ import { deleteAttachmentAction, uploadAction } from "@/app/panel/actions";
    Her aşama kendi belgesini aşama kutusunda gösterir; burası dosyadaki tüm
    dosyaların tek listesi ve serbest yükleme yeridir. Günlük işte gerekmediği
    için katlanmış durur.
+
+   Listenin ilk satırı, uygulamanın ürettiği tek belge olan Müşteri Şikâyet
+   Formudur. Diskte bir dosyası yoktur; şikâyet verisinden çizilir, bu yüzden
+   "Göster" düğmesiyle önizlenir ve silinemez.
    =========================================================================== */
 
+export interface FormBelgesi {
+  id: number;
+  doc_no: string;
+  created_at: string;
+}
+
 export function Ekler({
-  complaintId, attachments, canUpload, accept, maxMb,
+  complaintId, attachments, form, canUpload, accept, maxMb,
 }: {
   complaintId: number;
   attachments: AttachmentView[];
+  form: FormBelgesi | null;
   canUpload: boolean;
   accept: string;
   maxMb: number;
@@ -32,7 +44,7 @@ export function Ekler({
   return (
     <details className="card overflow-hidden">
       <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
-        Bütün ekler ({attachments.length})
+        Bütün ekler ({attachments.length + (form ? 1 : 0)})
       </summary>
 
       <div className="space-y-4 p-4 sm:p-5">
@@ -58,7 +70,7 @@ export function Ekler({
           </div>
         )}
 
-        {attachments.length === 0 ? (
+        {attachments.length === 0 && !form ? (
           <p className="text-sm text-ink-500">
             Dosyada henüz ek yok. Müşterinin ilettiği görseller ve aşama kayıtlarında yüklenen
             belgeler burada toplanır.
@@ -70,6 +82,23 @@ export function Ekler({
                 <tr><th>Dosya</th><th>Tür</th><th>Boyut</th><th>Yükleyen</th><th>Tarih</th><th></th></tr>
               </thead>
               <tbody>
+                {form && (
+                  <tr>
+                    <td>
+                      <span className="font-medium text-ink-800">Müşteri Şikâyet Formu</span>
+                      <span className="block font-mono text-xs text-ink-500">{form.doc_no}</span>
+                    </td>
+                    <td><Chip tone="info">Uygulamanın ürettiği belge</Chip></td>
+                    <td className="text-ink-400">—</td>
+                    <td className="text-ink-600">Kayıtla birlikte</td>
+                    <td className="tnum text-xs text-ink-500">{fmtDateTime(form.created_at)}</td>
+                    <td className="text-right">
+                      <BelgeOnizleme documentId={form.id}
+                                     baslik="Müşteri Şikâyet Formu (FR PASAT 007)"
+                                     docNo={form.doc_no} />
+                    </td>
+                  </tr>
+                )}
                 {attachments.map((a) => (
                   <tr key={a.id}>
                     <td>

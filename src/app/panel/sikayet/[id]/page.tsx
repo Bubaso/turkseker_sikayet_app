@@ -13,7 +13,7 @@ import { complaintDocuments } from "@/server/documents";
 import { ACCEPT_ATTR, complaintAttachments } from "@/server/attachments";
 import { complaintEvents } from "@/server/events";
 import { getSettingNum } from "@/server/settings";
-import { Card, Chip, Notice, PageHeader, StatusChip, VerdictChip } from "@/components/ui";
+import { Chip, Notice, PageHeader, StatusChip, VerdictChip } from "@/components/ui";
 import { SikayetFormu } from "@/components/sikayet-formu";
 import { ActionForm } from "@/components/action-form";
 import { cancelAction } from "@/app/panel/actions";
@@ -144,18 +144,19 @@ export default async function ComplaintDetailPage({
         </Notice>
       )}
 
-      {/* 1. Şikâyet formunun kendisi */}
-      <Card
-        title="Müşteri Şikâyet Formu (FR PASAT 007)"
-        bodyClass="p-4 sm:p-5"
-        actions={
-          <span className="text-xs text-ink-500">
-            Müşterinin beyanı — {fmtDate(c.received_at)}
+      {/* 1. Şikâyet formunun kendisi — dosyayı açanın ilk gördüğü şey.
+           Açık gelir; dosya ileri aşamalara geçtiğinde katlanabilir. */}
+      <details open className="card overflow-hidden">
+        <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+          Müşteri Şikâyet Formu (FR PASAT 007) ·{" "}
+          <span className="font-normal normal-case text-ink-500">
+            müşterinin {fmtDate(c.received_at)} tarihli beyanı
           </span>
-        }
-      >
-        <SikayetFormu c={c} kanitlar={kanitlar} />
-      </Card>
+        </summary>
+        <div className="p-4 sm:p-5">
+          <SikayetFormu c={c} kanitlar={kanitlar} />
+        </div>
+      </details>
 
       {/* 2. Aşamalar ve kayıt formları */}
       <section>
@@ -205,6 +206,7 @@ export default async function ComplaintDetailPage({
       <Ekler
         complaintId={c.id}
         attachments={attachments}
+        form={form}
         canUpload={!gm && !c.closed_at}
         accept={ACCEPT_ATTR}
         maxMb={getSettingNum("ek_dosya_max_mb", 10)}

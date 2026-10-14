@@ -273,9 +273,18 @@ ile değiştirilebilir.
 **Belge**
 
 Uygulamanın ürettiği tek belge **FR PASAT 007 Müşteri Şikâyet Formu**'dur:
-müşterinin beyanının kaydıdır, kayıtla birlikte otomatik oluşur ve dosyayı açan
-personelin ilk gördüğü şeydir. A4 yerleşiminde ekranda açılır; tarayıcının
-**Yazdır → PDF olarak kaydet** seçeneğiyle PDF üretilir.
+müşterinin beyanının kaydıdır ve kayıtla birlikte otomatik oluşur. Dosyada üç
+yerde durur:
+
+1. **Dosyanın en üstünde**, formun kendi düzeninde, açık olarak — dosyayı açan
+   personelin ilk gördüğü şey budur. Dosya ileri aşamalara geçtiğinde
+   katlanabilir.
+2. **Bütün ekler** listesinin ilk satırında, "uygulamanın ürettiği belge"
+   olarak. Diskte bir dosyası olmadığı için boyutu yoktur ve silinemez;
+   **Göster** düğmesi A4 çıktısını sayfadan ayrılmadan bir pencerede açar
+   (oradan yazdırılabilir ya da yeni sekmede açılabilir).
+3. **Formu yazdır** düğmesiyle tam sayfa A4 çıktısı olarak. Tarayıcının
+   **Yazdır → PDF olarak kaydet** seçeneğiyle PDF üretilir.
 
 Diğer bütün belgeler (inceleme tutanağı, analiz raporu, karar tutanağı, üst
 yazı, irsaliye, dekont, resmî yazı, müşteri bilgilendirmesi) fabrikada
