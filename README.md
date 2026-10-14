@@ -318,7 +318,7 @@ src/
     api/rapor/aylik/        Excel çıktısı
   components/               ortak arayüz bileşenleri, grafikler
     sikayet-formu.tsx       FR PASAT 007 — panelde ve yazdırmada ortak
-    surec-seridi.tsx        müşteri süreç şeridi — ana sayfa ve takip sayfası ortağı
+    surec-seridi.tsx        müşteri takip sayfasının adım şeridi
   lib/
     db/schema.sql           veritabanı şeması (19 tablo)
     db/driver.ts            node:sqlite sürücü katmanı (işlem, SAVEPOINT, parametre normalleştirme)
@@ -354,28 +354,23 @@ tests/
 
 ### Müşteriye gösterilen süreç
 
-Ana sayfadaki "Şikâyetiniz nasıl ilerler?" bölümü ile müşteri takip sayfasındaki
-"Süreç adımları" şeridi **aynı bileşeni** (`src/components/surec-seridi.tsx`) ve
-aynı başlık sözlüğünü kullanır. Müşteri başvurmadan önce gördüğü resmi,
-başvurduktan sonra takip sayfasında tanır; tek fark adımların durumudur:
+Ana sayfa üç soruyu yanıtlar ve orada biter: **nereye başvuracağım, ne kadar
+sürecek, başvururken elimde ne olmalı.** Süreç özeti üç satırdır — kaydedersiniz
+(anında), ürününüz incelenir (3 iş günü), sonuç uygulanır ve bildirilir (8 iş
+günü). Daha fazlası müşteriye başvurmadan önce bir şey kazandırmaz; adımların
+tamamını, gerçekleşme tarihleriyle birlikte, **başvurduktan sonra takip
+sayfasında** görür.
 
-- **Ana sayfa** — bütün adımlar nötr, yanlarında tahmini süre (`1. iş günü`,
-  `3. iş günü`…). Sonuç adımı iki çıkışı birlikte gösterir: şikâyet haklı
-  bulunursa iade/değişim, bulunmazsa gerekçeli bildirim ve miktar eşiği
-  aşılmışsa Genel Müdürlük değerlendirmesi.
-- **Takip sayfası** — tamamlanan adımlar yeşil onay işaretli ve gerçekleşme
-  tarihli, koşulu oluşmayan adımlar (ör. analiz gerekmedi) atlanmış olarak
-  işaretli.
-
-Telefonda adım açıklamaları varsayılan olarak kapalıdır; tek düğmeyle açılır.
+Takip sayfasındaki şerit (`src/components/surec-seridi.tsx`) tamamlanan adımı
+yeşil onay işaretiyle ve tarihiyle, koşulu oluşmayan adımı çizgiyle, bekleyeni
+numarayla gösterir.
 
 Metinlerde **kurum iç işleyişi yer almaz**: hangi unvanın ne yaptığı, tutanak,
-imza zinciri, Daire Başkanlıklarına raporlama gibi ayrıntılar müşteriyi
-ilgilendirmediği için yazılmaz. Her cümle müşterinin başına geleni anlatır
-("Şikâyetinizin haklı bulunup bulunmadığı karara bağlanır ve sonuç size SMS ile
-bildirilir"). Bu ölçüt halka açık üç sayfanın tamamı için geçerlidir: karşılama,
-şikâyet formu ve takip sayfası. Altbilgide de yalnızca telif ve KVKK satırı
-durur; talimat numarası yer almaz.
+imza, Daire Başkanlıklarına raporlama gibi ayrıntılar müşteriyi ilgilendirmediği
+için yazılmaz. Her cümle müşterinin başına geleni anlatır ("Sonuç her hâlükârda
+gerekçesiyle bildirilir"). Bu ölçüt halka açık üç sayfanın tamamı için
+geçerlidir: karşılama, şikâyet formu ve takip sayfası. Altbilgide de yalnızca
+telif ve KVKK satırı durur; talimat numarası yer almaz.
 
 Talimat maddeleri (`TL PASAT 004 md. …`) yalnızca **personel panelinde** form ve
 ekranların altında dayanak olarak gösterilir.
