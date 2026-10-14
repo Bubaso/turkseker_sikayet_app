@@ -343,7 +343,11 @@ imza zinciri, Daire Başkanlıklarına raporlama gibi ayrıntılar müşteriyi
 ilgilendirmediği için yazılmaz. Her cümle müşterinin başına geleni anlatır
 ("Şikâyetinizin haklı bulunup bulunmadığı karara bağlanır ve sonuç size SMS ile
 bildirilir"). Bu ölçüt halka açık üç sayfanın tamamı için geçerlidir: karşılama,
-şikâyet formu ve takip sayfası.
+şikâyet formu ve takip sayfası. Altbilgide de yalnızca telif ve KVKK satırı
+durur; talimat numarası yer almaz.
+
+Talimat maddeleri (`TL PASAT 004 md. …`) yalnızca **personel panelinde** form ve
+ekranların altında dayanak olarak gösterilir.
 
 ### Tek sorumlu ve sıra kuralı
 

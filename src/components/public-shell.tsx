@@ -36,11 +36,6 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
       <footer className="border-t border-ink-200 bg-white">
         <div className={`mx-auto px-4 py-4 text-xs leading-relaxed text-ink-500 ${wide ? "max-w-6xl" : "max-w-4xl"}`}>
           <p>
-            Şikâyetleriniz ISO 9001:2015 Kalite Yönetim Sistemi ve FSSC 22000 Gıda Güvenliği
-            Yönetim Sistemi kapsamında, <span className="font-medium">TL PASAT 004 “Müşteri
-            Şikâyetlerinde Uygulamalar”</span> talimatına göre değerlendirilir.
-          </p>
-          <p className="mt-1">
             © {new Date().getFullYear()} Türkiye Şeker Fabrikaları A.Ş. · Kişisel verileriniz 6698
             sayılı KVKK kapsamında korunur.
           </p>
