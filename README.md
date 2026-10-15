@@ -238,8 +238,12 @@ ile değiştirilebilir.
   ne zaman, hangi kanaldan)
 
 **Fabrika paneli**
-- Gösterge paneli, şikâyet dosyaları (filtre/arama/SLA renk kodu), bana düşen
-  aşamalar
+- Gösterge paneli, şikâyet dosyaları, bana düşen aşamalar
+- Listelerde ayrı filtre kutusu yoktur: süzgeçler **sütun başlıklarındaki
+  oklarda** durur (fabrika, tarih, şikâyet türü, ürün grubu, durum, karar,
+  gecikme). Seçim adres satırına yazılır; filtrelenmiş liste paylaşılabilir ve
+  geri tuşu çalışır. Açık filtreler listenin üstünde tek tek kaldırılabilir
+  rozetler olarak görünür.
 - **Şikâyet dosyası tek sayfadır:** en üstte müşterinin doldurduğu formun
   kendisi, hemen altında dosyanın aşamaları, sonra bütün ekler ve geçmiş.
   Sekme yoktur.
@@ -253,22 +257,29 @@ ile değiştirilebilir.
 - Elden / telefonla gelen şikâyetlerin personel tarafından kaydı
 
 **Genel Müdürlük paneli** — işlevi süreci izlemektir
-- Role göre ayrışan gösterge paneli (üst yönetim / daire başkanlığı)
-- 14 fabrikanın tüm dosyaları: hangi fabrikada kaç şikâyet, hangi aşamada
-- Dikkat gerektirenler: tekrarlayan ürün/müşteri, SLA aşımı, kritik dosyalar
-- Fabrika karşılaştırma, dönem kıyası ve 12 aylık trendler
-- Daire bazında itiraz kuyruğu ve karar verme (5 iş günü sayacıyla)
-- Daire Başkanlıklarına gelen resmî yazılar kutusu
-- SMS / e-posta giden kutusu, hatalı gönderimleri yeniden deneme
-- A4 yönetim özeti çıktısı
+
+Menüde iki şey vardır: **gösterge paneli** ve **şikâyet dosyaları**. Ayrı bir
+rapor, fabrika karşılaştırma, dikkat listesi ya da aylık tablo ekranı yoktur;
+hepsi gösterge panelinde toplanmıştır.
+
+- Üç net sayı: **toplam şikâyet**, **işlemi devam eden**, **geciken**
+- Dönem seçici ve önceki dönemle kıyaslı göstergeler: gelen, SLA uyumu,
+  ortalama kapanma, toplam maliyet
+- Grafikler: 12 aylık seyir, fabrika karşılaştırma, fabrikalara göre SLA
+  uyumu, şikâyet türü ve ürün grubu dağılımı, aşama bazında süre uyumu
+- Çıktılar: A4 yönetim özeti ve aylık şikâyet tablosu (Excel)
+- Daire Başkanlığına özel: kendi karar kuyruğu ve dairesine gelen resmî yazılar
 
 **Raporlama**
-- Performans panosu: SLA uyum oranı, ortalama kapanma süresi, haklı bulunma
-  oranı, 14 fabrika karşılaştırması, 12 aylık trend, kategori ve ürün grubu
-  dağılımı, kilometre taşı bazında süre uyumu
-- FR PASAT 005 Aylık Müşteri Şikâyetleri Tablosu — 17 kolonuyla ekranda ve
-  Excel çıktısı olarak (devreden dosyalar işaretli, aylık işlem toplamı,
-  gönderim dağıtımı ve imza alanı dâhil)
+
+Hiçbir ölçü hem grafik hem tablo olarak gösterilmez. Varsayılan grafiktir;
+sayıyı tek tek okumak isteyen başlıktaki **Tablo** düğmesiyle geçer, aynı
+düğme geri döndürür. Fabrika personeli kendi fabrikasının aynı ölçülerini
+**Performans panosu** sayfasında görür.
+
+Aylık Müşteri Şikâyetleri Tablosu (FR PASAT 005, 17 kolon) ekranda bir sekme
+olarak durmaz; gösterge panelindeki **Aylık tablo (Excel)** düğmesiyle
+indirilir.
 
 **Belge**
 
@@ -323,12 +334,15 @@ src/
         ekler.tsx           bütün ekler (katlanır)
         gecmis.tsx          denetim izi ve bildirimler (katlanır)
       panolar/              role göre gösterge panoları
+                            (üst yönetim panosu rapor ve karşılaştırmayı da içerir)
     belge/[id]/             Müşteri Şikâyet Formu çıktısı (A4)
     api/ek/[id]/            yetkili dosya servisi
     api/rapor/aylik/        Excel çıktısı
   components/               ortak arayüz bileşenleri, grafikler
     sikayet-formu.tsx       FR PASAT 007 — panelde ve yazdırmada ortak
     surec-seridi.tsx        müşteri takip sayfasının adım şeridi
+    grafik.tsx              grafik / tablo geçişli kutu — ikisi aynı anda gösterilmez
+    tablo-filtre.tsx        sütun başlığındaki filtre oku
   lib/
     db/schema.sql           veritabanı şeması (19 tablo)
     db/driver.ts            node:sqlite sürücü katmanı (işlem, SAVEPOINT, parametre normalleştirme)
@@ -406,6 +420,33 @@ kurma düzeneği** çıkar: müdür ekibin kaç kişi olacağını seçer, o kad
 kutusu belirir, her kutuda önce unvan (fabrikanın kadrosundan otomatik
 listelenir), sonra o unvandaki isim seçilir. İlk sıradaki kişi ekip lideridir;
 inceleme ve karar aşamaları ona düşer.
+
+### Hangi rol neyi görür
+
+| | Fabrika personeli | Genel Müdür Yrd. | Daire Başkanı |
+|---|---|---|---|
+| Gösterge paneli | günlük iş | 14 fabrikanın tamamı + raporlar | kendi alanı + karar kuyruğu |
+| Şikâyet dosyaları | kendi fabrikası | hepsi | hepsi |
+| Bana düşen aşamalar, Takvim, SMS kutusu, Performans panosu | ✓ | — | — |
+| Kararımı bekleyenler, Resmî yazılar | — | — | ✓ |
+| Yönetim özeti (A4) | — | ✓ | ✓ |
+
+Genel Müdürlük tarafı izleyicidir: ayrı rapor, fabrika karşılaştırma, dikkat
+listesi ve aylık tablo ekranları kaldırılmış, hepsi gösterge paneline
+toplanmıştır. Eşiği aşan itiraz ilgili **Daire Başkanlığına** gittiği için
+karar kuyruğu da yalnızca orada görünür.
+
+### Bir ölçü, bir gösterim
+
+Hiçbir sayı ekranda iki kez durmaz. Grafiği olan bir ölçünün tablosu
+varsayılan olarak gizlidir; başlıktaki **Tablo** düğmesi grafiği tablonun
+yerine koyar, aynı düğme geri alır (`src/components/grafik.tsx`). Ölçerler
+(SLA çubukları) yüzdeyi zaten üzerinde taşıdığı için ayrı tabloları yoktur.
+
+Liste filtreleri de ayrı bir kutuda toplanmaz: her süzgeç, süzdüğü sütunun
+başlığındaki okta durur (`src/components/tablo-filtre.tsx`). Seçim adres
+satırına yazıldığı için filtrelenmiş liste paylaşılabilir ve tarayıcının geri
+tuşu çalışır.
 
 ### Tek sorumlu ve sıra kuralı
 

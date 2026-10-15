@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { all } from "@/lib/db";
-import { fmtDate, slaInfo, type HolidaySet } from "@/lib/dates";
+import { MONTH_NAMES_TR, fmtDate, slaInfo, type HolidaySet } from "@/lib/dates";
 import { fmtQuantity, fmtTl } from "@/lib/format";
 import { PRODUCT_GROUP_LABEL, type DeptCode, type ProductGroup } from "@/lib/domain";
+import { kategoriAilesi } from "@/lib/category-labels";
 import type { SessionUser } from "@/server/auth";
-import { yonetimAraligi } from "@/server/stats";
+import { yonetimAraligi, type PerfRange } from "@/server/stats";
 import {
-  DAIRE_MERCEGI, daireKararOzeti, dikkatGerektirenler, donemKiyasi, okunmamisYaziSayisi,
+  DAIRE_MERCEGI, daireKararOzeti, daireSayilari, daireSeyri, daireTurDagilimi,
+  donemKiyasi, okunmamisYaziSayisi,
 } from "@/server/yonetim";
 import { Card, Chip, EmptyState, PageHeader, SlaChip, Stat, StatDelta } from "@/components/ui";
-import { DikkatKarti } from "./dikkat";
+import { BarChartH, LineChart } from "@/components/charts";
+import { Grafik } from "@/components/grafik";
+import { DonemSecici } from "@/components/donem-secici";
 
 interface BekleyenItiraz {
   id: number;
@@ -22,15 +26,20 @@ interface BekleyenItiraz {
   escalation_reason: string | null;
 }
 
-/**
- * Daire Başkanı panosu. Ekranın merkezi kendi karar kuyruğudur; kartlar
- * dairenin kendi sayılarını gösterir ve liste dairenin merceğiyle açılır.
- */
+/* ===========================================================================
+   Daire Başkanı panosu.
+
+   Ekranın merkezi kendi karar kuyruğudur; altında dairenin alanına ait üç net
+   sayı, dönem göstergeleri ve grafikler durur. Üst yönetim panosuyla aynı
+   ilkeler: her ölçü ya grafik ya tablo, ikisi birden değil.
+   =========================================================================== */
+
 export async function DairePano({
-  user, holidays,
+  user, holidays, q,
 }: {
   user: SessionUser;
   holidays: HolidaySet;
+  q: { bas?: string; bit?: string };
 }) {
   const deptId = user.department_id;
   const deptCode = (all<{ code: string }>(
@@ -38,11 +47,15 @@ export async function DairePano({
   )[0]?.code ?? null) as DeptCode | null;
   const mercek = deptCode ? DAIRE_MERCEGI[deptCode] : null;
 
-  const aralik = yonetimAraligi();
+  const varsayilan = yonetimAraligi();
+  const aralik: PerfRange = { from: q.bas || varsayilan.from, to: q.bit || varsayilan.to };
+
   const kiyas = donemKiyasi(aralik, deptCode);
+  const sayilar = daireSayilari(deptCode);
   const ozet = deptId ? daireKararOzeti(deptId) : null;
   const okunmamis = deptId ? okunmamisYaziSayisi(deptId) : 0;
-  const dikkat = dikkatGerektirenler(deptCode);
+  const seyir = daireSeyri(12, deptCode);
+  const turler = daireTurDagilimi(deptCode, aralik);
 
   const bekleyenler = deptId
     ? all<BekleyenItiraz>(
@@ -56,6 +69,26 @@ export async function DairePano({
       )
     : [];
 
+  const seyirEtiket = seyir.map((a) => {
+    const [y, m] = a.ay.split("-");
+    return `${MONTH_NAMES_TR[Number(m) - 1]!.slice(0, 3)} ${y!.slice(2)}`;
+  });
+
+  const ilk10 = turler.slice(0, 10);
+  const kalan = turler.slice(10).reduce((a, c) => a + c.adet, 0);
+  const turCubuk = [
+    ...ilk10.map((c) => ({
+      label: c.ad.length > 26 ? `${c.ad.slice(0, 25)}…` : c.ad,
+      value: c.adet,
+      hint: `${c.ad} (${kategoriAilesi(c.aile)}): ${c.adet} şikâyet, ${c.hakli} haklı`,
+    })),
+    ...(kalan > 0 ? [{ label: "Diğer", value: kalan, hint: `Diğer türler: ${kalan} şikâyet` }] : []),
+  ];
+
+  const alanHref = mercek && mercek.productGroups.length === 1
+    ? `/panel/sikayetler?urun=${mercek.productGroups[0]}`
+    : "/panel/sikayetler";
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -67,9 +100,13 @@ export async function DairePano({
           </>
         }
         actions={
-          <Link href="/panel/resmi-yazilar" className="btn btn-secondary btn-sm">
-            Resmî yazılar{okunmamis > 0 && ` (${okunmamis})`}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/panel/resmi-yazilar" className="btn btn-secondary btn-sm">
+              Resmî yazılar{okunmamis > 0 && ` (${okunmamis})`}
+            </Link>
+            <Link href={`/panel/ozet?bas=${aralik.from}&bit=${aralik.to}`}
+                  className="btn btn-secondary btn-sm">Yönetim özeti</Link>
+          </div>
         }
       />
 
@@ -111,9 +148,7 @@ export async function DairePano({
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <SlaChip sla={sla} compact />
-                    <Link href="/panel/itirazlar" className="btn btn-primary btn-sm">
-                      Değerlendir
-                    </Link>
+                    <Link href="/panel/itirazlar" className="btn btn-primary btn-sm">Değerlendir</Link>
                   </div>
                 </li>
               );
@@ -122,28 +157,27 @@ export async function DairePano({
         )}
       </Card>
 
-      {/* Dairenin kendi sayıları */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Kararım bekleniyor" value={ozet?.bekleyen ?? 0}
-              tone={(ozet?.bekleyen ?? 0) > 0 ? "warn" : "ink"} href="/panel/itirazlar" />
-        <Stat label="Karara bağladığım" value={ozet?.toplam ?? 0}
-              hint={ozet ? `${ozet.kabul} kabul · ${ozet.ret} ret` : undefined}
-              href="/panel/itirazlar?gecmis=1" />
-        <Stat label="Ortalama karar süresi"
-              value={ozet?.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
-              hint="Hedef: 5 iş günü" />
-        <Stat label="Okunmamış resmî yazı" value={okunmamis}
-              tone={okunmamis ? "brand" : "ink"} href="/panel/resmi-yazilar?durum=okunmamis" />
+      {/* Dairenin alanındaki üç net sayı */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label="Alanımdaki toplam şikâyet" value={sayilar.toplam} href={alanHref} />
+        <Stat label="İşlemi devam eden" value={sayilar.acik} tone="brand"
+              hint="Henüz kapanmamış dosya" href={`${alanHref}${alanHref.includes("?") ? "&" : "?"}grup=ACIK`} />
+        <Stat label="Geciken" value={sayilar.geciken}
+              tone={sayilar.geciken ? "danger" : "ok"}
+              hint="Süresi aşılmış aşaması olan dosya"
+              href={`${alanHref}${alanHref.includes("?") ? "&" : "?"}gecikme=1`} />
       </div>
 
-      {/* Dairenin merceğindeki şikâyetler */}
+      <section className="card-pad">
+        <h2 className="mb-3 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+          Dönem: {fmtDate(aralik.from)} – {fmtDate(aralik.to)}
+        </h2>
+        <DonemSecici bas={aralik.from} bit={aralik.to} hedef="/panel" />
+      </section>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatDelta label="Alanımdaki şikâyet" value={kiyas.simdi.gelen}
-                   current={kiyas.simdi.gelen} previous={kiyas.onceki.gelen}
-                   iyiYon="azalis" href={mercekHref(mercek?.productGroups ?? [])} />
-        <StatDelta label="Açık dosya" value={kiyas.simdi.acik}
-                   current={kiyas.simdi.acik} previous={kiyas.onceki.acik}
-                   iyiYon="azalis" href={mercekHref(mercek?.productGroups ?? [], "&grup=ACIK")} />
+        <StatDelta label="Dönemde gelen" value={kiyas.simdi.gelen}
+                   current={kiyas.simdi.gelen} previous={kiyas.onceki.gelen} iyiYon="azalis" />
         <StatDelta label="Haklı bulunan" value={kiyas.simdi.haklı}
                    current={kiyas.simdi.haklı} previous={kiyas.onceki.haklı} iyiYon="azalis" />
         <StatDelta label="Alanımın maliyeti"
@@ -151,21 +185,50 @@ export async function DairePano({
                    current={kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli}
                    previous={kiyas.onceki.iadeBedeli + kiyas.onceki.nakliyeBedeli}
                    iyiYon="azalis" format={(v) => fmtTl(v)} />
+        <Stat label="Ortalama karar sürem"
+              value={ozet?.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
+              tone={ozet?.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
+              hint={ozet ? `${ozet.toplam} karar · ${ozet.kabul} kabul` : "Hedef: 5 iş günü"}
+              href="/panel/itirazlar?gecmis=1" />
       </div>
+
+      <Grafik
+        baslik="Alanımın 12 aylık seyri"
+        tablo={{
+          headers: ["Ay", "Gelen", "Haklı", "Kapanan"],
+          rows: seyir.map((a, i) => [seyirEtiket[i]!, a.gelen, a.hakli, a.kapanan]),
+        }}
+      >
+        <LineChart
+          labels={seyirEtiket}
+          series={[
+            { name: "Gelen şikâyet", values: seyir.map((a) => a.gelen), slot: 1 },
+            { name: "Haklı bulunan", values: seyir.map((a) => a.hakli), slot: 2 },
+            { name: "Kapanan dosya", values: seyir.map((a) => a.kapanan), slot: 3 },
+          ]}
+          caption="Dairenizin alanındaki aylık şikâyet, haklı bulunan ve kapanan dosya sayısı."
+        />
+      </Grafik>
+
+      <Grafik
+        baslik="Alanımdaki şikâyet türleri"
+        tablo={{
+          headers: ["Şikâyet türü", "Aile", "Adet", "Haklı bulunan"],
+          rows: turler.map((c) => [c.ad, kategoriAilesi(c.aile), c.adet, c.hakli]),
+        }}
+      >
+        <BarChartH rows={turCubuk} unit="şikâyet" labelWidth={170}
+                   caption="Seçilen dönemde dairenizin alanında en çok bildirilen şikâyet türleri." />
+      </Grafik>
 
       {mercek && mercek.productGroups.length > 0 && (
         <p className="text-xs text-ink-500">
-          Alanınız: {mercek.productGroups.map((g) => PRODUCT_GROUP_LABEL[g]).join(" · ")}.{" "}
-          <Link href="/panel/sikayetler" className="link">Tüm ürün gruplarını görmek için şikâyet dosyaları</Link>
+          Alanınız: {mercek.productGroups.map((g) => PRODUCT_GROUP_LABEL[g as ProductGroup]).join(" · ")}.{" "}
+          <Link href="/panel/sikayetler" className="link">
+            Tüm ürün gruplarını görmek için şikâyet dosyaları
+          </Link>
         </p>
       )}
-
-      <DikkatKarti satirlar={dikkat} limit={6} tumuHref="/panel/dikkat" />
     </div>
   );
-}
-
-function mercekHref(gruplar: ProductGroup[], ek = ""): string {
-  if (gruplar.length === 1) return `/panel/sikayetler?urun=${gruplar[0]}${ek}`;
-  return `/panel/sikayetler${ek ? `?${ek.slice(1)}` : ""}`;
 }

@@ -12,23 +12,20 @@ interface NavItem {
 }
 
 export function PanelNav({
-  gm, kademe, counts, canManageDefs, canSeeNotifications, canDecideEscalation,
+  gm, kademe, counts, canManageDefs, canSeeNotifications,
 }: {
   gm: boolean;
   /** Menünün hangi role göre kurulacağı. */
   kademe: "fabrika" | "ustyonetim" | "daire";
   counts: {
-    open: number; overdue: number; myTasks: number; escalations: number;
-    dikkat: number; yazilar: number;
+    open: number; overdue: number; myTasks: number; escalations: number; yazilar: number;
   };
   canManageDefs: boolean;
   canSeeNotifications: boolean;
-  canDecideEscalation: boolean;
 }) {
   const path = usePathname();
   const search = useSearchParams();
 
-  const ustYonetim = kademe === "ustyonetim";
   const daire = kademe === "daire";
 
   /*
@@ -36,67 +33,73 @@ export function PanelNav({
    * onun yerine gözetim ekranları gelir. Daire Başkanının kendi karar kuyruğu
    * ve resmî yazı kutusu öne çıkar.
    */
-  const groups: { title: string; items: NavItem[] }[] = [
-    {
-      title: ustYonetim ? "Gözetim" : "Günlük iş",
-      items: [
-        { href: "/panel", label: "Gösterge paneli" },
+  /*
+   * Menü kademeye göre kurulur. Genel Müdürlük tarafı izleyicidir: gösterge
+   * paneli bütün ölçüleri taşıdığı için ayrı rapor, karşılaştırma ve dikkat
+   * ekranı yoktur; geriye dosya listesi ile dairenin kendi işleri kalır.
+   */
+  const groups: { title: string; items: NavItem[] }[] = gm
+    ? [
         {
-          href: "/panel/dikkat",
-          label: "Dikkat gerektirenler",
-          count: counts.dikkat,
-          tone: "danger",
-          show: gm,
+          title: "Gözetim",
+          items: [
+            { href: "/panel", label: "Gösterge paneli" },
+            { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
+          ],
         },
         {
-          href: "/panel/gorevler",
-          label: "Bana düşen aşamalar",
-          count: counts.myTasks,
-          tone: "brand",
-          show: !ustYonetim,
+          title: daire ? "Daire Başkanlığı" : "Çıktı",
+          items: [
+            {
+              href: "/panel/itirazlar",
+              label: "Kararımı bekleyenler",
+              count: counts.escalations,
+              tone: "warn",
+              show: daire,
+            },
+            {
+              href: "/panel/resmi-yazilar",
+              label: "Resmî yazılar",
+              count: counts.yazilar,
+              tone: "brand",
+              show: daire,
+            },
+            { href: "/panel/ozet", label: "Yönetim özeti" },
+            { href: "/panel/tanimlar", label: "Tanımlar ve ayarlar", show: canManageDefs },
+          ],
         },
-        { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
-        { href: "/panel/sikayetler?gecikme=1", label: "Geciken dosyalar", count: counts.overdue, tone: "danger" },
-        { href: "/panel/takvim", label: "Takvim", show: !ustYonetim },
-      ],
-    },
-    {
-      title: daire ? "Daire Başkanlığı" : ustYonetim ? "Değerlendirme" : "Süreç",
-      items: [
+      ]
+    : [
         {
-          href: "/panel/itirazlar",
-          label: daire ? "Kararımı bekleyenler" : "İtiraz değerlendirmeleri",
-          count: counts.escalations,
-          tone: "warn",
-          show: gm || canDecideEscalation,
+          title: "Günlük iş",
+          items: [
+            { href: "/panel", label: "Gösterge paneli" },
+            {
+              href: "/panel/gorevler",
+              label: "Bana düşen aşamalar",
+              count: counts.myTasks,
+              tone: "brand",
+            },
+            { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
+            { href: "/panel/sikayetler?gecikme=1", label: "Geciken dosyalar", count: counts.overdue, tone: "danger" },
+            { href: "/panel/takvim", label: "Takvim" },
+          ],
         },
         {
-          href: "/panel/resmi-yazilar",
-          label: "Resmî yazılar",
-          count: counts.yazilar,
-          tone: "brand",
-          show: gm,
+          title: "Süreç",
+          items: [
+            { href: "/panel/bildirimler", label: "SMS / e-posta giden kutusu", show: canSeeNotifications },
+            { href: "/panel/raporlar", label: "Performans panosu" },
+          ],
         },
-        { href: "/panel/bildirimler", label: "SMS / e-posta giden kutusu", show: canSeeNotifications },
-      ],
-    },
-    {
-      title: "Raporlama",
-      items: [
-        { href: "/panel/fabrikalar", label: "Fabrika karşılaştırma", show: gm },
-        { href: "/panel/raporlar", label: "Performans panosu" },
-        { href: "/panel/raporlar/aylik", label: "Aylık şikâyet tablosu" },
-        { href: "/panel/ozet", label: "Yönetim özeti", show: gm },
-      ],
-    },
-    {
-      title: "Yönetim",
-      items: [
-        { href: "/panel/sikayetler/yeni", label: "Elden şikâyet kaydet", show: !gm },
-        { href: "/panel/tanimlar", label: "Tanımlar ve ayarlar", show: canManageDefs },
-      ],
-    },
-  ];
+        {
+          title: "Yönetim",
+          items: [
+            { href: "/panel/sikayetler/yeni", label: "Elden şikâyet kaydet" },
+            { href: "/panel/tanimlar", label: "Tanımlar ve ayarlar", show: canManageDefs },
+          ],
+        },
+      ];
 
   function active(href: string): boolean {
     const [base, query] = href.split("?") as [string, string | undefined];

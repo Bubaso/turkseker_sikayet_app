@@ -4,23 +4,44 @@ import { fmtQuantity } from "@/lib/format";
 import { DEMAND_LABEL, type Demand } from "@/lib/domain";
 import type { ComplaintView } from "@/lib/types";
 import { Chip, EmptyState, SlaChip, StatusChip, VerdictChip } from "./ui";
+import { BaslikFiltre, type FiltreSecenegi } from "./tablo-filtre";
 
 export interface TableRowExtra {
   nextDue: string | null;
   nextTitle: string | null;
 }
 
-/** Şikâyet dosyaları listesi. SLA sütunu en yakın açık görevin son tarihini gösterir. */
+/**
+ * Sütun başlıklarına düşecek filtreler. Verilmeyen sütunda ok çıkmaz; böylece
+ * aynı tablo panoda filtresiz, listede filtreli kullanılır.
+ */
+export interface TabloFiltreleri {
+  fabrika?: FiltreSecenegi[];
+  tarih?: FiltreSecenegi[];
+  konu?: FiltreSecenegi[];
+  urun?: FiltreSecenegi[];
+  durum?: FiltreSecenegi[];
+  karar?: FiltreSecenegi[];
+  sira?: FiltreSecenegi[];
+}
+
+/** Şikâyet dosyaları listesi. SLA sütunu en yakın açık aşamanın son tarihini gösterir. */
 export function ComplaintTable({
-  rows, extras, holidays, showFactory = false, emptyHint,
+  rows, extras, holidays, showFactory = false, emptyHint, filtreler,
 }: {
   rows: ComplaintView[];
   extras: Record<number, TableRowExtra>;
   holidays: HolidaySet;
   showFactory?: boolean;
   emptyHint?: string;
+  filtreler?: TabloFiltreleri;
 }) {
-  if (rows.length === 0) {
+  /** Filtre tanımlıysa başlığı okla, değilse düz metinle çizer. */
+  function baslik(metin: string, secenekler?: FiltreSecenegi[]) {
+    return secenekler ? <BaslikFiltre baslik={metin} secenekler={secenekler} /> : metin;
+  }
+
+  if (rows.length === 0 && !filtreler) {
     return (
       <EmptyState
         title="Kayıt bulunamadı"
@@ -35,18 +56,25 @@ export function ComplaintTable({
         <thead>
           <tr>
             <th>Şikâyet no</th>
-            {showFactory && <th>Fabrika</th>}
-            <th>Tarih</th>
+            {showFactory && <th>{baslik("Fabrika", filtreler?.fabrika)}</th>}
+            <th>{baslik("Tarih", filtreler?.tarih)}</th>
             <th>Müşteri</th>
-            <th>Konu</th>
-            <th>Ürün</th>
+            <th>{baslik("Konu", filtreler?.konu)}</th>
+            <th>{baslik("Ürün", filtreler?.urun)}</th>
             <th className="text-right">Miktar</th>
-            <th>Durum</th>
-            <th>Karar</th>
-            <th>Sıradaki adım</th>
+            <th>{baslik("Durum", filtreler?.durum)}</th>
+            <th>{baslik("Karar", filtreler?.karar)}</th>
+            <th>{baslik("Sıradaki adım", filtreler?.sira)}</th>
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={showFactory ? 10 : 9} className="px-4 py-10 text-center text-sm text-ink-500">
+                {emptyHint ?? "Seçtiğiniz filtrelere uyan şikâyet dosyası yok."}
+              </td>
+            </tr>
+          )}
           {rows.map((c) => {
             const e = extras[c.id] ?? { nextDue: null, nextTitle: null };
             const sla = slaInfo(e.nextDue, null, holidays);

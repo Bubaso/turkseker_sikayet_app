@@ -170,145 +170,69 @@ export function donemKiyasi(r: PerfRange, deptCode: DeptCode | null = null): Don
   return { simdi: olc(r, ek), onceki: olc(onceki, ek), oncekiAralik: onceki };
 }
 
-/* --- Dikkat gerektirenler ------------------------------------------------- */
+/* --- Daire ölçüleri ------------------------------------------------------- */
 
-export type DikkatTuru =
-  | "SLA_ASILDI" | "KRITIK_ACIK" | "ITIRAZ_SURESI" | "UZUN_SUREDIR_ACIK"
-  | "TEKRAR_EDEN_URUN" | "TEKRAR_EDEN_MUSTERI";
-
-export interface DikkatSatiri {
-  tur: DikkatTuru;
-  baslik: string;
-  detay: string;
-  /** Tıklanınca gidilecek liste ya da dosya. */
-  href: string;
-  agirlik: number;
+export interface DaireSayilari {
+  toplam: number;
+  acik: number;
+  geciken: number;
 }
 
-export const DIKKAT_BASLIK: Record<DikkatTuru, string> = {
-  SLA_ASILDI: "Süresi aşılmış açık dosya",
-  KRITIK_ACIK: "Açık gıda güvenliği ihbarı",
-  ITIRAZ_SURESI: "Karar süresi dolmak üzere olan itiraz",
-  UZUN_SUREDIR_ACIK: "10 iş gününden uzun süredir açık",
-  TEKRAR_EDEN_URUN: "Tekrar eden sorun",
-  TEKRAR_EDEN_MUSTERI: "Tekrar eden müşteri",
-};
-
-/**
- * Üst yönetim listeye değil istisnaya bakar. Altı kural, en ağırdan hafife
- * sıralanır. Son iki kural tekil dosyayı değil örüntüyü yakalar.
- */
-export function dikkatGerektirenler(deptCode: DeptCode | null = null): DikkatSatiri[] {
+/** Dairenin merceğindeki dosyaların o anki sayıları. */
+export function daireSayilari(deptCode: DeptCode | null): DaireSayilari {
   const ek = mercekSuzgeci(deptCode);
-  const out: DikkatSatiri[] = [];
+  const say = (kosul: string) =>
+    scalar<number>(`SELECT COUNT(DISTINCT c.id) FROM complaints c ${kosul}${ek.sql}`, ...ek.params) ?? 0;
+  return {
+    toplam: say("WHERE 1 = 1"),
+    acik: say("WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')"),
+    geciken: say(`JOIN tasks t ON t.complaint_id = c.id
+                   WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')
+                     AND t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
+                     AND t.due_at IS NOT NULL AND t.due_at < date('now')`),
+  };
+}
 
-  for (const r of all<{ id: number; complaint_no: string; factory: string; gun: number }>(
-    `SELECT c.id, c.complaint_no, f.short_name AS factory,
-            CAST(julianday('now') - julianday(MIN(t.due_at)) AS INTEGER) AS gun
+export interface DaireAyi {
+  ay: string;
+  gelen: number;
+  hakli: number;
+  kapanan: number;
+}
+
+/** Dairenin merceğindeki aylık seyir. */
+export function daireSeyri(aySayisi: number, deptCode: DeptCode | null): DaireAyi[] {
+  const ek = mercekSuzgeci(deptCode);
+  return all<DaireAyi>(
+    `SELECT strftime('%Y-%m', c.received_at) AS ay,
+            COUNT(*) AS gelen,
+            SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS hakli,
+            SUM(CASE WHEN c.closed_at IS NOT NULL THEN 1 ELSE 0 END) AS kapanan
        FROM complaints c
-       JOIN tasks t ON t.complaint_id = c.id
-       LEFT JOIN factories f ON f.id = c.factory_id
-      WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')
-        AND t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
-        AND t.due_at IS NOT NULL AND t.due_at < date('now')${ek.sql}
-      GROUP BY c.id ORDER BY gun DESC LIMIT 20`, ...ek.params)) {
-    out.push({
-      tur: "SLA_ASILDI",
-      baslik: `${r.complaint_no} — ${r.factory}`,
-      detay: `${r.gun} gündür süresi aşılmış`,
-      href: `/panel/sikayet/${r.id}`,
-      agirlik: 100 + r.gun,
-    });
-  }
+      WHERE c.received_at >= date('now','start of month', ?)${ek.sql}
+      GROUP BY ay ORDER BY ay`,
+    `-${aySayisi - 1} months`, ...ek.params,
+  );
+}
 
-  for (const r of all<{ id: number; complaint_no: string; factory: string; subject: string }>(
-    `SELECT c.id, c.complaint_no, f.short_name AS factory, c.subject
-       FROM complaints c
-       JOIN complaint_categories cat ON cat.id = c.category_id
-       LEFT JOIN factories f ON f.id = c.factory_id
-      WHERE cat.is_critical = 1
-        AND c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')${ek.sql}
-      ORDER BY c.received_at LIMIT 20`, ...ek.params)) {
-    out.push({
-      tur: "KRITIK_ACIK",
-      baslik: `${r.complaint_no} — ${r.factory}`,
-      detay: r.subject,
-      href: `/panel/sikayet/${r.id}`,
-      agirlik: 90,
-    });
-  }
+export interface DaireTuru {
+  ad: string;
+  aile: string;
+  adet: number;
+  hakli: number;
+}
 
-  for (const r of all<{ id: number; complaint_no: string; dept: string; due: string }>(
-    `SELECT c.id, c.complaint_no, d.name AS dept, c.escalation_due_at AS due
-       FROM complaints c JOIN departments d ON d.id = c.escalated_dept_id
-      WHERE c.escalated_at IS NOT NULL AND c.escalation_decided_at IS NULL
-        AND c.escalation_due_at IS NOT NULL
-        AND c.escalation_due_at <= date('now','+1 day')${ek.sql}
-      ORDER BY c.escalation_due_at LIMIT 20`, ...ek.params)) {
-    out.push({
-      tur: "ITIRAZ_SURESI",
-      baslik: `${r.complaint_no} — ${r.dept}`,
-      detay: `Karar süresi: ${r.due}`,
-      href: "/panel/itirazlar",
-      agirlik: 80,
-    });
-  }
-
-  const holidays = holidaySet();
-  const bugun = today();
-  for (const r of all<{ id: number; complaint_no: string; factory: string; received_at: string }>(
-    `SELECT c.id, c.complaint_no, f.short_name AS factory, c.received_at
-       FROM complaints c LEFT JOIN factories f ON f.id = c.factory_id
-      WHERE c.status NOT IN ('KAPANDI','REDDEDILDI','IPTAL')
-        AND c.received_at <= date('now','-10 days')${ek.sql}
-      ORDER BY c.received_at LIMIT 20`, ...ek.params)) {
-    const gun = businessDaysBetween(r.received_at, bugun, holidays);
-    if (gun < 10) continue;
-    out.push({
-      tur: "UZUN_SUREDIR_ACIK",
-      baslik: `${r.complaint_no} — ${r.factory}`,
-      detay: `${gun} iş günüdür açık`,
-      href: `/panel/sikayet/${r.id}`,
-      agirlik: 60 + gun,
-    });
-  }
-
-  // Örüntü 1: aynı fabrika + ürün + şikâyet türü son 30 günde 3 kez ve üzeri
-  for (const r of all<{ factory: string; product: string; kategori: string; n: number; fid: number }>(
-    `SELECT f.short_name AS factory, c.product_name AS product, cat.name AS kategori,
-            COUNT(*) AS n, c.factory_id AS fid
-       FROM complaints c
-       JOIN complaint_categories cat ON cat.id = c.category_id
-       LEFT JOIN factories f ON f.id = c.factory_id
-      WHERE c.received_at >= date('now','-30 days')${ek.sql}
-      GROUP BY c.factory_id, c.product_name, c.category_id
-     HAVING n >= 3 ORDER BY n DESC LIMIT 10`, ...ek.params)) {
-    out.push({
-      tur: "TEKRAR_EDEN_URUN",
-      baslik: `${r.factory} · ${r.product}`,
-      detay: `Son 30 günde ${r.n} kez "${r.kategori}"`,
-      href: `/panel/sikayetler?fabrika=${r.fid}&ara=${encodeURIComponent(r.product)}`,
-      agirlik: 70 + r.n,
-    });
-  }
-
-  // Örüntü 2: aynı müşteri son 90 günde 3 şikâyet ve üzeri
-  for (const r of all<{ firma: string; n: number }>(
-    `SELECT c.customer_company AS firma, COUNT(*) AS n
-       FROM complaints c
-      WHERE c.received_at >= date('now','-90 days')${ek.sql}
-      GROUP BY LOWER(TRIM(c.customer_company))
-     HAVING n >= 3 ORDER BY n DESC LIMIT 10`, ...ek.params)) {
-    out.push({
-      tur: "TEKRAR_EDEN_MUSTERI",
-      baslik: r.firma,
-      detay: `Son 90 günde ${r.n} şikâyet`,
-      href: `/panel/sikayetler?ara=${encodeURIComponent(r.firma)}`,
-      agirlik: 65 + r.n,
-    });
-  }
-
-  return out.sort((a, b) => b.agirlik - a.agirlik);
+/** Dairenin merceğindeki şikâyet türü dağılımı. */
+export function daireTurDagilimi(deptCode: DeptCode | null, r: PerfRange): DaireTuru[] {
+  const ek = mercekSuzgeci(deptCode);
+  return all<DaireTuru>(
+    `SELECT cat.name AS ad, cat.family AS aile, COUNT(*) AS adet,
+            SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS hakli
+       FROM complaints c JOIN complaint_categories cat ON cat.id = c.category_id
+      WHERE c.received_at BETWEEN ? AND ?${ek.sql}
+      GROUP BY cat.id ORDER BY adet DESC`,
+    r.from, r.to, ...ek.params,
+  );
 }
 
 /* --- Maliyet seyri -------------------------------------------------------- */

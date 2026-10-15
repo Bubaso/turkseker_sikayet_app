@@ -8,7 +8,7 @@ import { requirePageUser } from "@/server/auth";
 import {
   categoryBreakdown, yonetimAraligi, factoryPerformance, totalRow, type PerfRange,
 } from "@/server/stats";
-import { DIKKAT_BASLIK, dikkatGerektirenler, donemKiyasi, oncekiAralik } from "@/server/yonetim";
+import { donemKiyasi, oncekiAralik } from "@/server/yonetim";
 import { PrintToolbar } from "@/app/belge/[id]/toolbar";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,6 @@ export default async function YonetimOzetiPage({
   const toplam = totalRow(fabrikalar);
   const enZayif = [...fabrikalar].sort((a, b) => (a.sla_rate ?? 101) - (b.sla_rate ?? 101)).slice(0, 5);
   const turler = categoryBreakdown(aralik).slice(0, 5);
-  const dikkat = dikkatGerektirenler(deptCode).slice(0, 8);
   const kurum = one<{ value: string }>("SELECT value FROM settings WHERE key = 'kurum_adi'")?.value
     ?? "Türkiye Şeker Fabrikaları A.Ş.";
   const maliyet = kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli;
@@ -161,23 +160,6 @@ export default async function YonetimOzetiPage({
             ))}
             {turler.length === 0 && <li>Dönemde kayıt yok.</li>}
           </ol>
-        </section>
-
-        <section>
-          <h2 className="mb-1.5 border-b border-black text-[11pt] font-bold">
-            4. Dikkat gerektiren durumlar
-          </h2>
-          {dikkat.length === 0 ? (
-            <p className="text-[10pt]">Dikkat gerektiren bir durum bulunmamaktadır.</p>
-          ) : (
-            <ul className="ml-5 list-disc text-[10pt]">
-              {dikkat.map((d, i) => (
-                <li key={i} className="py-0.5">
-                  <span className="font-medium">{DIKKAT_BASLIK[d.tur]}:</span> {d.baslik} — {d.detay}
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         <footer className="mt-6 border-t border-ink-400 pt-2 text-[8.5pt] text-ink-600">

@@ -2,15 +2,17 @@ import Link from "next/link";
 import { all } from "@/lib/db";
 import { isGmRole } from "@/lib/roles";
 import {
-  OPEN_STATUSES, PRODUCT_GROUP_LABEL, STATUS_LABEL, VERDICT_LABEL,
+  PRODUCT_GROUP_LABEL, STATUS_LABEL, VERDICT_LABEL,
   type ProductGroup, type Status, type Verdict,
 } from "@/lib/domain";
-import {requirePageUser} from "@/server/auth";
+import { addDays, today } from "@/lib/dates";
+import { requirePageUser } from "@/server/auth";
 import { countComplaints, listComplaints, type ComplaintFilter } from "@/server/complaints";
 import { nextDue } from "@/server/stats";
 import { holidaySet } from "@/server/settings";
 import { Card, PageHeader } from "@/components/ui";
-import { ComplaintTable, type TableRowExtra } from "@/components/complaint-table";
+import { ComplaintTable, type TableRowExtra, type TabloFiltreleri } from "@/components/complaint-table";
+import type { FiltreSecenegi } from "@/components/tablo-filtre";
 
 export const dynamic = "force-dynamic";
 
@@ -74,15 +76,100 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
     "SELECT id, name FROM complaint_categories WHERE is_active = 1 ORDER BY sort_order",
   );
 
-  const title = q.kapanis ? "Kapanan dosyalar"
-    : q.gecikme === "1" ? "Geciken dosyalar"
-    : q.itiraz === "1" ? "İtiraza giden dosyalar"
-    : "Şikâyet dosyaları";
+  /* --- Sütun başlığı filtreleri ----------------------------------------- */
+
+  const bugun = today();
+  const tarihAraliklari: { etiket: string; bas: string }[] = [
+    { etiket: "Son 7 gün", bas: addDays(bugun, -6) },
+    { etiket: "Son 30 gün", bas: addDays(bugun, -29) },
+    { etiket: "Son 90 gün", bas: addDays(bugun, -89) },
+    { etiket: "Bu yıl", bas: `${bugun.slice(0, 4)}-01-01` },
+  ];
+
+  const filtreler: TabloFiltreleri = {
+    fabrika: gm
+      ? [
+          { etiket: "Tüm fabrikalar", deger: { fabrika: null }, secili: !q.fabrika },
+          ...factories.map((f): FiltreSecenegi => ({
+            etiket: f.short_name,
+            deger: { fabrika: String(f.id) },
+            secili: q.fabrika === String(f.id),
+          })),
+        ]
+      : undefined,
+    tarih: [
+      { etiket: "Tüm tarihler", deger: { bas: null, bit: null, kapanis: null }, secili: !q.bas && !q.bit && !q.kapanis },
+      ...tarihAraliklari.map((t): FiltreSecenegi => ({
+        etiket: t.etiket,
+        deger: { bas: t.bas, bit: bugun, kapanis: null },
+        secili: q.bas === t.bas && q.bit === bugun,
+      })),
+    ],
+    konu: [
+      { etiket: "Tüm şikâyet türleri", deger: { kategori: null }, secili: !q.kategori },
+      ...categories.map((c): FiltreSecenegi => ({
+        etiket: c.name,
+        deger: { kategori: String(c.id) },
+        secili: q.kategori === String(c.id),
+      })),
+    ],
+    urun: [
+      { etiket: "Tüm ürün grupları", deger: { urun: null }, secili: !q.urun },
+      ...(Object.keys(PRODUCT_GROUP_LABEL) as ProductGroup[]).map((g): FiltreSecenegi => ({
+        etiket: PRODUCT_GROUP_LABEL[g],
+        deger: { urun: g },
+        secili: q.urun === g,
+      })),
+    ],
+    durum: [
+      { etiket: "Tüm dosyalar", deger: { durum: null, grup: null, itiraz: null }, secili: !q.durum && !q.grup && q.itiraz !== "1" },
+      { etiket: "Yalnızca açık dosyalar", deger: { grup: "ACIK", durum: null, itiraz: null }, secili: q.grup === "ACIK" },
+      { etiket: "Yalnızca kapanmış dosyalar", deger: { grup: "KAPALI", durum: null, itiraz: null }, secili: q.grup === "KAPALI" },
+      { etiket: "Yalnızca itiraza gidenler", deger: { itiraz: "1", durum: null, grup: null }, secili: q.itiraz === "1" },
+      ...(Object.keys(STATUS_LABEL) as Status[]).map((st): FiltreSecenegi => ({
+        etiket: STATUS_LABEL[st],
+        deger: { durum: st, grup: null, itiraz: null },
+        secili: q.durum === st,
+      })),
+    ],
+    karar: [
+      { etiket: "Tüm kararlar", deger: { karar: null }, secili: !q.karar },
+      ...(Object.keys(VERDICT_LABEL) as Verdict[]).map((v): FiltreSecenegi => ({
+        etiket: VERDICT_LABEL[v],
+        deger: { karar: v },
+        secili: q.karar === v,
+      })),
+    ],
+    sira: [
+      { etiket: "Tümü", deger: { gecikme: null }, secili: q.gecikme !== "1" },
+      { etiket: "Yalnızca gecikenler", deger: { gecikme: "1" }, secili: q.gecikme === "1" },
+    ],
+  };
+
+  // Aktif filtreler, kaldırma bağlantılarıyla birlikte listenin üstünde durur.
+  const etkinler: { etiket: string; temizHref: string }[] = [];
+  const ekle = (etiket: string, patch: Partial<Q>) =>
+    etkinler.push({ etiket, temizHref: `/panel/sikayetler${qs(q, { ...patch, s: "" })}` });
+  if (q.ara) ekle(`Arama: "${q.ara}"`, { ara: "" });
+  if (q.fabrika) {
+    ekle(factories.find((f) => f.id === Number(q.fabrika))?.short_name ?? "Fabrika", { fabrika: "" });
+  }
+  if (q.bas || q.bit) ekle(`${q.bas ?? "…"} – ${q.bit ?? "…"}`, { bas: "", bit: "" });
+  if (q.kategori) {
+    ekle(categories.find((c) => c.id === Number(q.kategori))?.name ?? "Şikâyet türü", { kategori: "" });
+  }
+  if (q.urun) ekle(PRODUCT_GROUP_LABEL[q.urun as ProductGroup] ?? q.urun, { urun: "" });
+  if (q.durum) ekle(STATUS_LABEL[q.durum as Status] ?? q.durum, { durum: "" });
+  if (q.grup) ekle(q.grup === "ACIK" ? "Açık dosyalar" : "Kapanmış dosyalar", { grup: "" });
+  if (q.karar) ekle(VERDICT_LABEL[q.karar as Verdict] ?? q.karar, { karar: "" });
+  if (q.itiraz === "1") ekle("İtiraza gidenler", { itiraz: "" });
+  if (q.gecikme === "1") ekle("Gecikenler", { gecikme: "" });
+  if (q.kapanis) ekle(`${q.kapanis} içinde kapanan`, { kapanis: "" });
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={title}
+        title="Şikâyet dosyaları"
         subtitle={`${total} kayıt${gm ? " — tüm fabrikalar" : ` — ${user.factory_name}`}`}
         actions={
           !gm && (
@@ -93,96 +180,41 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
         }
       />
 
-      <Card title="Filtreler" bodyClass="p-3.5">
-        <form method="get" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
-            <label className="label" htmlFor="ara">Ara</label>
-            <input id="ara" name="ara" defaultValue={q.ara} className="input"
-                   placeholder="Şikâyet no, müşteri, konu, lot, telefon" />
-          </div>
-          <div>
-            <label className="label" htmlFor="durum">Durum</label>
-            <select id="durum" name="durum" defaultValue={q.durum ?? ""} className="input">
-              <option value="">Tümü</option>
-              {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
-                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="grup">Dosya</label>
-            <select id="grup" name="grup" defaultValue={q.grup ?? ""} className="input">
-              <option value="">Tümü</option>
-              <option value="ACIK">Yalnızca açık dosyalar</option>
-              <option value="KAPALI">Yalnızca kapanmış dosyalar</option>
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="karar">Karar</label>
-            <select id="karar" name="karar" defaultValue={q.karar ?? ""} className="input">
-              <option value="">Tümü</option>
-              {(Object.keys(VERDICT_LABEL) as Verdict[]).map((v) => (
-                <option key={v} value={v}>{VERDICT_LABEL[v]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="urun">Ürün grubu</label>
-            <select id="urun" name="urun" defaultValue={q.urun ?? ""} className="input">
-              <option value="">Tümü</option>
-              {(Object.keys(PRODUCT_GROUP_LABEL) as ProductGroup[]).map((g) => (
-                <option key={g} value={g}>{PRODUCT_GROUP_LABEL[g]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="kategori">Şikâyet türü</label>
-            <select id="kategori" name="kategori" defaultValue={q.kategori ?? ""} className="input">
-              <option value="">Tümü</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          {gm && (
-            <div>
-              <label className="label" htmlFor="fabrika">Fabrika</label>
-              <select id="fabrika" name="fabrika" defaultValue={q.fabrika ?? ""} className="input">
-                <option value="">Tümü (14 fabrika)</option>
-                {factories.map((f) => <option key={f.id} value={f.id}>{f.short_name}</option>)}
-              </select>
-            </div>
-          )}
-          <div>
-            <label className="label" htmlFor="bas">Başlangıç tarihi</label>
-            <input id="bas" name="bas" type="date" defaultValue={q.bas} className="input" />
-          </div>
-          <div>
-            <label className="label" htmlFor="bit">Bitiş tarihi</label>
-            <input id="bit" name="bit" type="date" defaultValue={q.bit} className="input" />
-          </div>
-          <div className="flex items-end gap-2 lg:col-span-2">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" name="gecikme" value="1" defaultChecked={q.gecikme === "1"} />
-              Yalnızca gecikenler
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" name="itiraz" value="1" defaultChecked={q.itiraz === "1"} />
-              Yalnızca itirazlar
-            </label>
-          </div>
-          <div className="flex items-end gap-2 lg:col-span-2 lg:justify-end">
-            <Link href="/panel/sikayetler" className="btn btn-secondary">Temizle</Link>
-            <button type="submit" className="btn btn-primary">Filtrele</button>
-          </div>
-        </form>
-      </Card>
-
       <Card bodyClass="">
-        <ComplaintTable rows={rows} extras={extras} holidays={holidays} showFactory={gm} />
+        {/* Listenin üstündeki tek şerit: arama ve açık filtreler.
+            Sütun süzgeçleri başlıklardaki oklarda durur. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-200 px-4 py-2.5">
+          <form method="get" action="/panel/sikayetler" className="flex items-center gap-2">
+            {(["durum", "grup", "karar", "urun", "kategori", "fabrika", "gecikme", "itiraz", "kapanis", "bas", "bit"] as const)
+              .filter((k) => q[k])
+              .map((k) => <input key={k} type="hidden" name={k} value={q[k]} />)}
+            <input name="ara" defaultValue={q.ara} className="input h-8 w-56 py-1 text-sm"
+                   placeholder="Şikâyet no, müşteri, konu, lot…" aria-label="Listede ara" />
+            <button type="submit" className="btn btn-secondary btn-sm">Ara</button>
+          </form>
+
+          <div className="flex flex-1 flex-wrap items-center gap-1.5">
+            {etkinler.map((f) => (
+              <Link key={f.etiket} href={f.temizHref}
+                    className="chip border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
+                    title="Bu filtreyi kaldır">
+                {f.etiket} <span aria-hidden className="ml-1">✕</span>
+              </Link>
+            ))}
+            {etkinler.length > 1 && (
+              <Link href="/panel/sikayetler" className="text-xs text-ink-500 hover:underline">
+                tümünü temizle
+              </Link>
+            )}
+          </div>
+        </div>
+
+        <ComplaintTable rows={rows} extras={extras} holidays={holidays} showFactory={gm}
+                        filtreler={filtreler} />
+
         {pages > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 px-4 py-2.5">
-            <p className="text-xs text-ink-500">
-              Sayfa {page} / {pages} — {total} kayıt
-            </p>
+            <p className="text-xs text-ink-500">Sayfa {page} / {pages} — {total} kayıt</p>
             <div className="flex gap-2">
               {page > 1 && (
                 <Link href={`/panel/sikayetler${qs(q, { s: String(page - 1) })}`}
@@ -196,10 +228,6 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
           </div>
         )}
       </Card>
-
-      <p className="text-xs text-ink-500">
-        Açık dosya durumları: {OPEN_STATUSES.map((s) => STATUS_LABEL[s]).join(" · ")}
-      </p>
     </div>
   );
 }

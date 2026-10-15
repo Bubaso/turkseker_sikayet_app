@@ -2,11 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { all, one, scalar } from "@/lib/db";
-import type { DeptCode } from "@/lib/domain";
 import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { currentUser, demoAccounts, type DemoAccount } from "@/server/auth";
 import { isDemoMode } from "@/server/settings";
-import { dikkatGerektirenler, okunmamisYaziSayisi } from "@/server/yonetim";
+import { okunmamisYaziSayisi } from "@/server/yonetim";
 import { logoutAction } from "@/app/giris/actions";
 import RoleSwitcher, { type FactoryGroup } from "@/components/role-switcher";
 import { PanelNav } from "@/components/panel-nav";
@@ -54,10 +53,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Üst yönetim ve daire menüsünün ek sayaçları
   const kademe: "fabrika" | "ustyonetim" | "daire" =
     user.role === "GM_DAIRE" && user.department_id ? "daire" : gm ? "ustyonetim" : "fabrika";
-  const deptCode = user.department_id
-    ? (one<{ code: string }>("SELECT code FROM departments WHERE id = ?", user.department_id)?.code ?? null)
-    : null;
-  const dikkatSayisi = gm ? dikkatGerektirenler(deptCode as DeptCode | null).length : 0;
   const yaziSayisi = user.department_id ? okunmamisYaziSayisi(user.department_id) : 0;
 
   const demo = isDemoMode();
@@ -116,12 +111,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           gm={gm}
           counts={{
             open: openCount, overdue: overdueCount, myTasks: myTaskCount,
-            escalations: escalationCount, dikkat: dikkatSayisi, yazilar: yaziSayisi,
+            escalations: escalationCount, yazilar: yaziSayisi,
           }}
           kademe={kademe}
           canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
           canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}
-          canDecideEscalation={can(user.role, PERMISSIONS.ITIRAZ_KARAR)}
         />
         <main className="min-w-0 flex-1">
           <Suspense fallback={null}>

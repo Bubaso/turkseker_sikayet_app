@@ -9,7 +9,8 @@ import {requirePageUser} from "@/server/auth";
 import { ACCEPT_ATTR } from "@/server/attachments";
 import { holidaySet } from "@/server/settings";
 import { Card, Chip, EmptyState, Notice, PageHeader, SlaChip, Stat } from "@/components/ui";
-import { LineChart, TableView } from "@/components/charts";
+import { LineChart } from "@/components/charts";
+import { Grafik } from "@/components/grafik";
 import { daireKararOzeti, itirazSeyri } from "@/server/yonetim";
 import type { ComplaintView } from "@/lib/types";
 import { EscalationDecision } from "./decision";
@@ -90,7 +91,13 @@ export default async function EscalationsPage({
           </div>
 
           {seyir.length > 1 && (
-            <Card title="İtirazların 12 aylık seyri" bodyClass="p-4 sm:p-5">
+            <Grafik
+              baslik="İtirazların 12 aylık seyri"
+              tablo={{
+                headers: ["Ay", "Gelen", "Kabul"],
+                rows: seyir.map((a) => [a.ay, a.gelen, a.kabul]),
+              }}
+            >
               <LineChart
                 labels={seyir.map((a) => a.ay)}
                 series={[
@@ -99,11 +106,7 @@ export default async function EscalationsPage({
                 ]}
                 caption="Dairenize gelen itiraz sayısı ve kabul edilen itirazlar."
               />
-              <TableView
-                headers={["Ay", "Gelen", "Kabul"]}
-                rows={seyir.map((a) => [a.ay, a.gelen, a.kabul])}
-              />
-            </Card>
+            </Grafik>
           )}
         </>
       )}

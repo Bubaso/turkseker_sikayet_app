@@ -30,6 +30,8 @@ export type SureKaynagi = "EKIP" | "INCELEME" | "ISLEM" | "RAPOR" | "ITIRAZ" | "
 export interface Asama {
   kod: AsamaKodu;
   baslik: string;
+  /** Grafik eksenleri ve dar sütunlar için kısa ad. */
+  kisa: string;
   aciklama: string;
   /** Varsayılan sorumlu unvan. */
   rol: Role;
@@ -50,6 +52,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   EKIP: {
     kod: "EKIP",
     baslik: "İnceleme ekibini oluştur",
+    kisa: "Ekip oluşturma",
     aciklama:
       "Şikâyet tarihinden itibaren en geç 1 iş günü içinde inceleme ekibi görevlendirilir. " +
       "Firma adresine daha yakın bir fabrikamız varsa dosya oraya yönlendirilebilir.",
@@ -64,6 +67,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   INCELEME: {
     kod: "INCELEME",
     baslik: "İnceleme ve analiz belgelerini yükle",
+    kisa: "İnceleme",
     aciklama:
       "Yerinde (ya da ürün görselleri üzerinden) inceleme yapılır, gerekiyorsa numune alınıp " +
       "analiz ettirilir. İnceleme tutanağı ve varsa analiz raporu elde hazırlanır; buraya " +
@@ -80,6 +84,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   KARAR: {
     kod: "KARAR",
     baslik: "Kararı ve imzalı tutanağı yükle",
+    kisa: "Karar tutanağı",
     aciklama:
       "Şikâyetin haklı bulunup bulunmadığı karara bağlanır. İmza süreci fabrikada elle " +
       "yürütülür; tamamlanan imzalı tutanağın son hâli buraya yüklenir ve karar işaretlenir.",
@@ -95,6 +100,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   ITIRAZ: {
     kod: "ITIRAZ",
     baslik: "İtirazı Daire Başkanlığına gönder",
+    kisa: "İtiraz gönderimi",
     aciklama:
       "Şikâyet haklı bulunmadığı ve miktar eşiği aşıldığı için dosya ilgili Daire " +
       "Başkanlığının değerlendirmesine gönderilir.",
@@ -110,6 +116,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   DAIRE_KARAR: {
     kod: "DAIRE_KARAR",
     baslik: "Daire Başkanlığı kararını kaydet",
+    kisa: "Daire kararı",
     aciklama:
       "İlgili Daire Başkanlığı, itirazın yapıldığı tarihten itibaren 5 iş günü içinde " +
       "değerlendirir ve kararını kaydeder.",
@@ -125,6 +132,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   ISLEM: {
     kod: "ISLEM",
     baslik: "İade / değişim ve nakliye belgelerini yükle",
+    kisa: "İade / değişim",
     aciklama:
       "Şikâyet tarihinden itibaren en geç 5 iş günü içinde ürünün iadesi alınır veya değişimi " +
       "yapılır; kusur fabrikadan kaynaklanıyorsa nakliye bedeli ödenir. İrsaliye, dekont ve " +
@@ -141,6 +149,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   RESMI_YAZI: {
     kod: "RESMI_YAZI",
     baslik: "Resmî yazıyı ve müşteri bilgilendirmesini yükle",
+    kisa: "Resmî yazı",
     aciklama:
       "Şikâyet formu, tutanaklar ve yapılan işlemlerin sonucu ilgili Daire Başkanlıklarına " +
       "resmî yazıyla gönderilir; müşteriye bilgilendirme yapılır. Gönderilen yazı buraya " +
@@ -160,6 +169,7 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   KAPANIS: {
     kod: "KAPANIS",
     baslik: "Dosyayı kapat",
+    kisa: "Dosya kapanışı",
     aciklama: "Tüm aşamalar tamamlandıktan sonra Fabrika Müdürü dosyayı kapatır.",
     rol: ROLES.FABRIKA_MUDURU,
     belgeli: false,
