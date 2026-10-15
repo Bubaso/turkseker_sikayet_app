@@ -201,7 +201,12 @@ try {
     ? ok("Seçilen kişi sayısına göre 3 kişi kutusu belirdi")
     : hata(`Kişi kutusu sayısı beklenenden farklı: ${kutuSayisi}`);
 
-  const unvanlar = ["Kalite Sorumlusu", "Teknik (İşletme) Yetkilisi", "Muhasebe Yetkilisi"];
+  /*
+   * Ekip, dosyada çalışacak herkesi içerir: aşama yalnızca ekip üyelerine
+   * verilebildiği için iade/değişimi yapacak Ambar Şefi de ekipte olmalıdır.
+   * Senaryonun ilerleyen adımlarında o aşamayı Ambar Şefi kaydediyor.
+   */
+  const unvanlar = ["Kalite Sorumlusu", "Teknik (İşletme) Yetkilisi", "Ambar Şefi"];
   for (let i = 0; i < 3; i++) {
     await mudur.selectOption(`#unvan_${i}`, { label: unvanlar[i] });
     await mudur.waitForTimeout(150);

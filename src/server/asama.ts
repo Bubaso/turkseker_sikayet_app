@@ -118,34 +118,30 @@ export async function ekibiKur(
   const lider = temiz[0].userId;
 
   /*
-   * Görevlendirme ekiple sınırlı değildir, fabrikayla sınırlıdır: iade/değişim
-   * ambarın, resmî yazı kalitenin işidir ve bu kişiler inceleme ekibinde
-   * olmayabilir. Ekip inceleme için kurulur; sonraki aşamalar işi yapan birime
-   * düşer.
+   * Görevlendirme ekiple sınırlıdır: dosyada çalışacak herkes ekiptedir, bir
+   * aşamayı başkasına vermek için önce o kişiyi ekibe almak gerekir. Böylece
+   * "bu dosyaya kim baktı" sorusunun tek bir cevabı olur.
    *
-   * Boş bırakılan aşama, unvanı uyan fabrika personeline (eski davranış),
-   * o da yoksa ekip liderine düşer; böylece her aşamanın sahibi belli olur.
+   * Boş bırakılan ya da ekip dışından gelen aşama, unvanı uyan ekip üyesine,
+   * o da yoksa ekip liderine düşer; her aşamanın sahibi belli olur.
    */
-  const fabrikaPersoneli = new Set(
-    all<{ id: number }>(
-      "SELECT id FROM users WHERE factory_id = ? AND is_active = 1", c.factory_id,
-    ).map((r) => r.id),
+  const unvanlar = new Map(
+    all<{ id: number; role: string }>(
+      `SELECT id, role FROM users WHERE id IN (${temiz.map(() => "?").join(",")})`,
+      ...temiz.map((u) => u.userId),
+    ).map((r) => [r.id, r.role]),
   );
 
   const dagitim = new Map<AsamaKodu, number>();
   for (const g of gorevler) {
     if (!EKIP_ASAMALARI.includes(g.kod)) continue;
-    if (!fabrikaPersoneli.has(g.userId)) continue;
+    if (!unvanlar.has(g.userId)) continue;      // ekip dışı seçim yok sayılır
     dagitim.set(g.kod, g.userId);
   }
   for (const kod of EKIP_ASAMALARI) {
     if (dagitim.has(kod)) continue;
-    const varsayilan = one<{ id: number }>(
-      `SELECT id FROM users WHERE factory_id = ? AND role = ? AND is_active = 1
-        ORDER BY id LIMIT 1`,
-      c.factory_id, ASAMALAR[kod].rol,
-    )?.id;
-    dagitim.set(kod, varsayilan ?? lider);
+    const uygun = temiz.find((u) => unvanlar.get(u.userId) === ASAMALAR[kod].rol);
+    dagitim.set(kod, uygun?.userId ?? lider);
   }
 
   tx(() => {

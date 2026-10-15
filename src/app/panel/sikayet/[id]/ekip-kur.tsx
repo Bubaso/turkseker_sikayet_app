@@ -96,27 +96,28 @@ export function EkipKur({
   const [elle, setElle] = useState<Record<string, string>>({});
 
   /*
-   * Aşamanın varsayılan sorumlusu: unvanı aşamanın rolüne uyan kişi — önce
-   * ekipten, yoksa fabrikanın kadrosundan. İade/değişim ambarın, resmî yazı
-   * kalitenin işidir ve bu kişiler inceleme ekibinde olmayabilir.
+   * Aşama yalnızca ekip üyelerine verilebilir: dosyada çalışacak herkes
+   * ekiptedir. Varsayılan, unvanı aşamanın rolüne uyan üye; o unvan ekipte
+   * yoksa ekip lideri (ve kutunun altında uyarısı çıkar).
    */
   function varsayilan(kod: string): string {
     const rol = ASAMALAR[kod as keyof typeof ASAMALAR]?.rol;
-    const ekipten = ekip.find((p) => p.role === rol);
-    if (ekipten) return String(ekipten.id);
-    const fabrikadan = personel.find((p) => p.role === rol);
-    return String((fabrikadan ?? ekip[0])?.id ?? "");
+    const uygun = ekip.find((p) => p.role === rol);
+    return String((uygun ?? ekip[0])?.id ?? "");
   }
 
   function gorevli(kod: string): string {
     const secim = elle[kod];
-    // Elle seçilen kişi kadrodan çıkmışsa varsayılana dönülür.
-    if (secim && personel.some((p) => String(p.id) === secim)) return secim;
+    // Elle seçilen kişi ekipten çıkarılmışsa varsayılana dönülür.
+    if (secim && ekip.some((p) => String(p.id) === secim)) return secim;
     return varsayilan(kod);
   }
 
-  // Seçim listesi: önce ekip, sonra fabrikanın geri kalanı.
-  const ekipDisi = personel.filter((p) => !ekip.some((e) => e.id === p.id));
+  /** Aşamanın doğal unvanı ekipte var mı? Yoksa müdür bilerek seçmeli. */
+  function unvanEkipteMi(kod: string): boolean {
+    const rol = ASAMALAR[kod as keyof typeof ASAMALAR]?.rol;
+    return ekip.some((p) => p.role === rol);
+  }
 
   return (
     <div className="space-y-4">
@@ -215,10 +216,10 @@ export function EkipKur({
               Hangi aşama kimde?
             </legend>
             <p className="mb-3 text-xs text-ink-500">
-              Fabrikada elle yürüyen aşamaların sorumlusu. Varsayılan olarak unvanı
-              uyan kişi gelir; değiştirebilirsiniz. Ekip dışından da
-              görevlendirebilirsiniz — iade/değişim ambarın, resmî yazı kalitenin
-              işidir. Karar sonrası açılacak aşamalar da bu dağıtıma göre atanır.
+              Fabrikada elle yürüyen aşamaların sorumlusu. Yalnızca ekipteki kişiler
+              seçilebilir; bir aşamayı başkasına vermek için önce onu ekibe ekleyin.
+              Varsayılan olarak unvanı uyan üye gelir. Karar sonrası açılacak
+              aşamalar da bu dağıtıma göre atanır.
             </p>
             <ul className="space-y-2.5">
               {EKIP_ASAMALARI.map((kod) => {
@@ -228,9 +229,16 @@ export function EkipKur({
                   <li key={kod} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_16rem] sm:items-center sm:gap-3">
                     <label className="text-sm text-ink-800" htmlFor={`gorev_${kod}`}>
                       {a.baslik}
-                      <span className="block text-xs text-ink-500">
-                        Varsayılan: {ROL_ADI[a.rol] ?? a.rol}
-                      </span>
+                      {unvanEkipteMi(kod) ? (
+                        <span className="block text-xs text-ink-500">
+                          Bu aşamanın unvanı: {ROL_ADI[a.rol] ?? a.rol}
+                        </span>
+                      ) : (
+                        <span className="block text-xs text-warn-700">
+                          {ROL_ADI[a.rol] ?? a.rol} ekipte yok — bu aşama seçtiğiniz
+                          kişiye düşecek.
+                        </span>
+                      )}
                     </label>
                     <select
                       id={`gorev_${kod}`}
@@ -239,22 +247,11 @@ export function EkipKur({
                       value={deger}
                       onChange={(e) => setElle((o) => ({ ...o, [kod]: e.target.value }))}
                     >
-                      <optgroup label="İnceleme ekibi">
-                        {ekip.map((p, i) => (
-                          <option key={p.id} value={p.id}>
-                            {p.full_name} — {p.title}{i === 0 ? " (lider)" : ""}
-                          </option>
-                        ))}
-                      </optgroup>
-                      {ekipDisi.length > 0 && (
-                        <optgroup label="Fabrikanın diğer personeli">
-                          {ekipDisi.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.full_name} — {p.title}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
+                      {ekip.map((p, i) => (
+                        <option key={p.id} value={p.id}>
+                          {p.full_name} — {p.title}{i === 0 ? " (lider)" : ""}
+                        </option>
+                      ))}
                     </select>
                   </li>
                 );

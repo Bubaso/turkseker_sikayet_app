@@ -480,11 +480,16 @@ iade/değişim, resmî yazı. Dışarıda kalanların sorumlusu tartışmasızd�
 kurma ve dosya kapanışı müdürün kendi işi, itiraz gönderimi yine müdürün, daire
 kararı ilgili Daire Başkanlığının.
 
-Görevlendirme **ekiple değil fabrikayla sınırlıdır**: iade/değişim ambarın,
-resmî yazı kalitenin işidir ve bu kişiler inceleme ekibinde olmayabilir. Ekip
-inceleme için kurulur; sonraki aşamalar işi yapan birime düşer. Varsayılan,
-unvanı aşamanın rolüne uyan kişidir (önce ekipten, yoksa kadrodan); boş
-bırakılan aşama o kişiye, o da yoksa ekip liderine düşer.
+Görevlendirme **ekiple sınırlıdır**: bir aşamayı birine vermek için önce o
+kişiyi ekibe almak gerekir. Dosyada çalışacak herkes ekiptedir, böylece "bu
+dosyaya kim baktı" sorusunun tek bir cevabı olur — iade/değişimi Ambar Şefi
+yapacaksa Ambar Şefi de inceleme ekibinde yer alır.
+
+Varsayılan, unvanı aşamanın rolüne uyan ekip üyesidir; boş bırakılan aşama o
+kişiye, o unvan ekipte yoksa ekip liderine düşer. Unvan ekipte yoksa kutunun
+altında uyarısı çıkar, böylece müdür ya o kişiyi ekibe ekler ya da aşamayı
+bilerek başkasına verir. Sunucu aynı kuralı yeniden uygular: ekip dışından
+gelen bir seçim yok sayılır.
 
 Kurulan ekip dosya sayfasında kalıcı olarak durur: kim vardı, kim liderdi ve
 kim hangi aşamadan sorumluydu. "Bu dosyaya kim baktı" sorusu dosya kapandıktan
