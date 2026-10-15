@@ -25,6 +25,7 @@ belgeyle kayda geçtiğini tutmak ve süreci izlenebilir kılmaktır.
 - [Geniş ekran](#geniş-ekran)
 - [Yapılandırma](#yapılandırma)
 - [Canlıya geçiş adımları](#canlıya-geçiş-adımları)
+- [Başka bir adresten erişim](#başka-bir-adresten-erişim-tünel-vekil-sunucu-alan-adı)
 - [Türkşeker sitesine entegrasyon](#türkşeker-sitesine-entegrasyon)
 - [Testler](#testler)
 - [Talimattan sapmalar ve eklemeler](#talimattan-sapmalar-ve-eklemeler)
@@ -868,6 +869,49 @@ tanımlıdır**; Diyanet İşleri Başkanlığının resmî ilanından sonra
     karşılıklarıyla değiştirilir.
 
 ---
+
+## Başka bir adresten erişim (tünel, vekil sunucu, alan adı)
+
+Uygulamaya `localhost` dışında bir adresten erişilecekse — tanıtım için
+açılan geçici bir tünel, kurumsal bir ters vekil sunucu ya da gerçek alan
+adı — o adres `ALLOWED_ORIGINS` ile tanıtılmalıdır:
+
+```env
+ALLOWED_ORIGINS=ornek.trycloudflare.com
+ALLOWED_ORIGINS=sikayet.turkseker.gov.tr,10.0.0.5:3000
+```
+
+**Neden gerekli:** Next.js, Server Action isteklerinde `origin` başlığıyla
+`x-forwarded-host` başlığının eşleşmesini arar; eşleşmezse isteği *Invalid
+Server Actions request* diyerek reddeder. Bu uygulamanın her düğmesi bir
+Server Action olduğu için, adres tanıtılmadan bir vekil sunucunun arkasında
+**giriş bile çalışmaz** — sayfalar açılır, hiçbir işlem yapılamaz.
+
+Değişken başlatma anında okunur; adres değiştiğinde yeniden derlemek
+gerekmez, sunucuyu yeniden başlatmak yeter. Ayrıca `APP_BASE_URL` de aynı
+adrese çekilmelidir, yoksa SMS'lerdeki takip bağlantıları `localhost` der.
+
+### Geçici tanıtım bağlantısı
+
+Kurulum gerektirmeden bir bağlantı üzerinden göstermek için
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+yeter (hesap gerekmez):
+
+```bash
+cloudflared tunnel --url http://localhost:3000     # → https://xxx.trycloudflare.com
+```
+
+Ardından uygulamayı o adresi tanıyarak başlatın:
+
+```bash
+ALLOWED_ORIGINS=xxx.trycloudflare.com \
+APP_BASE_URL=https://xxx.trycloudflare.com \
+npm run start
+```
+
+Bu bir barındırma değil, kendi makinenize açılan bir tüneldir: bilgisayar
+açık ve uygulama çalışır durumda olmalıdır. Bağlantı herkese açıktır ve demo
+hesaplarının şifresi bilinendir; tanıtım bitince tüneli kapatın.
 
 ## Türkşeker sitesine entegrasyon
 
