@@ -92,7 +92,7 @@ function AsamaKutusu({ a, sira, v }: { a: AsamaGorunumu; sira: number; v: SurecV
           </p>
 
           {a.result_note && (
-            <p className="mt-1.5 text-sm whitespace-pre-wrap text-ink-600">{a.result_note}</p>
+            <p className="mt-1.5 text-sm break-words whitespace-pre-wrap text-ink-600">{a.result_note}</p>
           )}
 
           {belgeler.length > 0 && (

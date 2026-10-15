@@ -433,7 +433,7 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
             {v.description && (
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium tracking-wide text-ink-500 uppercase">Açıklama</dt>
-                <dd className="mt-0.5 text-sm whitespace-pre-wrap text-ink-900">{v.description}</dd>
+                <dd className="mt-0.5 text-sm break-words whitespace-pre-wrap text-ink-900">{v.description}</dd>
               </div>
             )}
             {fileNames.length > 0 && (

@@ -21,6 +21,7 @@ belgeyle kayda geçtiğini tutmak ve süreci izlenebilir kılmaktır.
 - [Modüller](#modüller)
 - [Mimari](#mimari)
 - [Kurumsal kimlik](#kurumsal-kimlik)
+- [Dar ekran](#dar-ekran)
 - [Yapılandırma](#yapılandırma)
 - [Canlıya geçiş adımları](#canlıya-geçiş-adımları)
 - [Türkşeker sitesine entegrasyon](#türkşeker-sitesine-entegrasyon)
@@ -598,6 +599,74 @@ notuna](#türkşeker-sitesine-entegrasyon) bakın.
 
 ---
 
+## Dar ekran
+
+Uygulama sahada telefondan da kullanılır: Fabrika Müdürü dosyayı ambarda açar,
+Kalite Sorumlusu aşamayı yerinde kaydeder. Dar ekran bu yüzden masaüstünün
+küçültülmüş hâli değil, kendi düzeni olan bir görünümdür.
+
+### Menü çekmecede durur
+
+Kenar çubuğu dar ekranda içeriğin üstüne yığılıyordu: kullanıcı her sayfada
+önce on bir menü maddesini geçip sonra içeriğe varıyordu. Menü artık
+başlıktaki düğmeden açılan bir çekmecededir (`src/components/panel-cekmece.tsx`)
+ve sayfa doğrudan içerikle başlar. Çekmece kalıcı pencere gibi davranır: arka
+plan kararır ve dokununca kapanır, Esc kapatır, sekme odağı içeride döner,
+açıkken sayfa kaymaz, başka sayfaya geçilince kendiliğinden kapanır. Hareket
+kısıtlaması isteyen kullanıcıda animasyon çalışmaz.
+
+Menünün tanımı tek yerdedir (`src/components/panel-menu.ts`); kenar çubuğu ile
+çekmece aynı kaynaktan beslenir, madde eklemek iki yerde iş çıkarmaz.
+Çekmecenin altında kullanıcının adı ve unvanı durur — başlıkta dar ekranda
+gizlendiği için kimle oturum açıldığı başka yerde görünmüyordu.
+
+### Liste kart olur
+
+Şikâyet listesi 360px'lik bir ekranda 1600px genişliğindeydi ve en çok bakılan
+sütun — durum — ekranın dışında kalıyordu. `lg` altında aynı veri kart olarak
+çizilir (`src/components/complaint-table.tsx`): kartın tamamı dokunma hedefidir
+ve sıralama önceliğe göredir — kim, ne, nerede durduğu, sırada ne olduğu.
+
+Sütun süzgeçleri kartta da erişilebilir: başlık olmadığı için listenin üstünde
+yatay kayan bir şeritte toplanırlar. Seçili süzgeç dolu çizilir ve seçimi
+üzerinde yazar, yani şerit aynı zamanda neyin açık olduğunun özetidir. Süzgeç
+bileşeni tek bileşendir (`tablo-filtre.tsx`), yalnızca görünümü değişir.
+
+### Takvim özete iner
+
+Yedi sütunluk ızgarada hücre dar ekranda ~50px kalıyor ve aşama başlıkları
+sütunun dışına taşıyordu. `sm` altında hücre bir özettir: ne olduğunu renkli
+noktalar söyler (yeni şikâyet, aşama son tarihi, gecikmiş, resmî tatil) ve
+altında nokta kodunun karşılığı durur. Ayrıntı — hangi aşama, hangi dosya, kim
+— ızgaranın altındaki listede okunur. O liste yalnızca dar ekranda çizilir:
+geniş ekranda aynı bilgi hücrelerde zaten yazılı ve iki yerde birden durması
+gereksiz tekrar olurdu.
+
+### Dokunma ve yazı
+
+| Kural | Değer | Nereden |
+|---|---|---|
+| Dokunma hedefi | en az 24×24, birincil eylemlerde 44×44 | WCAG 2.2 AA (2.5.8) ve yerleşik teamül |
+| Form alanı yazı boyutu | dar ekranda en az 16px | iOS Safari daha küçüğüne odaklanınca sayfayı yakınlaştırır |
+| Serbest metin | `break-words` | Uzun takip bağlantısı satır sonunda kırılmazsa sayfayı yatay kaydırır |
+
+A4 çıktı önizlemeleri (`/belge/[id]`, `/panel/ozet`) kâğıt ölçüsünü korur ve
+kendi kutusunda yatay kayar; sayfanın tamamı kaymaz. Kâğıdı ekrana sığacak
+kadar küçültmek metni okunmaz yapardı.
+
+Bildirim kutusunda mesaj gövdeleri katlı durur. Bu sayfa gönderilenin
+kanıtıdır, okuma listesi değil: elli bildirimin tam e-posta metni açıkken liste
+dar ekranda 49.000 piksel uzuyordu, şimdi 7.000.
+
+### Testi
+
+`npm run test:mobil` iki cihaz ölçüsünde (360×740 ve 375×667) on sekiz sayfayı
+gezer ve her birinde yatay taşma, 24px altı dokunma hedefi, 16px altı form
+alanı ve kırpılan metin arar; ardından çekmecenin ve kart listesinin
+davranışını sınar. 156 kontrol.
+
+---
+
 ## Yapılandırma
 
 Tüm ayarlar `.env.local` dosyasındadır (`.env.example` dosyasını kopyalayın).
@@ -763,6 +832,7 @@ npm run build          # üretim derlemesi
 npm run test:senaryo   # uçtan uca şikâyet akışı
 npm run test:sahiplik  # tek sorumlu ve sıra kuralı
 npm run test:olcek     # yazı ölçeği / erişilebilirlik
+npm run test:mobil     # dar ekran düzeni ve dokunma hedefleri
 ```
 
 `test:surucu` veritabanı sürücüsünün işlem semantiğini doğrular: commit,
@@ -819,6 +889,16 @@ TEST_BASE=http://localhost:3100 npm run test:olcek
 
 A4 çıktı sayfaları bilerek kapsam dışıdır; gerekçesi
 [erişilebilirlik notundadır](#türkşeker-sitesine-entegrasyon).
+
+**Dar ekran testi.** İki cihaz ölçüsünde on sekiz sayfayı gezip yatay taşma,
+24px altı dokunma hedefi, 16px altı form alanı ve kırpılan metin arar; sonra
+menü çekmecesinin (açılma, Esc, sayfa kilidi, sayfa değişince kapanma) ve kart
+listesinin davranışını sınar. Ayrıntısı [Dar ekran](#dar-ekran) bölümündedir.
+
+```bash
+npm run test:mobil                          # varsayılan http://localhost:3000
+TEST_BASE=http://localhost:3100 npm run test:mobil
+```
 
 > Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
 > indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu

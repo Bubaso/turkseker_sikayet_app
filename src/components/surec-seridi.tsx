@@ -39,7 +39,7 @@ export function SurecSeridi({ adimlar }: { adimlar: SurecAdimi[] }) {
               {a.zaman && <span className="tnum text-xs text-ink-500">{a.zaman}</span>}
             </div>
             {a.aciklama && (
-              <p className="mt-1 max-w-[68ch] text-sm leading-relaxed whitespace-pre-wrap text-ink-600">
+              <p className="mt-1 max-w-[68ch] text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-600">
                 {a.aciklama}
               </p>
             )}

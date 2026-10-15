@@ -126,7 +126,7 @@ export default async function OutboxPage({
                   </span>
                   {n.complaint_no && n.complaint_id && (
                     <Link href={`/panel/sikayet/${n.complaint_id}`}
-                          className="font-mono text-xs text-brand-700 hover:underline">
+                          className="inline-flex min-h-6 items-center font-mono text-xs text-brand-700 hover:underline">
                       {n.complaint_no}
                     </Link>
                   )}
@@ -138,8 +138,19 @@ export default async function OutboxPage({
                   {n.status === "HATA" && <RetryButton notificationId={n.id} />}
                 </div>
                 {n.subject && <p className="mt-1 text-sm font-medium text-ink-800">{n.subject}</p>}
-                <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-ink-600">{n.body}</p>
-                {n.error && <p className="mt-1 text-xs text-danger-700">Hata: {n.error}</p>}
+                {/* Gövde katlı durur. Bu sayfa gönderilenin kanıtıdır, okuma
+                    listesi değil: elli bildirimin tam e-posta metni açıkken
+                    liste dar ekranda on binlerce piksel uzuyor ve hangi
+                    bildirimin nerede bittiği görünmüyordu. */}
+                <details className="group mt-0.5">
+                  <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1.5 text-sm text-ink-600">
+                    <span className="min-w-0 flex-1 truncate">{n.body}</span>
+                    <span aria-hidden className="shrink-0 text-xs text-ink-400 transition-transform group-open:rotate-180">▾</span>
+                    <span className="sr-only">Mesajın tamamını göster</span>
+                  </summary>
+                  <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-600">{n.body}</p>
+                </details>
+                {n.error && <p className="mt-1 text-xs break-words text-danger-700">Hata: {n.error}</p>}
               </li>
             ))}
           </ul>

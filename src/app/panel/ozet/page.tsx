@@ -58,6 +58,9 @@ export default async function YonetimOzetiPage({
       <PrintToolbar complaintId={0} geriHref="/panel" geriEtiket="Panele dön"
                     docNo={`Yönetim özeti · ${aralik.from} – ${aralik.to}`} />
 
+      {/* Kâğıt ölçüsü korunur, kaydırma kâğıdın kendi kutusundadır:
+          dar ekranda sayfanın tamamı yana kaymaz. */}
+      <div className="overflow-x-auto px-4 print:overflow-visible print:px-0">
       <article className="print-page mx-auto w-[210mm] max-w-full bg-white p-[16mm_14mm] text-[10.5pt] leading-relaxed text-black shadow-sm print:w-auto print:shadow-none">
         <header className="mb-4 border-b-2 border-black pb-2 text-center">
           <div className="mb-1.5 flex justify-center">
@@ -173,6 +176,7 @@ export default async function YonetimOzetiPage({
           düşülür.
         </footer>
       </article>
+      </div>
     </div>
   );
 }

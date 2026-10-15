@@ -9,6 +9,7 @@ import { okunmamisYaziSayisi } from "@/server/yonetim";
 import { logoutAction } from "@/app/giris/actions";
 import RoleSwitcher, { type FactoryGroup } from "@/components/role-switcher";
 import { PanelNav } from "@/components/panel-nav";
+import { PanelCekmece } from "@/components/panel-cekmece";
 import { FlashMessage } from "@/components/flash";
 import { Amblem } from "@/components/marka";
 
@@ -56,6 +57,13 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     user.role === "GM_DAIRE" && user.department_id ? "daire" : gm ? "ustyonetim" : "fabrika";
   const yaziSayisi = user.department_id ? okunmamisYaziSayisi(user.department_id) : 0;
 
+  // Menü iki yerde çizilir (geniş ekranda kenar çubuğu, dar ekranda çekmece);
+  // sayaçlar tek yerde toplanır.
+  const menuSayaclari = {
+    open: openCount, overdue: overdueCount, myTasks: myTaskCount,
+    escalations: escalationCount, yazilar: yaziSayisi,
+  };
+
   const demo = isDemoMode();
   let factoryAccounts: FactoryGroup[] = [];
   let gmAccounts: DemoAccount[] = [];
@@ -72,16 +80,31 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="h-1 bg-brand-600" aria-hidden />
 
       <header className="sticky top-0 z-10 border-b border-ink-200 bg-white">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-          <Link href="/panel" className="flex items-center gap-2.5">
-            <Amblem boyut={30} className="shrink-0" />
-            <span className="leading-tight">
-              <span className="block text-sm font-semibold text-ink-900">Şikâyet Takip Sistemi</span>
-              <span className="block text-xs text-ink-500">
-                {gm ? (user.department_name ?? "Genel Müdürlük") : user.factory_name}
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <PanelCekmece
+              gm={gm}
+              counts={menuSayaclari}
+              kademe={kademe}
+              canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
+              canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}
+              altbilgi={
+                <div className="leading-tight">
+                  <span className="block text-sm font-medium text-ink-800">{user.full_name}</span>
+                  <span className="block text-xs text-ink-500">{user.title}</span>
+                </div>
+              }
+            />
+            <Link href="/panel" className="flex min-w-0 items-center gap-2.5">
+              <Amblem boyut={30} className="shrink-0" />
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-sm font-semibold text-ink-900">Şikâyet Takip Sistemi</span>
+                <span className="block truncate text-xs text-ink-500">
+                  {gm ? (user.department_name ?? "Genel Müdürlük") : user.factory_name}
+                </span>
               </span>
-            </span>
-          </Link>
+            </Link>
+          </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden text-right leading-tight sm:block">
@@ -108,10 +131,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-5 px-4 py-5 lg:flex-row">
         <PanelNav
           gm={gm}
-          counts={{
-            open: openCount, overdue: overdueCount, myTasks: myTaskCount,
-            escalations: escalationCount, yazilar: yaziSayisi,
-          }}
+          counts={menuSayaclari}
           kademe={kademe}
           canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
           canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}

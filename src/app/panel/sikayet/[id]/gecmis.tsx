@@ -47,7 +47,7 @@ export function Gecmis({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink-900">{e.title}</p>
                 {e.note && (
-                  <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-ink-600">
+                  <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-600">
                     {e.note}
                   </p>
                 )}
@@ -93,7 +93,7 @@ export function Gecmis({
                   <span className="tnum text-xs text-ink-500">→ {n.recipient}</span>
                 </div>
                 {n.subject && <p className="mt-1 text-sm font-medium text-ink-800">{n.subject}</p>}
-                <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-ink-600">{n.body}</p>
+                <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-600">{n.body}</p>
                 {n.error && <p className="mt-1 text-xs text-danger-700">Hata: {n.error}</p>}
               </li>
             ))}

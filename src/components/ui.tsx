@@ -64,8 +64,13 @@ export function SlaChip({ sla, compact = false }: { sla: SlaInfo; compact?: bool
   );
 }
 
-export function VerdictChip({ verdict }: { verdict: string | null }) {
-  if (!verdict) return <span className="text-ink-400">—</span>;
+export function VerdictChip({ verdict, bosGizle = false }: {
+  verdict: string | null;
+  /** Karar yoksa hiç çizme. Tabloda sütun hizası için tire gerekir, kartta
+      yalnız bir tire anlamsız durur. */
+  bosGizle?: boolean;
+}) {
+  if (!verdict) return bosGizle ? null : <span className="text-ink-400">—</span>;
   const ok = verdict === "HAKLI";
   return (
     <Chip tone={ok ? "ok" : "ink"} dot title={ok ? "Şikâyet haklı bulundu" : "Şikâyet haklı bulunmadı"}>
@@ -108,7 +113,10 @@ export function PageHeader({
           {breadcrumb.map((b, i) => (
             <span key={b.href} className="flex items-center gap-1.5">
               {i > 0 && <span aria-hidden>/</span>}
-              <Link href={b.href} className="hover:text-brand-600 hover:underline">{b.label}</Link>
+              <Link href={b.href}
+                    className="inline-flex min-h-6 items-center hover:text-brand-600 hover:underline">
+                {b.label}
+              </Link>
             </span>
           ))}
         </nav>
@@ -175,7 +183,7 @@ export function Stat({
   const body = (
     <>
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>
-      <p className={`tnum mt-1 text-2xl leading-tight font-semibold ${valueTone}`}>{value}</p>
+      <p className={`tnum mt-1 text-xl leading-tight font-semibold break-words sm:text-2xl ${valueTone}`}>{value}</p>
       {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
     </>
   );
@@ -223,7 +231,9 @@ export function StatDelta({
   const body = (
     <>
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>
-      <p className="tnum mt-1 text-2xl leading-tight font-semibold text-ink-900">
+      {/* Para tutarı dar ekranda kartı taşırıyordu; bir kademe küçülür ve
+          son çare olarak sarar. */}
+      <p className="tnum mt-1 text-xl leading-tight font-semibold break-words text-ink-900 sm:text-2xl">
         {value}{unit && <span className="ml-1 text-sm font-normal text-ink-500">{unit}</span>}
       </p>
       {fark != null && !oncekiBos && (

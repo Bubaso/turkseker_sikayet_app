@@ -204,8 +204,11 @@ export default function StaffComplaintForm({ refs }: { refs: StaffFormRefs }) {
             <input id="kanit" name="kanit" type="file" multiple accept={refs.accept}
                    className="input file:mr-3 file:rounded file:border-0 file:bg-ink-100 file:px-3 file:py-1.5 file:text-sm" />
           </div>
-          <label className="flex cursor-pointer items-start gap-2 text-sm">
-            <input type="checkbox" name="kvkk" value="1" className="mt-0.5" defaultChecked />
+          {/* Etiketin tamamı tıklanabilir ve en az 44px yüksektedir; kutu
+              tek başına 9x13 piksel kalıyordu. */}
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 py-1 text-sm">
+            <input type="checkbox" name="kvkk" value="1"
+                   className="size-6 shrink-0 accent-brand-600" defaultChecked />
             <span>
               Başvuru sahibine KVKK aydınlatma metni hakkında bilgi verildi.
             </span>

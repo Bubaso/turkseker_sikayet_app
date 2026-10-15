@@ -14,7 +14,8 @@
     "test:senaryo": "node tests/senaryo.mjs",
     "test:surucu": "node --disable-warning=ExperimentalWarning tests/surucu.mjs",
     "test:sahiplik": "node tests/sahiplik.mjs",
-    "test:olcek": "node tests/olcek.mjs"
+    "test:olcek": "node tests/olcek.mjs",
+    "test:mobil": "node tests/mobil.mjs"
   },
   "dependencies": {
     "exceljs": "4.4.0",

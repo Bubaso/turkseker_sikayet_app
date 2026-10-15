@@ -174,7 +174,7 @@ export default async function EscalationsPage({
                     <dt className="text-xs font-medium tracking-wide text-ink-500 uppercase">
                       Fabrikanın inceleme sonucu ve gerekçesi
                     </dt>
-                    <dd className="mt-0.5 text-sm whitespace-pre-wrap text-ink-900">
+                    <dd className="mt-0.5 text-sm break-words whitespace-pre-wrap text-ink-900">
                       {c.verdict_reason ?? "—"}
                     </dd>
                   </div>
@@ -182,7 +182,7 @@ export default async function EscalationsPage({
                     <dt className="text-xs font-medium tracking-wide text-ink-500 uppercase">
                       İtiraz gerekçesi
                     </dt>
-                    <dd className="mt-0.5 text-sm whitespace-pre-wrap text-ink-900">
+                    <dd className="mt-0.5 text-sm break-words whitespace-pre-wrap text-ink-900">
                       {c.escalation_reason ?? "—"}
                     </dd>
                   </div>
@@ -197,7 +197,7 @@ export default async function EscalationsPage({
                             ? "Şikâyet haklı — itiraz kabul edildi"
                             : "Şikâyet haklı bulunmadı — fabrika kararı teyit edildi"}
                         </Chip>
-                        <p className="mt-1.5 text-sm whitespace-pre-wrap text-ink-700">
+                        <p className="mt-1.5 text-sm break-words whitespace-pre-wrap text-ink-700">
                           {c.escalation_note ?? "—"}
                         </p>
                       </dd>

@@ -131,11 +131,13 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
           ) : (
             <ul className="divide-y divide-ink-100">
               {statusMix.map((s) => (
-                <li key={s.status} className="flex items-center justify-between gap-2 px-4 py-2.5">
-                  <Link href={`/panel/sikayetler?durum=${s.status}`} className="min-w-0">
+                <li key={s.status}>
+                  {/* Satırın tamamı o duruma süzülmüş listeye götürür. */}
+                  <Link href={`/panel/sikayetler?durum=${s.status}`}
+                        className="flex min-h-11 items-center justify-between gap-2 px-4 py-2.5 transition-colors hover:bg-brand-50/45 active:bg-brand-50">
                     <StatusChip status={s.status} />
+                    <span className="tnum text-sm font-semibold text-ink-800">{s.n}</span>
                   </Link>
-                  <span className="tnum text-sm font-semibold text-ink-800">{s.n}</span>
                 </li>
               ))}
             </ul>

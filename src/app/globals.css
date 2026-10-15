@@ -104,6 +104,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Katlanır başlıkların kendi üçgenini gizlemek için `list-none` yetmiyor:
+   Safari oku ayrı bir sözde öğeyle çiziyor. */
+summary::-webkit-details-marker {
+  display: none;
+}
+
 /* --- Yeniden kullanılan bileşen sınıfları -------------------------------- */
 @layer components {
   .card {
@@ -122,10 +128,16 @@ body {
   .hint {
     @apply mt-1 block text-xs leading-snug text-ink-500;
   }
+  /*
+   * Yazı boyutu dar ekranda 16px'tir (text-base). iOS Safari 16px'in altındaki
+   * bir alana odaklanınca sayfayı kendiliğinden yakınlaştırır ve kullanıcı her
+   * alandan sonra el ile uzaklaştırmak zorunda kalır. Geniş ekranda yoğun
+   * formlar için 14px'e döner.
+   */
   .input {
-    @apply block w-full rounded-[5px] border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900
+    @apply block w-full rounded-[5px] border border-ink-300 bg-white px-3 py-2 text-base text-ink-900
            placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100
-           focus:outline-none disabled:bg-ink-100 disabled:text-ink-500;
+           focus:outline-none disabled:bg-ink-100 disabled:text-ink-500 sm:text-sm;
   }
   .input-err {
     @apply border-danger-600 focus:border-danger-600 focus:ring-danger-200;
@@ -178,6 +190,32 @@ body {
 
   .link {
     @apply text-brand-600 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500;
+  }
+}
+
+/* --- Mobil menü çekmecesi -------------------------------------------------
+   Çekmece soldan girer, perde kararır. Hareket kısıtlaması isteyen kullanıcı
+   için ikisi de anında görünür: menünün açılması bir bilgi, bir gösteri
+   değildir.
+   ------------------------------------------------------------------------- */
+@keyframes cekmece-gir {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes perde-ac {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.cekmece-panel {
+  animation: cekmece-gir 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cekmece-perde {
+  animation: perde-ac 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cekmece-panel,
+  .cekmece-perde {
+    animation: none;
   }
 }
 

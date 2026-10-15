@@ -32,6 +32,9 @@ export default async function CalendarPage({
   const tasks = fabrikaAcikAsamalari(gm ? null : user.factory_id, 1000)
     .filter((t) => t.due_at && t.due_at >= first && t.due_at <= last);
 
+  // Dar ekrandaki liste için: ayın aşamaları tarih sırasına dizilir.
+  const aylikAsamalar = [...tasks].sort((a, b) => (a.due_at! < b.due_at! ? -1 : 1));
+
   const received = all<{ received_at: string; complaint_no: string; id: number; customer_company: string }>(
     `SELECT id, received_at, complaint_no, customer_company FROM complaints
       WHERE received_at BETWEEN ? AND ? ${gm ? "" : `AND factory_id = ${Number(user.factory_id ?? -1)}`}
@@ -86,12 +89,20 @@ export default async function CalendarPage({
             const isToday = d === ref;
             const past = d < ref;
             const overdueHere = past && dayTasks.length > 0;
+            const ozet = [
+              hol,
+              dayNew.length > 0 ? `${dayNew.length} yeni şikâyet` : null,
+              dayTasks.length > 0
+                ? `${dayTasks.length} aşama son tarihi${overdueHere ? " (gecikmiş)" : ""}`
+                : null,
+            ].filter((x): x is string => !!x);
 
             return (
               <div
                 key={d}
+                title={ozet.length > 0 ? `${fmtDate(d)} — ${ozet.join(" · ")}` : undefined}
                 className={
-                  "min-h-24 rounded-[5px] border p-1.5 text-left " +
+                  "min-h-14 overflow-hidden rounded-[5px] border p-1.5 text-left sm:min-h-24 " +
                   (isToday ? "border-brand-500 bg-brand-50"
                     : hol ? "border-warn-200 bg-warn-50"
                     : isWeekend(d) ? "border-ink-200 bg-ink-50"
@@ -102,33 +113,107 @@ export default async function CalendarPage({
                   <span className={`tnum text-xs font-semibold ${isToday ? "text-brand-700" : "text-ink-700"}`}>
                     {Number(d.slice(8))}
                   </span>
-                  {overdueHere && <Chip tone="danger">!</Chip>}
+                  <span className="hidden sm:block">
+                    {overdueHere && <Chip tone="danger">!</Chip>}
+                  </span>
                 </div>
-                {hol && <p className="mt-0.5 text-mini leading-tight text-warn-700">{hol}</p>}
-                {dayNew.length > 0 && (
-                  <p className="mt-0.5 text-mini text-info-600">{dayNew.length} yeni şikâyet</p>
-                )}
-                <ul className="mt-1 space-y-0.5">
-                  {dayTasks.slice(0, 3).map((t) => (
-                    <li key={t.id}>
-                      <Link href={`/panel/sikayet/${t.complaint_id}`}
-                            className={`block truncate rounded px-1 py-0.5 text-mini leading-tight ${
-                              past ? "bg-danger-50 text-danger-700" : "bg-ink-100 text-ink-700"
-                            } hover:bg-brand-100`}
-                            title={`${t.title} — ${t.complaint_no} — ${t.assignee_name ?? "atanmadı"}`}>
-                        {t.title}
-                      </Link>
-                    </li>
-                  ))}
-                  {dayTasks.length > 3 && (
-                    <li className="px-1 text-mini text-ink-500">+{dayTasks.length - 3} aşama daha</li>
+
+                {/*
+                 * Dar ekranda yedi sütunluk ızgarada hücre ~50px kalır ve
+                 * başlıklar sütunun dışına taşardı. Orada hücre bir özettir:
+                 * ne olduğunu renkli noktalar söyler, ayrıntı aşağıdaki
+                 * listelerde durur. Geniş ekranda başlıklar görünür.
+                 */}
+                <div className="mt-1 flex flex-wrap gap-0.5 sm:hidden" aria-hidden>
+                  {hol && <span className="size-1.5 rounded-full bg-warn-600" />}
+                  {dayNew.length > 0 && <span className="size-1.5 rounded-full bg-info-600" />}
+                  {dayTasks.length > 0 && (
+                    <span className={`size-1.5 rounded-full ${past ? "bg-danger-600" : "bg-ink-400"}`} />
                   )}
-                </ul>
+                </div>
+                <span className="sr-only">{ozet.join(", ")}</span>
+
+                <div className="hidden sm:block">
+                  {hol && <p className="mt-0.5 text-mini leading-tight text-warn-700">{hol}</p>}
+                  {dayNew.length > 0 && (
+                    <p className="mt-0.5 text-mini text-info-600">{dayNew.length} yeni şikâyet</p>
+                  )}
+                  <ul className="mt-1 space-y-0.5">
+                    {dayTasks.slice(0, 3).map((t) => (
+                      <li key={t.id}>
+                        <Link href={`/panel/sikayet/${t.complaint_id}`}
+                              className={`block truncate rounded px-1 py-0.5 text-mini leading-tight ${
+                                past ? "bg-danger-50 text-danger-700" : "bg-ink-100 text-ink-700"
+                              } hover:bg-brand-100`}
+                              title={`${t.title} — ${t.complaint_no} — ${t.assignee_name ?? "atanmadı"}`}>
+                          {t.title}
+                        </Link>
+                      </li>
+                    ))}
+                    {dayTasks.length > 3 && (
+                      <li className="px-1 text-mini text-ink-500">+{dayTasks.length - 3} aşama daha</li>
+                    )}
+                  </ul>
+                </div>
               </div>
             );
           })}
         </div>
+
+        {/* Nokta kodunun karşılığı. Yalnızca dar ekranda gerekir: geniş
+            ekranda hücre neyi gösterdiğini zaten yazıyor. */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-500 sm:hidden">
+          <span className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-info-600" aria-hidden /> yeni şikâyet
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-ink-400" aria-hidden /> aşama son tarihi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-danger-600" aria-hidden /> gecikmiş
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-warn-600" aria-hidden /> resmî tatil
+          </span>
+        </div>
       </Card>
+
+      {/*
+       * Aşama son tarihleri yalnızca dar ekranda liste olarak çizilir: geniş
+       * ekranda aynı bilgi ızgaranın hücrelerinde zaten yazılı ve iki yerde
+       * birden durması gereksiz tekrar olur. Dar ekranda ızgara yalnızca
+       * "ne zaman" diyor, bu liste "ne" diyor.
+       */}
+      <div className="sm:hidden">
+        <Card title="Bu ayın aşama son tarihleri" bodyClass="">
+          {aylikAsamalar.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-500">Bu ayda son tarihi olan aşama yok.</p>
+          ) : (
+            <ul className="divide-y divide-ink-100">
+              {aylikAsamalar.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/panel/sikayet/${t.complaint_id}`}
+                        className="flex min-h-11 items-start gap-3 px-4 py-2.5 transition-colors active:bg-brand-50">
+                    <span className={`tnum shrink-0 pt-0.5 text-xs font-semibold ${
+                      t.due_at! < ref ? "text-danger-700" : "text-ink-600"
+                    }`}>
+                      {Number(t.due_at!.slice(8))}.{t.due_at!.slice(5, 7)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm break-words text-ink-800">{t.title}</span>
+                      <span className="block text-xs text-ink-500">
+                        {t.complaint_no}
+                        {t.assignee_name ? ` · ${t.assignee_name}` : ""}
+                      </span>
+                    </span>
+                    {t.due_at! < ref && <Chip tone="danger">Gecikmiş</Chip>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card title="Bu ayın resmî tatilleri" bodyClass="">
@@ -156,12 +241,15 @@ export default async function CalendarPage({
           ) : (
             <ul className="max-h-64 divide-y divide-ink-100 overflow-y-auto">
               {received.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
-                  <Link href={`/panel/sikayet/${r.id}`} className="font-mono text-xs text-brand-700 hover:underline">
-                    {r.complaint_no}
+                <li key={r.id}>
+                  {/* Satırın tamamı dokunma hedefidir: küçük bir şikâyet
+                      numarasına nişan almak gerekmez. */}
+                  <Link href={`/panel/sikayet/${r.id}`}
+                        className="flex min-h-11 items-center justify-between gap-2 px-4 py-2 text-sm transition-colors hover:bg-brand-50/45 active:bg-brand-50">
+                    <span className="font-mono text-xs text-brand-700">{r.complaint_no}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink-700">{r.customer_company}</span>
+                    <span className="tnum text-xs text-ink-500">{fmtDate(r.received_at)}</span>
                   </Link>
-                  <span className="min-w-0 flex-1 truncate text-ink-700">{r.customer_company}</span>
-                  <span className="tnum text-xs text-ink-500">{fmtDate(r.received_at)}</span>
                 </li>
               ))}
             </ul>

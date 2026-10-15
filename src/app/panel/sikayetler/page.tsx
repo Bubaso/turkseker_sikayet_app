@@ -184,13 +184,16 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
         {/* Listenin üstündeki tek şerit: arama ve açık filtreler.
             Sütun süzgeçleri başlıklardaki oklarda durur. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink-200 px-4 py-2.5">
-          <form method="get" action="/panel/sikayetler" className="flex items-center gap-2">
+          {/* Dar ekranda arama şeridi tam genişlikte durur; filtre rozetleri
+              altına iner. Geniş ekranda ikisi yan yanadır. */}
+          <form method="get" action="/panel/sikayetler" className="flex w-full items-center gap-2 sm:w-auto">
             {(["durum", "grup", "karar", "urun", "kategori", "fabrika", "gecikme", "itiraz", "kapanis", "bas", "bit"] as const)
               .filter((k) => q[k])
               .map((k) => <input key={k} type="hidden" name={k} value={q[k]} />)}
-            <input name="ara" defaultValue={q.ara} className="input h-8 w-56 py-1 text-sm"
+            <input name="ara" defaultValue={q.ara}
+                   className="input h-11 min-w-0 flex-1 sm:h-8 sm:w-56 sm:flex-none sm:py-1"
                    placeholder="Şikâyet no, müşteri, konu, lot…" aria-label="Listede ara" />
-            <button type="submit" className="btn btn-secondary btn-sm">Ara</button>
+            <button type="submit" className="btn btn-secondary h-11 shrink-0 sm:h-auto sm:px-2.5 sm:py-1 sm:text-baslik">Ara</button>
           </form>
 
           <div className="flex flex-1 flex-wrap items-center gap-1.5">

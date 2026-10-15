@@ -13,8 +13,8 @@
      1. Gövde yazı boyutu kökle birlikte büyüyor (yani hiçbir yerde px'e
         sabitlenmemiş).
      2. Sayfa yatay taşmıyor (tablo kapları hariç; onlar bilerek kaydırılır).
-     3. Kutusuna sığmayıp kırpılan metin yok (üç nokta ile kısaltılanlar
-        kasıtlıdır, sayılmaz).
+     3. Kutusuna sığmayıp kırpılan metin yok (üç nokta ile kısaltılanlar ve
+        ekran okuyucuya ayrılmış `sr-only` metinler kasıtlıdır, sayılmaz).
 
    A4 çıktı sayfaları (/belge/[id], /panel/ozet) bilerek kapsam dışıdır:
    onların ölçüsü `pt`'dir, çünkü 210mm'lik kâğıt kutusuna çizilirler ve
@@ -79,6 +79,8 @@ function olc() {
   const kok = document.documentElement;
   const kirpilan = [...document.querySelectorAll("p,span,h1,h2,h3,td,th,a,button,li,dd,dt")]
     .filter((e) => {
+      // Ekran okuyucu metni 1x1'e kırpılır; kasıtlıdır, kusur değildir.
+      if (e.classList.contains("sr-only") || e.closest(".sr-only")) return false;
       const s = getComputedStyle(e);
       if (s.textOverflow === "ellipsis") return false;   // kasıtlı kısaltma
       if (s.overflow === "visible") return false;        // taşsa da görünür

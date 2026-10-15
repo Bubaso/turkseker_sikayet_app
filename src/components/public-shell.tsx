@@ -40,7 +40,8 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
             © {new Date().getFullYear()} Türkiye Şeker Fabrikaları A.Ş. · Kişisel verileriniz 6698
             sayılı KVKK kapsamında korunur.
           </p>
-          <a href="https://www.turkseker.gov.tr" className="link" target="_blank" rel="noreferrer">
+          <a href="https://www.turkseker.gov.tr" target="_blank" rel="noreferrer"
+             className="link inline-flex min-h-6 items-center">
             turkseker.gov.tr
           </a>
         </div>

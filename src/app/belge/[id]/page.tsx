@@ -53,6 +53,9 @@ export default async function DocumentPrintPage({
     }`}>
       {!gomulu && <PrintToolbar complaintId={c.id} docNo={doc.doc_no} />}
 
+      {/* Kâğıt ölçüsü korunur, kaydırma kâğıdın kendi kutusundadır:
+          dar ekranda sayfanın tamamı yana kaymaz. */}
+      <div className="overflow-x-auto px-4 print:overflow-visible print:px-0">
       <article className="print-page mx-auto w-[210mm] max-w-full bg-white p-[18mm_16mm] text-[11pt] leading-relaxed text-black shadow-sm print:w-auto print:shadow-none">
         <header className="mb-6 border-b-2 border-black pb-2.5 text-center">
           <div className="mb-2 flex justify-center">
@@ -91,6 +94,7 @@ export default async function DocumentPrintPage({
           <span>Belge no: {doc.doc_no}</span>
         </footer>
       </article>
+      </div>
     </div>
   );
 }
