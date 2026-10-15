@@ -490,6 +490,28 @@ Kurulan ekip dosya sayfasında kalıcı olarak durur: kim vardı, kim liderdi ve
 kim hangi aşamadan sorumluydu. "Bu dosyaya kim baktı" sorusu dosya kapandıktan
 sonra da sorulur; denetimde ilk sorulan budur.
 
+### Kanıt görselleri
+
+Şikâyetin ne olduğunu çoğu zaman en iyi anlatan şey müşterinin çektiği
+fotoğraftır: topaklanmış çuval, yırtık torba, yabancı madde. Şikâyet Formunun
+**KANITLAR** satırı artık dosya adı değil görselin kendisini gösterir;
+üzerine tıklanınca büyür (ok tuşlarıyla gezilir, Esc kapatır, odak pencerenin
+içinde döner, arkadaki sayfa kaymaz).
+
+Aynı galeri "Bütün ekler" bölümünde de kullanılır — aynı görsele dosyanın iki
+yerinde tıklamak aynı şeyi yapar (`src/components/gorsel-galeri.tsx`, iki
+düzen: `serit` ve `izgara`). Tarayıcının çizemediği biçimler (PDF, Word, HEIC)
+bağlantı olarak listelenir; dosyası okunamayan bir görsel de bağlantıya
+düşer.
+
+Kâğıtta da görsellerin kendisi basılır: basılı bir formda "• foto1.jpg"
+satırı hiçbir şey anlatmaz, fotoğraf ise şikâyetin kanıtıdır.
+
+Demo verisi artık kanıt görseli de üretir — şikâyet türüne göre değişen,
+bakışta ayırt edilen desenler (topaklanma, yabancı madde, yırtık çuval,
+sararma). Üretici küçük bir PNG kodlayıcı taşır (`src/server/demo.ts`); harici
+bir görsel kitaplığı gerekmez.
+
 ### Tutanak örnekleri
 
 Uygulama belge üretmez — bu kural değişmedi. Ama elle hazırlanan her tutanak

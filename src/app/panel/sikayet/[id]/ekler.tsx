@@ -1,11 +1,12 @@
 "use client";
 
-import { ATTACHMENT_KIND_LABEL, type AttachmentKind } from "@/lib/domain";
+import { ATTACHMENT_KIND_LABEL, cizilebilirGorsel, type AttachmentKind } from "@/lib/domain";
 import { fmtDateTime } from "@/lib/dates";
 import { fmtBytes } from "@/lib/format";
 import type { AttachmentView } from "@/lib/types";
 import { ActionButton, ActionForm } from "@/components/action-form";
 import { BelgeOnizleme } from "@/components/belge-onizleme";
+import { GorselGalerisi } from "@/components/gorsel-galeri";
 import { Chip } from "@/components/ui";
 import { deleteAttachmentAction, uploadAction } from "@/app/panel/actions";
 
@@ -37,9 +38,15 @@ export function Ekler({
   accept: string;
   maxMb: number;
 }) {
-  const gorseller = attachments.filter(
-    (a) => a.mime.startsWith("image/") && a.mime !== "image/heic",
-  );
+  // Form satırındakiyle aynı galeri: aynı görsele dosyanın iki yerinde
+  // tıklamak aynı şeyi yapar.
+  const gorseller = attachments.filter(cizilebilirGorsel).map((a) => ({
+    id: a.id,
+    file_name: a.file_name,
+    mime: a.mime,
+    caption: a.caption,
+    altbilgi: `${a.uploader_label ?? a.uploaded_by_name ?? "—"} · ${fmtBytes(a.size)}`,
+  }));
 
   return (
     <details className="card overflow-hidden">
@@ -48,27 +55,7 @@ export function Ekler({
       </summary>
 
       <div className="space-y-4 p-4 sm:p-5">
-        {gorseller.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {gorseller.map((a) => (
-              <figure key={a.id} className="overflow-hidden rounded-[5px] border border-ink-200">
-                <a href={`/api/ek/${a.id}`} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/ek/${a.id}`} alt={a.caption ?? a.file_name}
-                       className="h-36 w-full bg-ink-100 object-cover" loading="lazy" />
-                </a>
-                <figcaption className="border-t border-ink-100 px-2 py-1.5">
-                  <span className="block truncate text-xs font-medium text-ink-700" title={a.file_name}>
-                    {a.file_name}
-                  </span>
-                  <span className="block text-rozet text-ink-500">
-                    {a.uploader_label ?? a.uploaded_by_name ?? "—"} · {fmtBytes(a.size)}
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
+        <GorselGalerisi gorseller={gorseller} duzen="izgara" />
 
         {attachments.length === 0 && !form ? (
           <p className="text-sm text-ink-500">

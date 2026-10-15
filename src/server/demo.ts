@@ -14,6 +14,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import zlib from "node:zlib";
 import { all, one, run, scalar, tx } from "@/lib/db";
 import { addBusinessDays, addDays, today } from "@/lib/dates";
 import { ROLES } from "@/lib/roles";
@@ -130,6 +131,135 @@ async function demoBelge(ad: string, satirlar: string[]): Promise<StoredFile> {
   };
 }
 
+/* --- Demo kanıt görseli (küçük, geçerli bir PNG) ------------------------- */
+
+/** PNG parçalarının gerektirdiği CRC-32. */
+const CRC_TABLOSU = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff;
+  for (const b of buf) c = CRC_TABLOSU[(c ^ b) & 0xff]! ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function pngParcasi(tip: string, veri: Buffer): Buffer {
+  const uzunluk = Buffer.alloc(4);
+  uzunluk.writeUInt32BE(veri.length);
+  const govde = Buffer.concat([Buffer.from(tip, "latin1"), veri]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(govde));
+  return Buffer.concat([uzunluk, govde, crc]);
+}
+
+/**
+ * Verilen boyama işleviyle RGB bir PNG üretir.
+ *
+ * Demo verisinin müşteri kanıtı olması gerekiyor: şikâyetin ne olduğunu çoğu
+ * zaman en iyi anlatan şey müşterinin çektiği fotoğraftır ve önizleme
+ * düzeneği ancak ortada görsel varsa görünür. Gerçek fotoğraf koyamayacağımız
+ * için şikâyet türüne göre değişen, bakışta ayırt edilen bir desen çizilir.
+ */
+function pngUret(
+  en: number, boy: number, boya: (x: number, y: number) => [number, number, number],
+): Buffer {
+  const satirlar = Buffer.alloc(boy * (1 + en * 3));
+  let i = 0;
+  for (let y = 0; y < boy; y++) {
+    satirlar[i++] = 0;                       // filtre: yok
+    for (let x = 0; x < en; x++) {
+      const [r, g, b] = boya(x, y);
+      satirlar[i++] = r; satirlar[i++] = g; satirlar[i++] = b;
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(en, 0);
+  ihdr.writeUInt32BE(boy, 4);
+  ihdr[8] = 8;    // bit derinliği
+  ihdr[9] = 2;    // renk tipi: truecolor
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngParcasi("IHDR", ihdr),
+    pngParcasi("IDAT", zlib.deflateSync(satirlar, { level: 9 })),
+    pngParcasi("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+/** Şikâyet türüne göre kanıt deseni. */
+function kanitDeseni(tur: string, tohum: number) {
+  const ss = (n: number) => {           // tekrarlanabilir sözde rastgele
+    const x = Math.sin(tohum * 97.3 + n * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  const zemin: [number, number, number] = [238, 236, 230];   // çuval bezi / şeker
+
+  if (/Yabancı madde/i.test(tur)) {
+    // Beyaz şekerin içinde koyu, köşeli bir parça.
+    const px = 90 + ss(1) * 300, py = 70 + ss(2) * 180;
+    return (x: number, y: number): [number, number, number] => {
+      const d = Math.abs(x - px) + Math.abs(y - py);
+      if (d < 26) return [40, 44, 52];
+      if (d < 31) return [120, 124, 130];
+      const n = ss(x * 0.07 + y * 0.11) * 14;
+      return [zemin[0] - n, zemin[1] - n, zemin[2] - n];
+    };
+  }
+  if (/yırtıl|Çuval|paket/i.test(tur)) {
+    // Çuvalın ortasından geçen yırtık.
+    return (x: number, y: number): [number, number, number] => {
+      const cizgi = 180 + Math.sin(x * 0.035) * 46 + ss(x) * 16;
+      if (Math.abs(y - cizgi) < 7) return [58, 48, 42];
+      if (Math.abs(y - cizgi) < 13) return [150, 132, 116];
+      const n = ss(x * 0.05 + y * 0.09) * 18;
+      return [214 - n, 198 - n, 168 - n];
+    };
+  }
+  if (/sarar|Renk/i.test(tur)) {
+    // Solda normal, sağda sararmış şeker: fark bakışta görünür.
+    return (x: number, y: number): [number, number, number] => {
+      const n = ss(x * 0.06 + y * 0.1) * 12;
+      return x < 310
+        ? [244 - n, 242 - n, 236 - n]
+        : [238 - n, 216 - n, 142 - n];
+    };
+  }
+  // Varsayılan: topaklanma — dağınık, sert kümeler.
+  const kumeler = Array.from({ length: 11 }, (_, k) => ({
+    x: 40 + ss(k * 3) * 560, y: 40 + ss(k * 3 + 1) * 400, r: 22 + ss(k * 3 + 2) * 34,
+  }));
+  return (x: number, y: number): [number, number, number] => {
+    for (const k of kumeler) {
+      const d = Math.hypot(x - k.x, y - k.y);
+      if (d < k.r) {
+        const g = 196 - (1 - d / k.r) * 52;
+        return [g + 6, g + 2, g - 10];
+      }
+    }
+    const n = ss(x * 0.08 + y * 0.12) * 16;
+    return [zemin[0] - n, zemin[1] - n, zemin[2] - n];
+  };
+}
+
+/** Müşterinin ilettiği kanıt görselini diske yazar. */
+async function demoKanit(tur: string, tohum: number, sira: number): Promise<StoredFile> {
+  const dir = uploadDir();
+  await fs.mkdir(dir, { recursive: true });
+  const storedName = `demo-${crypto.randomBytes(8).toString("hex")}.png`;
+  const icerik = pngUret(640, 480, kanitDeseni(tur, tohum + sira));
+  await fs.writeFile(path.join(dir, storedName), icerik);
+  return {
+    fileName: `sikayet-gorseli-${sira}.png`,
+    storedName, mime: "image/png", size: icerik.length,
+  };
+}
+
 function rolKullanicisi(factoryId: number, role: string): number {
   const u = one<{ id: number }>(
     "SELECT id FROM users WHERE factory_id = ? AND role = ? AND is_active = 1 ORDER BY id LIMIT 1",
@@ -226,6 +356,17 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
 
     const kaliteId = rolKullanicisi(factory.id, ROLES.KALITE_SORUMLUSU);
 
+    /*
+     * Müşterinin ilettiği kanıt görselleri. Gerçekte şikâyetlerin çoğuna
+     * fotoğraf eklenir; dörtte birini eksiz bırakmak ikisini de göstermek
+     * içindir.
+     */
+    const kanitSayisi = rnd() < 0.25 ? 0 : 1 + Math.floor(rnd() * 3);
+    const kanitlar: StoredFile[] = [];
+    for (let k = 1; k <= kanitSayisi; k++) {
+      kanitlar.push(await demoKanit(senaryo.kategori, i * 31 + k, k));
+    }
+
     /* 1) Kayıt ------------------------------------------------------------ */
     const created = await runAs(kaliteId, () =>
       createComplaint({
@@ -259,6 +400,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
         demand,
         kvkkConsent: true,
         phoneVerified: channel === CHANNEL.WEB,
+        attachments: kanitlar,
       }),
     );
     result.created++;

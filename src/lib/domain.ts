@@ -214,6 +214,17 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
  * yüklenerek kapandığı için ek, hangi aşamanın belgesi olduğunu kendi üzerinde
  * taşır. KANIT müşterinin başvuruda ilettiği görsel/belge, DIGER serbest ektir.
  */
+/**
+ * Tarayıcının çizebileceği bir görsel mi?
+ *
+ * Hem sunucu (yazdırma çıktısı) hem istemci (galeri) kullanır; bu yüzden
+ * "use client" taşıyan bir dosyada duramaz. HEIC dışarıdadır: iPhone'dan
+ * gelen bu biçimi tarayıcıların çoğu çizemez, önizlemesi kırık görünürdü.
+ */
+export function cizilebilirGorsel(a: { mime: string }): boolean {
+  return a.mime.startsWith("image/") && a.mime !== "image/heic";
+}
+
 export const ATTACHMENT_KIND = {
   KANIT: "KANIT",
   INCELEME: "INCELEME",

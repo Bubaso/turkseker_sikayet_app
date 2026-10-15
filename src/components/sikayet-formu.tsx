@@ -7,16 +7,20 @@
    =========================================================================== */
 
 import {
-  CHANNEL_LABEL, DEMAND_LABEL, PRODUCT_GROUP_LABEL,
+  CHANNEL_LABEL, DEMAND_LABEL, PRODUCT_GROUP_LABEL, cizilebilirGorsel,
   type Channel, type Demand, type ProductGroup,
 } from "@/lib/domain";
 import { fmtDate } from "@/lib/dates";
 import { fmtPhone, fmtQuantity } from "@/lib/format";
 import type { ComplaintView } from "@/lib/types";
+import { GorselGalerisi } from "./gorsel-galeri";
 
 export interface FormKaniti {
   id: number;
   file_name: string;
+  /** Görsel mi, belge mi — önizlemenin yapılıp yapılmayacağını belirler. */
+  mime: string;
+  caption?: string | null;
 }
 
 /** Formun satırları — yazdırma ve ekran görünümü aynı metni kullanır. */
@@ -60,7 +64,7 @@ export function formSatirlari(c: ComplaintView): [string, string][] {
 
 /**
  * Formu çizer. `kanitlar` verildiğinde son satır müşterinin ilettiği
- * dosyaların bağlantılarını gösterir.
+ * dosyaları gösterir: görseller önizleme olarak, diğerleri bağlantı olarak.
  */
 export function SikayetFormu({
   c, kanitlar = [], yazdirma = false,
@@ -94,23 +98,67 @@ export function SikayetFormu({
             {kanitlar.length === 0 ? (
               <span className={yazdirma ? "" : "text-ink-500"}>Ek yok</span>
             ) : yazdirma ? (
-              <span className="whitespace-pre-line">
-                {kanitlar.map((k) => `• ${k.file_name}`).join("\n")}
-              </span>
+              /*
+               * Kâğıtta da görsellerin kendisi basılır: "• foto1.jpg" satırı
+               * basılı formda hiçbir şey anlatmaz, fotoğraf ise şikâyetin
+               * kanıtıdır. Görsel olmayan ekler ad olarak listelenir.
+               */
+              <KanitlarYazdirma kanitlar={kanitlar} />
             ) : (
-              <ul className="space-y-0.5">
-                {kanitlar.map((k) => (
-                  <li key={k.id}>
-                    <a href={`/api/ek/${k.id}`} target="_blank" rel="noreferrer" className="link">
-                      {k.file_name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <KanitlarEkran kanitlar={kanitlar} />
             )}
           </td>
         </tr>
       </tbody>
     </table>
+  );
+}
+
+/** Yazdırma çıktısında kanıtlar: görseller küçük hâlleriyle, diğerleri ad olarak. */
+function KanitlarYazdirma({ kanitlar }: { kanitlar: FormKaniti[] }) {
+  const gorseller = kanitlar.filter(cizilebilirGorsel);
+  const digerleri = kanitlar.filter((k) => !cizilebilirGorsel(k));
+  return (
+    <>
+      {gorseller.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {gorseller.map((k) => (
+            <figure key={k.id} className="w-[38mm]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/ek/${k.id}`} alt={k.caption ?? k.file_name}
+                   className="h-[30mm] w-full border border-black object-cover" />
+              <figcaption className="mt-0.5 truncate text-[7.5pt]">{k.file_name}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      {digerleri.length > 0 && (
+        <p className={`whitespace-pre-line ${gorseller.length > 0 ? "mt-1.5" : ""}`}>
+          {digerleri.map((k) => `• ${k.file_name}`).join("\n")}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Ekranda kanıtlar: görseller önizleme, diğerleri bağlantı. */
+function KanitlarEkran({ kanitlar }: { kanitlar: FormKaniti[] }) {
+  const gorseller = kanitlar.filter(cizilebilirGorsel);
+  const digerleri = kanitlar.filter((k) => !cizilebilirGorsel(k));
+  return (
+    <>
+      <GorselGalerisi gorseller={gorseller} />
+      {digerleri.length > 0 && (
+        <ul className={gorseller.length > 0 ? "mt-2 space-y-0.5" : "space-y-0.5"}>
+          {digerleri.map((k) => (
+            <li key={k.id}>
+              <a href={`/api/ek/${k.id}`} target="_blank" rel="noreferrer" className="link text-sm">
+                {k.file_name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

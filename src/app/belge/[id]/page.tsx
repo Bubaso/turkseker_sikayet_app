@@ -41,7 +41,7 @@ export default async function DocumentPrintPage({
 
   const type = doc.type as DocType;
   const kanitlar = all<FormKaniti>(
-    "SELECT id, file_name FROM attachments WHERE complaint_id = ? AND kind = ? ORDER BY id",
+    "SELECT id, file_name, mime, caption FROM attachments WHERE complaint_id = ? AND kind = ? ORDER BY id",
     c.id, ATTACHMENT_KIND.KANIT,
   );
   const kurum = one<{ value: string }>("SELECT value FROM settings WHERE key = 'kurum_adi'")?.value
