@@ -26,7 +26,7 @@ export function EscalationDecision({
         <span className="label">Daire kararı</span>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="flex cursor-pointer items-start gap-2 rounded-[5px] border border-ink-200 px-3 py-2 hover:bg-ink-50 has-checked:border-ok-200 has-checked:bg-ok-50">
-            <input type="radio" name="itirazKabul" value="1" required className="mt-0.5" />
+            <input type="radio" name="itirazKabul" value="1" required className="mt-0.5 size-6 shrink-0 accent-brand-600" />
             <span className="text-sm">
               <strong>İtiraz kabul — şikâyet haklı</strong>
               <span className="block text-xs text-ink-500">
@@ -35,7 +35,7 @@ export function EscalationDecision({
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2 rounded-[5px] border border-ink-200 px-3 py-2 hover:bg-ink-50 has-checked:border-ink-400 has-checked:bg-ink-100">
-            <input type="radio" name="itirazKabul" value="0" required className="mt-0.5" />
+            <input type="radio" name="itirazKabul" value="0" required className="mt-0.5 size-6 shrink-0 accent-brand-600" />
             <span className="text-sm">
               <strong>İtiraz reddi — fabrika kararı teyit</strong>
               <span className="block text-xs text-ink-500">

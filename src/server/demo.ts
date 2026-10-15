@@ -423,16 +423,26 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
     if (durak === "YENI") { result.open++; retime(cid, { ...tk, ekip: "" }); continue; }
 
     /* 3) Ekip ------------------------------------------------------------- */
+    /*
+     * Aşama yalnızca ekip üyelerine verilebildiği için, dosyada iş yapacak
+     * herkes ekipte olmalıdır: iade/değişimi Ambar Şefi kaydeder, onun da
+     * ekipte olması gerekir. Kalite Sorumlusu ve Ambar Şefi bu yüzden
+     * zorunlu; diğer unvanlar rastgele katılır ki ekipler tek tip olmasın.
+     */
     const kadro = all<{ id: number; title: string; role: string }>(
       `SELECT id, title, role FROM users WHERE factory_id = ? AND is_active = 1
-         AND role IN ('KALITE_SORUMLUSU','TEKNIK_ISLETME','MUHASEBE','ZIRAAT')
-       ORDER BY CASE role WHEN 'KALITE_SORUMLUSU' THEN 0 ELSE 1 END, id`,
+         AND role IN ('KALITE_SORUMLUSU','AMBAR_SEFI','TEKNIK_ISLETME','MUHASEBE','ZIRAAT')
+       ORDER BY CASE role
+                  WHEN 'KALITE_SORUMLUSU' THEN 0
+                  WHEN 'AMBAR_SEFI' THEN 1
+                  ELSE 2
+                END, id`,
       fid,
     );
-    // İlk üye ekip lideridir ve inceleme ile karar aşamaları ona düşer; demo
-    // verisinde lider daima Kalite Sorumlusudur.
+    // İlk üye ekip lideridir; demo verisinde lider daima Kalite Sorumlusudur.
+    const zorunlu = new Set([ROLES.KALITE_SORUMLUSU, ROLES.AMBAR_SEFI]);
     const uyeler = kadro
-      .filter((u, idx) => idx === 0 || rnd() < 0.7)
+      .filter((u, idx) => idx === 0 || zorunlu.has(u.role as never) || rnd() < 0.7)
       .map((u) => ({ userId: u.id, unvan: u.title }));
 
     await runAsRole(fid, ROLES.FABRIKA_MUDURU, () =>

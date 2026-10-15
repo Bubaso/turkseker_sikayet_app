@@ -140,7 +140,8 @@ export default async function EscalationsPage({
                 key={c.id}
                 title={
                   <span className="flex flex-wrap items-center gap-2">
-                    <Link href={`/panel/sikayet/${c.id}`} className="font-mono text-brand-700 hover:underline">
+                    <Link href={`/panel/sikayet/${c.id}`}
+                          className="inline-flex min-h-6 items-center font-mono text-brand-700 hover:underline">
                       {c.complaint_no}
                     </Link>
                     <span className="font-normal normal-case">{c.factory_name}</span>
