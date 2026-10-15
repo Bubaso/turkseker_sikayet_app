@@ -171,7 +171,7 @@ export function EkipKur({
         </summary>
         <div className="mt-3 space-y-3">
           {oneri && (
-            <Notice tone="brand" title="Daha yakın fabrika">
+            <Notice tone="info" title="Daha yakın fabrika">
               Müşterinin iline en yakın fabrikamız <strong>{oneri.name}</strong>. Dosya oraya
               yönlendirilirse ekip orada kurulur ve 1 iş günlük süre yeniden başlar.
             </Notice>

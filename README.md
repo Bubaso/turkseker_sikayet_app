@@ -20,6 +20,7 @@ belgeyle kayda geçtiğini tutmak ve süreci izlenebilir kılmaktır.
 - [Sistemin kapsadığı süreç](#sistemin-kapsadığı-süreç)
 - [Modüller](#modüller)
 - [Mimari](#mimari)
+- [Kurumsal kimlik](#kurumsal-kimlik)
 - [Yapılandırma](#yapılandırma)
 - [Canlıya geçiş adımları](#canlıya-geçiş-adımları)
 - [Türkşeker sitesine entegrasyon](#türkşeker-sitesine-entegrasyon)
@@ -517,6 +518,72 @@ kararı, bildirim kutusu ve tanım yönetimi.
 
 ---
 
+## Kurumsal kimlik
+
+Uygulama kurumun kendi marka kılavuzuna göre giydirilmiştir; hiçbir öğe
+yeniden çizilmemiş, logo dosyalarının vektörleri olduğu gibi kullanılmıştır.
+
+### Logo
+
+Marka kılavuzundaki üç kilit `public/marka/` altında SVG olarak durur ve
+`src/components/marka.tsx` üzerinden çağrılır:
+
+| Bileşen | Dosya | Nerede |
+|---|---|---|
+| `<Logo />` | `turkseker-logo.svg` (330 × 63,4) | Halka açık antet, A4 belge ve yönetim özeti başlığı |
+| `<LogoDikey />` | `turkseker-logo-dikey.svg` (170,2 × 177,3) | Personel giriş ekranı |
+| `<Amblem />` | `turkseker-amblem.svg` (62 × 62) | Panel anteti, altbilgi, tarayıcı simgesi (`src/app/icon.svg`) |
+
+Her birinin koyu zemin için `-beyaz` nüshası vardır; bileşenlere `beyaz`
+özelliği geçilerek seçilir. Kılavuzun iki kuralı bileşenlerde kodludur:
+
+1. Logonun çevresinde **amblem yarıçapı kadar** boşluk bırakılır.
+2. Koyu veya yeşil zeminde **yalnızca beyaz nüsha** kullanılır.
+
+Oranlar dosyaların kendi `viewBox` değerinden gelir; bileşenler tek bir ölçü
+(yükseklik ya da genişlik) alır ve diğerini kilitli orandan hesaplar, yani
+logo hiçbir yerde esnetilemez.
+
+### Renk
+
+| Rol | Değer | Kullanım |
+|---|---|---|
+| Marka yeşili | `#006938` (`brand-600`) | Antet çizgisi, birincil düğme, etkin sekme ve menü, odak halkası |
+| Kurum ikincil | `#B3BA00` | Kurum sitesinde kullanılır; **uygulamada kullanılmaz** |
+| Logo siyahı | `#231F20` | Yalnızca logo dosyasının içinde |
+
+`brand-50`…`brand-900` rampası `#006938`'den türetilmiştir
+(`src/app/globals.css`). Kurum sitesi aynı yeşili `#046A38` olarak kullanır;
+fark gözle seçilmediği için logo dosyasındaki değer esas alınmıştır.
+
+**Marka yeşili kimliği işaretler, veriyi değil.** Bir sayıda yeşil "iyi"
+demek olduğu için marka yeşili sayılara hiç girmez — `Stat` bileşeninin ton
+listesi bunu tip düzeyinde kapatır (`ink | ok | warn | danger`). Sayıların
+rengi tek kurala uyar:
+
+| Renk | Anlamı | Örnek |
+|---|---|---|
+| Gri | Düz sayım | Toplam şikâyet, işlemi devam eden |
+| Sarı | Borçlu olunan iş | Belge bekleyen, okunmamış resmî yazı, kuyruktaki bildirim |
+| Kırmızı | Gecikmiş | Geciken dosya, hatalı bildirim |
+| Yeşil | İstenen sonuca ulaşıldı | Bu ay kapanan, gönderilen bildirim |
+
+Aynı ayrım rozetlerde de geçerlidir: dolu yeşil rozet bir **çağrıdır**
+("Sıra sizde", "Okunmadı", yönlendirme işareti), sınıflandırma değildir.
+Kanal, ek türü ve denetim izi satır türü gibi etiketler sessiz tonlarda
+(gri/mavi) kalır.
+
+Grafik paleti bundan ayrıdır ve renk körlüğüne göre doğrulanmış mavi-turuncu-
+turkuaz dizisini korur (`--viz-*`); kurumun zeytin-limon ikincil rengi bu
+ayrımı bozduğu için grafiklere sokulmamıştır.
+
+Karşıtlık değerleri WCAG 2.1'e göre ölçülmüştür: beyaz üzerinde marka yeşili
+6,82:1 (AA), marka dolgusu üzerinde beyaz metin yine 6,82:1, koyu nüsha
+`brand-700` 8,38:1 (AAA). Durum renkleri de AAA eşiğindedir (ok 7,29; sarı
+7,09; kırmızı 8,31). En düşük değer gri ipucu metnindedir: 4,76 (AA).
+
+---
+
 ## Yapılandırma
 
 Tüm ayarlar `.env.local` dosyasındadır (`.env.example` dosyasını kopyalayın).
@@ -625,6 +692,12 @@ tanımlıdır**; Diyanet İşleri Başkanlığının resmî ilanından sonra
 
 ## Türkşeker sitesine entegrasyon
 
+Uygulamanın doğal girişi kurum sitesinin **Sistemler** menüsündeki *Müşteri
+Memnuniyeti* başlığıdır; şikâyet formu ve takip sayfası oraya iki bağlantı
+olarak konur. Uygulamanın anteti, yeşili ve logosu kurum sitesiyle aynı
+olduğu için ziyaretçi bağlantıya tıkladığında başka bir siteye geçtiğini
+hissetmez; uygulamanın altbilgisi de `turkseker.gov.tr` adresine geri döner.
+
 Kurum sitesindeki **"Şikâyet Formu Doldur"** butonu doğrudan şu adrese
 yönlendirilir:
 
@@ -642,6 +715,17 @@ Müşteri takibi için ikinci bir bağlantı:
 ```html
 <a href="https://sikayet.turkseker.gov.tr/takip">Şikâyetimi Takip Et</a>
 ```
+
+Kurum sitesinde görme engelliler için bir erişilebilirlik çubuğu (yazı
+büyütme, yüksek karşıtlık) bulunur. Uygulama bu çubuğu taşımaz; karşılığını
+iki yerde kendi içinde verir: hiçbir durum yalnızca renkle anlatılmaz (her
+rozetin metni vardır) ve grafik paleti renk körlüğüne göre seçilmiştir.
+
+Eksik kalan nokta şudur: arayüzün bir bölümünde yazı boyutu `px`/`pt` ile
+sabitlenmiştir (51 yer; tablo başlıkları, rozetler, grafik etiketleri). Bu
+boyutlar tarayıcının **yakınlaştırmasıyla** büyür ama tarayıcıda ayarlanan
+**varsayılan yazı boyutunu** dinlemez. Bunların `rem` tabanına çevrilmesi
+ayrı bir iştir ve bu turda yapılmamıştır.
 
 ---
 

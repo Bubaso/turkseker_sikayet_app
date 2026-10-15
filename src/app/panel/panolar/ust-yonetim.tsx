@@ -88,7 +88,7 @@ export async function UstYonetimPano({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Toplam şikâyet" value={toplamDosya}
               hint="Sistemdeki bütün dosyalar" href="/panel/sikayetler" />
-        <Stat label="İşlemi devam eden" value={stats.openCount} tone="brand"
+        <Stat label="İşlemi devam eden" value={stats.openCount}
               hint="Henüz kapanmamış dosya" href="/panel/sikayetler?grup=ACIK" />
         <Stat label="Geciken" value={stats.overdueCount}
               tone={stats.overdueCount ? "danger" : "ok"}

@@ -72,7 +72,7 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
         <Stat label="Açık dosya" value={stats.openCount} href="/panel/sikayetler" />
         <Stat label="Geciken dosya" value={stats.overdueCount} tone={stats.overdueCount ? "danger" : "ink"}
               href="/panel/sikayetler?gecikme=1" hint="SLA süresi aşılmış" />
-        <Stat label="Son 7 günde gelen" value={stats.newThisWeek} tone="brand"
+        <Stat label="Son 7 günde gelen" value={stats.newThisWeek}
               href={`/panel/sikayetler?bas=${sonYediGun}`} />
         <Stat label="Bu ay kapanan" value={stats.closedThisMonth} tone="ok"
               href={`/panel/sikayetler?kapanis=${buAy}`} />

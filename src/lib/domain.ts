@@ -48,13 +48,20 @@ export const STATUS_PUBLIC_LABEL: Record<Status, string> = {
 
 type ChipTone = "ink" | "info" | "warn" | "danger" | "ok" | "brand";
 
+/*
+ * Durum renkleri marka rengini kullanmaz. Marka artık kurumsal yeşil olduğu
+ * için marka tonlu bir durum rozeti, "kapandı" yeşiliyle aynı sütunda yan yana
+ * geldiğinde ayırt edilemiyordu. Açık ve yürüyen durumlar mavi, karar bekleyen
+ * sarı, itiraz kırmızı, kapanan yeşil, düşen dosyalar gridir; hangi aşamada
+ * olduğunu rozetin metni söyler.
+ */
 export const STATUS_TONE: Record<Status, ChipTone> = {
   YENI: "info",
-  YONLENDIRILDI: "brand",
-  INCELEMEDE: "brand",
+  YONLENDIRILDI: "ink",
+  INCELEMEDE: "info",
   KARAR_VERILDI: "warn",
   ITIRAZ_DEGERLENDIRME: "danger",
-  ISLEMDE: "brand",
+  ISLEMDE: "info",
   RAPORLAMA: "info",
   KAPANDI: "ok",
   REDDEDILDI: "ink",

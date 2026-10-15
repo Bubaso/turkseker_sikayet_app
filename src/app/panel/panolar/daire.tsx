@@ -173,7 +173,7 @@ export async function DairePano({
       {/* Dairenin alanındaki üç net sayı */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Alanımdaki toplam şikâyet" value={sayilar.toplam} href={alanHref} />
-        <Stat label="İşlemi devam eden" value={sayilar.acik} tone="brand"
+        <Stat label="İşlemi devam eden" value={sayilar.acik}
               hint="Henüz kapanmamış dosya" href={alanEk("grup=ACIK")} />
         <Stat label="Geciken" value={sayilar.geciken}
               tone={sayilar.geciken ? "danger" : "ok"}
@@ -218,7 +218,7 @@ export async function DairePano({
               tone={ozet?.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
               hint="Hedef: 5 iş günü" />
         <Stat label="Okunmamış resmî yazı" value={okunmamis}
-              tone={okunmamis ? "brand" : "ink"} href="/panel/resmi-yazilar?durum=okunmamis" />
+              tone={okunmamis ? "warn" : "ink"} href="/panel/resmi-yazilar?durum=okunmamis" />
       </div>
 
       <Grafik

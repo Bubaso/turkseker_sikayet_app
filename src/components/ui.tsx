@@ -15,7 +15,13 @@ const TONE_CLASS: Record<Tone, string> = {
   warn: "border-warn-200 bg-warn-50 text-warn-700",
   danger: "border-danger-200 bg-danger-50 text-danger-700",
   ok: "border-ok-200 bg-ok-50 text-ok-700",
-  brand: "border-brand-200 bg-brand-50 text-brand-700",
+  /*
+   * Marka rozeti dolu çizilir. Marka rengi artık kurumsal yeşil olduğu için
+   * açık yeşil zeminli bir marka rozeti, "haklı / kapandı / süresinde" gibi
+   * yeşil durum rozetleriyle aynı görünüyordu. Dolu zemin, rozetin bir durum
+   * değil işaret olduğunu renkten bağımsız olarak da söyler.
+   */
+  brand: "border-brand-600 bg-brand-600 text-white",
 };
 
 const DOT_CLASS: Record<Tone, string> = {
@@ -24,7 +30,7 @@ const DOT_CLASS: Record<Tone, string> = {
   warn: "bg-warn-600",
   danger: "bg-danger-600",
   ok: "bg-ok-600",
-  brand: "bg-brand-600",
+  brand: "bg-white",
 };
 
 export function Chip({
@@ -148,15 +154,24 @@ export function DefList({
   );
 }
 
-/** Pano sayı kutusu. */
+/*
+ * Pano sayı kutusu.
+ *
+ * Marka yeşili bilinçli olarak dışarıda bırakılmıştır: bir sayıda yeşil
+ * "iyi" demektir (ok tonu) ve marka rengi de yeşil olduğu için ikisi yan yana
+ * ayırt edilemez. Kural tek cümledir — borçlu olunan iş sarı, geciken kırmızı,
+ * düz sayım gri; yeşil yalnızca istenen sonuca ulaşıldığında.
+ */
+export type SayiTonu = "ink" | "ok" | "warn" | "danger";
+
 export function Stat({
   label, value, hint, tone = "ink", href,
 }: {
-  label: string; value: ReactNode; hint?: ReactNode; tone?: Tone; href?: string;
+  label: string; value: ReactNode; hint?: ReactNode; tone?: SayiTonu; href?: string;
 }) {
   const valueTone =
     tone === "danger" ? "text-danger-700" : tone === "warn" ? "text-warn-700"
-    : tone === "ok" ? "text-ok-700" : tone === "brand" ? "text-brand-700" : "text-ink-900";
+    : tone === "ok" ? "text-ok-700" : "text-ink-900";
   const body = (
     <>
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>

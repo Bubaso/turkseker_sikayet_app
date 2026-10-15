@@ -108,7 +108,7 @@ export function Ekler({
                       {a.caption && <span className="block text-xs text-ink-500">{a.caption}</span>}
                     </td>
                     <td>
-                      <Chip tone={a.kind === "KANIT" ? "ink" : "brand"}>
+                      <Chip tone={a.kind === "KANIT" ? "ink" : "info"}>
                         {ATTACHMENT_KIND_LABEL[a.kind as AttachmentKind] ?? a.kind}
                       </Chip>
                     </td>

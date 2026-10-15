@@ -490,7 +490,7 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
           </div>
         )}
 
-        <Notice tone="brand" title="Şikâyetiniz kaydedildikten sonra">
+        <Notice tone="info" title="Şikâyetiniz kaydedildikten sonra">
           <ul className="mt-1 list-inside list-disc space-y-0.5">
             <li>Size bir şikâyet numarası ve takip bağlantısı SMS ile gönderilir.</li>
             <li>En geç <strong>1 iş günü</strong> içinde inceleme ekibi oluşturulur.</li>

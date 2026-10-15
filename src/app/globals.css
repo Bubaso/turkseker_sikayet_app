@@ -2,6 +2,16 @@
 
 /* ==========================================================================
    Türkşeker Müşteri Şikâyet Takip Sistemi — Tasarım Belirteçleri
+
+   Marka rengi kurumsal yeşil #006938'dir; doğrudan logo dosyasından alınmıştır
+   (kurum sitesi turkseker.gov.tr aynı yeşili #046A38 olarak kullanır, farkı
+   gözle seçilmez). Kurumun ikincil rengi zeytin-limon #B3BA00 ve logo metninin
+   siyahı #231F20'dir; ikisi de uygulamada bilerek kullanılmaz — biri grafik
+   paletinin renk körlüğü ayrımını bozar, diğeri zaten logonun içindedir.
+
+   Marka yeşili kimliği işaretler, veriyi değil. Bir sayıda yeşil "iyi" demek
+   olduğundan (ok tonu) marka yeşili sayılara hiç girmez; bkz. ui.tsx Stat.
+
    Sade, kurumsal, yoğun veri tablolarına uygun. Tek vurgu rengi + anlamsal
    durum renkleri. Gölge ve gradyan kullanılmaz; ayrım 1px kenarlıkla yapılır.
    ========================================================================== */
@@ -9,21 +19,17 @@
   --font-sans: "Segoe UI", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
 
-  /* Kurumsal vurgu — lacivert */
-  --color-brand-50: #eff5fb;
-  --color-brand-100: #d9e7f5;
-  --color-brand-200: #b6cfea;
-  --color-brand-300: #85addc;
-  --color-brand-400: #4e84c7;
-  --color-brand-500: #2c63ab;
-  --color-brand-600: #1f4d8c;
-  --color-brand-700: #1a3f72;
-  --color-brand-800: #17345c;
-  --color-brand-900: #142b4c;
-
-  /* Türkşeker kurumsal kırmızısı — yalnızca marka çubuğu ve kritik durum */
-  --color-kurum-500: #c8102e;
-  --color-kurum-600: #a60d26;
+  /* Kurumsal vurgu — Türkşeker yeşili. 600 logonun tam rengidir. */
+  --color-brand-50: #eef6f1;
+  --color-brand-100: #d3e9dc;
+  --color-brand-200: #a6d2ba;
+  --color-brand-300: #6fb492;
+  --color-brand-400: #3a946c;
+  --color-brand-500: #14794e;
+  --color-brand-600: #006938;
+  --color-brand-700: #005a30;
+  --color-brand-800: #004a28;
+  --color-brand-900: #003a1f;
 
   /* Nötr metin ve yüzeyler */
   --color-ink-50: #f8fafc;
@@ -211,11 +217,11 @@ body {
   --viz-s2: #eb6834; /* turuncu */
   --viz-s3: #1baf7a; /* aqua   */
 
-  /* Sıralı (büyüklük) — tek hue, açıktan koyuya */
-  --viz-seq-100: #cde2fb;
-  --viz-seq-250: #86b6ef;
-  --viz-seq-450: #2a78d6;
-  --viz-seq-500: #256abf;
+  /* Sıralı (büyüklük) — tek hue, açıktan koyuya. Marka yeşilinin rampası. */
+  --viz-seq-100: #d3e9dc;
+  --viz-seq-250: #6fb492;
+  --viz-seq-450: #14794e;
+  --viz-seq-500: #006938;
 
   /* Durum — yalnızca iyi/uyarı/kritik anlamı taşıdığında, ikon+etiketle */
   --viz-good: #0ca30c;

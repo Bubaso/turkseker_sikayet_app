@@ -10,6 +10,7 @@ import { logoutAction } from "@/app/giris/actions";
 import RoleSwitcher, { type FactoryGroup } from "@/components/role-switcher";
 import { PanelNav } from "@/components/panel-nav";
 import { FlashMessage } from "@/components/flash";
+import { Amblem } from "@/components/marka";
 
 export const dynamic = "force-dynamic";
 
@@ -68,14 +69,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-100">
-      <div className="h-1 bg-kurum-500" aria-hidden />
+      <div className="h-1 bg-brand-600" aria-hidden />
 
       <header className="sticky top-0 z-10 border-b border-ink-200 bg-white">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 px-4 py-2.5">
           <Link href="/panel" className="flex items-center gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-[5px] bg-brand-700 text-[10px] font-bold text-white" aria-hidden>
-              TŞ
-            </span>
+            <Amblem boyut={30} className="shrink-0" />
             <span className="leading-tight">
               <span className="block text-sm font-semibold text-ink-900">Şikâyet Takip Sistemi</span>
               <span className="block text-xs text-ink-500">

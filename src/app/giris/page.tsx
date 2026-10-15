@@ -7,6 +7,7 @@ import { currentUser } from "@/server/auth";
 import { isDemoMode } from "@/server/settings";
 import { PublicShell } from "@/components/public-shell";
 import { Notice } from "@/components/ui";
+import { LogoDikey } from "@/components/marka";
 import LoginForm from "./form";
 
 export const metadata: Metadata = { title: "Personel girişi" };
@@ -34,6 +35,9 @@ export default async function LoginPage({
   return (
     <PublicShell>
       <div className="mx-auto max-w-md">
+        <div className="mb-6 flex justify-center">
+          <LogoDikey genislik={140} />
+        </div>
         <div className="card">
           <h1 className="card-title">Personel girişi</h1>
           <div className="p-5">

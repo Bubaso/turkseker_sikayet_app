@@ -9,6 +9,7 @@ import {
   categoryBreakdown, yonetimAraligi, factoryPerformance, totalRow, type PerfRange,
 } from "@/server/stats";
 import { donemKiyasi, oncekiAralik } from "@/server/yonetim";
+import { Logo } from "@/components/marka";
 import { PrintToolbar } from "@/app/belge/[id]/toolbar";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,9 @@ export default async function YonetimOzetiPage({
 
       <article className="print-page mx-auto w-[210mm] max-w-full bg-white p-[16mm_14mm] text-[10.5pt] leading-relaxed text-black shadow-sm print:w-auto print:shadow-none">
         <header className="mb-4 border-b-2 border-black pb-2 text-center">
+          <div className="mb-1.5 flex justify-center">
+            <Logo yukseklik={30} />
+          </div>
           <h1 className="text-[15pt] font-bold">{kurum}</h1>
           <p className="text-[11pt] font-semibold">MÜŞTERİ ŞİKÂYETLERİ YÖNETİM ÖZETİ</p>
           <p className="mt-0.5 text-[9pt]">

@@ -7,6 +7,7 @@ import { canAccessFactory, currentUser } from "@/server/auth";
 import { getDocument } from "@/server/documents";
 import { getComplaint } from "@/server/complaints";
 import { SikayetFormu, type FormKaniti } from "@/components/sikayet-formu";
+import { Logo } from "@/components/marka";
 import { PrintToolbar } from "./toolbar";
 
 export const metadata: Metadata = { title: "Müşteri Şikâyet Formu" };
@@ -54,6 +55,9 @@ export default async function DocumentPrintPage({
 
       <article className="print-page mx-auto w-[210mm] max-w-full bg-white p-[18mm_16mm] text-[11pt] leading-relaxed text-black shadow-sm print:w-auto print:shadow-none">
         <header className="mb-6 border-b-2 border-black pb-2.5 text-center">
+          <div className="mb-2 flex justify-center">
+            <Logo yukseklik={34} />
+          </div>
           <p className="text-[13pt] font-bold tracking-wide">{kurum.toLocaleUpperCase("tr-TR")}</p>
           <p className="text-[11pt]">{c.factory_name.toLocaleUpperCase("tr-TR")}</p>
           <p className="mt-2.5 text-[12pt] font-bold">

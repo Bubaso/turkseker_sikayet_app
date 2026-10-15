@@ -83,7 +83,7 @@ export default async function ReportsPage({
               hint={`${toplam.total_tasks - toplam.overdue_tasks} / ${toplam.total_tasks} aşama süresinde`} />
         <Stat label="Ortalama kapanma"
               value={toplam.avg_close_days == null ? "—" : `${toplam.avg_close_days} iş günü`}
-              tone="brand" hint="Şikâyet tarihinden kapanışa" />
+              hint="Şikâyet tarihinden kapanışa" />
         <Stat label="Haklı bulunma oranı" value={hakliOrani == null ? "—" : fmtPct(hakliOrani, 1)}
               hint={`${toplam.justified} haklı · ${toplam.rejected} haksız`} />
       </div>

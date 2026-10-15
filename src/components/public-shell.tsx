@@ -1,25 +1,27 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Amblem, Logo } from "./marka";
 
-/** Halka açık sayfaların kurumsal çerçevesi. */
+/**
+ * Halka açık sayfaların kurumsal çerçevesi. Üstte marka yeşili ince çizgi,
+ * altında logo kilidi ve uygulamanın adı. Kurum sitesine dönüş bağlantısı
+ * altbilgide durur: uygulamaya zaten oradan gelinir.
+ */
 export function PublicShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  const en = wide ? "max-w-6xl" : "max-w-4xl";
+
   return (
     <div className="flex min-h-screen flex-col bg-ink-100">
-      <div className="h-1 bg-kurum-500" aria-hidden />
+      <div className="h-1 bg-brand-600" aria-hidden />
+
       <header className="border-b border-ink-200 bg-white">
-        <div className={`mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${wide ? "max-w-6xl" : "max-w-4xl"}`}>
-          <Link href="/" className="flex items-center gap-3">
-            <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-[5px] bg-brand-700 text-[11px] leading-tight font-bold text-white"
-              aria-hidden
-            >
-              TŞ
-            </span>
-            <span className="leading-tight">
-              <span className="block text-sm font-semibold text-ink-900">
-                Türkiye Şeker Fabrikaları A.Ş.
-              </span>
-              <span className="block text-xs text-ink-500">Müşteri Şikâyet Takip Sistemi</span>
+        <div className={`mx-auto flex flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3.5 ${en}`}>
+          <Link href="/" className="flex items-center gap-3.5" aria-label="Ana sayfa">
+            <Logo yukseklik={30} />
+            <span className="border-l border-ink-200 pl-3.5 text-sm leading-tight font-medium text-ink-600">
+              Müşteri Şikâyet
+              <br />
+              Takip Sistemi
             </span>
           </Link>
           <nav className="flex items-center gap-1 text-sm">
@@ -29,16 +31,18 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
         </div>
       </header>
 
-      <main className={`mx-auto w-full flex-1 px-4 py-6 sm:py-8 ${wide ? "max-w-6xl" : "max-w-4xl"}`}>
-        {children}
-      </main>
+      <main className={`mx-auto w-full flex-1 px-4 py-6 sm:py-8 ${en}`}>{children}</main>
 
       <footer className="border-t border-ink-200 bg-white">
-        <div className={`mx-auto px-4 py-4 text-xs leading-relaxed text-ink-500 ${wide ? "max-w-6xl" : "max-w-4xl"}`}>
-          <p>
+        <div className={`mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 text-xs leading-relaxed text-ink-500 ${en}`}>
+          <p className="flex items-center gap-2">
+            <Amblem boyut={18} />
             © {new Date().getFullYear()} Türkiye Şeker Fabrikaları A.Ş. · Kişisel verileriniz 6698
             sayılı KVKK kapsamında korunur.
           </p>
+          <a href="https://www.turkseker.gov.tr" className="link" target="_blank" rel="noreferrer">
+            turkseker.gov.tr
+          </a>
         </div>
       </footer>
     </div>

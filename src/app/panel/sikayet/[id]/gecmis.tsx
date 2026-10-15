@@ -11,9 +11,14 @@ import { Chip } from "@/components/ui";
    katlanmış durur. Açıldığında kim, ne zaman, ne yaptı tam olarak okunur.
    =========================================================================== */
 
-const TYPE_TONE: Record<string, "ink" | "info" | "brand" | "ok" | "warn" | "danger"> = {
-  KAYIT: "info", DURUM: "ink", EKIP: "brand", YONLENDIRME: "brand",
-  INCELEME: "brand", BELGE: "info", KARAR: "warn", ITIRAZ: "danger",
+/*
+ * Denetim izinde tür etiketi yalnızca satırı sınıflandırır; "şimdi şunu yap"
+ * demez. Bu yüzden dolu marka rozeti kullanılmaz — renk ancak kararın
+ * ağırlığını taşıdığı yerde (karar, itiraz, kapanış) anlam yüklenir.
+ */
+const TYPE_TONE: Record<string, "ink" | "info" | "ok" | "warn" | "danger"> = {
+  KAYIT: "info", DURUM: "ink", EKIP: "info", YONLENDIRME: "ink",
+  INCELEME: "info", BELGE: "info", KARAR: "warn", ITIRAZ: "danger",
   ISLEM: "ok", RESMI_YAZI: "info", BILDIRIM: "info", GOREV: "ink",
   EK: "ink", KAPANIS: "ok", NOT: "ink",
 };
@@ -75,7 +80,7 @@ export function Gecmis({
             {notifications.map((n) => (
               <li key={n.id} className="px-4 py-3 sm:px-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Chip tone={n.channel === "SMS" ? "brand" : "info"}>
+                  <Chip tone={n.channel === "SMS" ? "ink" : "info"}>
                     {n.channel === "SMS" ? "SMS" : "E-posta"}
                   </Chip>
                   <Chip tone={n.status === "GONDERILDI" ? "ok" : n.status === "HATA" ? "danger" : "warn"} dot>

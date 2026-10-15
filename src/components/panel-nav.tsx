@@ -7,7 +7,7 @@ interface NavItem {
   href: string;
   label: string;
   count?: number;
-  tone?: "danger" | "warn" | "brand";
+  tone?: "danger" | "warn";
   show?: boolean;
 }
 
@@ -61,7 +61,7 @@ export function PanelNav({
               href: "/panel/resmi-yazilar",
               label: "Resmî yazılar",
               count: counts.yazilar,
-              tone: "brand",
+              tone: "warn",
               show: daire,
             },
             { href: "/panel/ozet", label: "Yönetim özeti" },
@@ -78,7 +78,7 @@ export function PanelNav({
               href: "/panel/gorevler",
               label: "Bana düşen aşamalar",
               count: counts.myTasks,
-              tone: "brand",
+              tone: "warn",
             },
             { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
             { href: "/panel/sikayetler?gecikme=1", label: "Geciken dosyalar", count: counts.overdue, tone: "danger" },
@@ -146,9 +146,7 @@ export function PanelNav({
                                 ? "bg-danger-50 text-danger-700"
                                 : i.tone === "warn"
                                   ? "bg-warn-50 text-warn-700"
-                                  : i.tone === "brand"
-                                    ? "bg-brand-100 text-brand-700"
-                                    : "bg-ink-100 text-ink-600")
+                                  : "bg-ink-100 text-ink-600")
                             }
                           >
                             {i.count}

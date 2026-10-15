@@ -54,6 +54,7 @@ export default async function OutboxPage({
     counts.filter(f).reduce((a, r) => a + r.n, 0);
   const smsCredits = counts.filter((r) => r.channel === "SMS").reduce((a, r) => a + r.credits, 0);
   const failed = sum((r) => r.status === "HATA");
+  const kuyrukta = sum((r) => r.status === "KUYRUKTA");
 
   return (
     <div className="space-y-5">
@@ -78,7 +79,7 @@ export default async function OutboxPage({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Gönderilen" value={sum((r) => r.status === "GONDERILDI")} tone="ok" />
         <Stat label="Hatalı" value={failed} tone={failed ? "danger" : "ink"} />
-        <Stat label="Kuyrukta" value={sum((r) => r.status === "KUYRUKTA")} tone="warn" />
+        <Stat label="Kuyrukta" value={kuyrukta} tone={kuyrukta ? "warn" : "ink"} />
         <Stat label="SMS kredisi" value={smsCredits} hint="Operatörün ücretlendireceği mesaj adedi" />
       </div>
 
@@ -114,7 +115,7 @@ export default async function OutboxPage({
             {rows.map((n) => (
               <li key={n.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Chip tone={n.channel === "SMS" ? "brand" : "info"}>
+                  <Chip tone={n.channel === "SMS" ? "ink" : "info"}>
                     {n.channel === "SMS" ? "SMS" : "E-posta"}
                   </Chip>
                   <Chip tone={n.status === "GONDERILDI" ? "ok" : n.status === "HATA" ? "danger" : "warn"} dot>
