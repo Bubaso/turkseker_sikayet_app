@@ -177,7 +177,14 @@ const MONTHS_TR = [
 export const MONTH_NAMES_TR = MONTHS_TR;
 
 const DAYS_TR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
-export const DAY_NAMES_TR = DAYS_TR;
+
+/*
+ * Gün adlarının kısaltması. İlk üç harfi almak işe yaramaz: "Pazartesi" ile
+ * "Pazar" da, "Cuma" ile "Cumartesi" de aynı üç harfle başlar ve takvim
+ * başlığında pazartesi pazardan ayırt edilemez hâle gelir. Türkçede yerleşik
+ * kısaltmalar kullanılır.
+ */
+export const DAY_SHORT_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 
 export function monthName(m: number): string {
   return MONTHS_TR[m - 1] ?? "";

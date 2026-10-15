@@ -35,7 +35,7 @@ export function Grafik({
   return (
     <section className={`card ${className}`}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-200 px-4 py-2.5">
-        <h2 className="text-[13px] font-semibold tracking-wide text-ink-700 uppercase">{baslik}</h2>
+        <h2 className="text-baslik font-semibold tracking-wide text-ink-700 uppercase">{baslik}</h2>
         {tablo && (
           <button
             type="button"

@@ -24,7 +24,7 @@ const TYPE_TONE: Record<string, "ink" | "info" | "ok" | "warn" | "danger"> = {
 };
 
 const summaryClass =
-  "cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold " +
+  "cursor-pointer border-b border-ink-200 px-4 py-2.5 text-baslik font-semibold " +
   "tracking-wide text-ink-700 uppercase";
 
 export function Gecmis({

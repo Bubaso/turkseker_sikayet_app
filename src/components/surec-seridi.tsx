@@ -52,7 +52,7 @@ export function SurecSeridi({ adimlar }: { adimlar: SurecAdimi[] }) {
 
 function Isaretci({ durum, sira }: { durum: AdimDurumu; sira: number }) {
   const temel =
-    "mt-2 flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold";
+    "mt-2 flex size-6 shrink-0 items-center justify-center rounded-full border text-rozet font-semibold";
   const gorunum =
     durum === "tamam"
       ? "border-ok-600 bg-ok-600 text-white"

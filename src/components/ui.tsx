@@ -86,7 +86,7 @@ export function Card({
     <section className={`card ${className}`}>
       {title && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-200 px-4 py-2.5">
-          <h2 className="text-[13px] font-semibold tracking-wide text-ink-700 uppercase">{title}</h2>
+          <h2 className="text-baslik font-semibold tracking-wide text-ink-700 uppercase">{title}</h2>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
@@ -300,7 +300,7 @@ export function ProgressSteps({
           <li key={s.label} className="flex items-center gap-1.5">
             <span
               className={
-                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold " +
+                "flex size-5 shrink-0 items-center justify-center rounded-full border text-rozet font-semibold " +
                 (state === "done"
                   ? "border-ok-600 bg-ok-600 text-white"
                   : state === "active"
@@ -348,7 +348,7 @@ export function Tabs({
           >
             {t.label}
             {t.count != null && t.count > 0 && (
-              <span className={`tnum rounded-full px-1.5 text-[11px] ${on ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-600"}`}>
+              <span className={`tnum rounded-full px-1.5 text-rozet ${on ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-600"}`}>
                 {t.count}
               </span>
             )}

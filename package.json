@@ -13,7 +13,8 @@
     "db:reset": "node --disable-warning=ExperimentalWarning scripts/reset-db.mjs",
     "test:senaryo": "node tests/senaryo.mjs",
     "test:surucu": "node --disable-warning=ExperimentalWarning tests/surucu.mjs",
-    "test:sahiplik": "node tests/sahiplik.mjs"
+    "test:sahiplik": "node tests/sahiplik.mjs",
+    "test:olcek": "node tests/olcek.mjs"
   },
   "dependencies": {
     "exceljs": "4.4.0",

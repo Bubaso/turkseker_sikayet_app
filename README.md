@@ -582,6 +582,20 @@ Karşıtlık değerleri WCAG 2.1'e göre ölçülmüştür: beyaz üzerinde mark
 `brand-700` 8,38:1 (AAA). Durum renkleri de AAA eşiğindedir (ok 7,29; sarı
 7,09; kırmızı 8,31). En düşük değer gri ipucu metnindedir: 4,76 (AA).
 
+### Yazı ölçeği
+
+Arayüzde tekrar eden üç ölçü `globals.css` içinde ad almıştır; çağrı yerinde
+sayı değil niyet durur ve ölçü tek yerden değişir:
+
+| Belirteç | Değer | Nerede |
+|---|---|---|
+| `text-baslik` | `0.8125rem` (13px) | Kart ve bölüm başlıkları, form etiketi, küçük düğme |
+| `text-rozet` | `0.6875rem` (11px) | Rozet, adım numarası, menü grubu başlığı |
+| `text-mini` | `0.625rem` (10px) | Takvim hücresi, küçük işaret |
+
+Hepsi `rem`'dir — gerekçesi için [erişilebilirlik
+notuna](#türkşeker-sitesine-entegrasyon) bakın.
+
 ---
 
 ## Yapılandırma
@@ -717,15 +731,24 @@ Müşteri takibi için ikinci bir bağlantı:
 ```
 
 Kurum sitesinde görme engelliler için bir erişilebilirlik çubuğu (yazı
-büyütme, yüksek karşıtlık) bulunur. Uygulama bu çubuğu taşımaz; karşılığını
-iki yerde kendi içinde verir: hiçbir durum yalnızca renkle anlatılmaz (her
-rozetin metni vardır) ve grafik paleti renk körlüğüne göre seçilmiştir.
+büyütme, yüksek karşıtlık) bulunur. Uygulama ayrı bir çubuk taşımaz; aynı
+sonucu tarayıcının kendi ayarlarıyla verir:
 
-Eksik kalan nokta şudur: arayüzün bir bölümünde yazı boyutu `px`/`pt` ile
-sabitlenmiştir (51 yer; tablo başlıkları, rozetler, grafik etiketleri). Bu
-boyutlar tarayıcının **yakınlaştırmasıyla** büyür ama tarayıcıda ayarlanan
-**varsayılan yazı boyutunu** dinlemez. Bunların `rem` tabanına çevrilmesi
-ayrı bir iştir ve bu turda yapılmamıştır.
+- **Yazı boyutu.** Arayüzdeki bütün ölçüler `rem` tabanlıdır, yani tarayıcıda
+  ayarlanan varsayılan yazı boyutunu dinler. Gövde boyutu da dahildir
+  (`globals.css` içinde `0.875rem`); px yazılsaydı sınıfı olmayan her
+  paragraf ayarı görmezden gelirdi. Kök 16px'ten 20 ve 24px'e çıkarıldığında
+  panolar, şikâyet listesi, dosya sayfası ve takvim yatay taşma ya da kırpılan
+  metin olmadan büyür — bu durum testle doğrulanır.
+- **Renk.** Hiçbir durum yalnızca renkle anlatılmaz (her rozetin metni
+  vardır) ve grafik paleti renk körlüğüne göre seçilmiştir.
+
+İki yer bilerek `rem` dışındadır. A4 çıktıların (`/belge/[id]`,
+`/panel/ozet`) yazı boyutu `pt`'dir: bunlar 210mm'lik kâğıt kutusu içinde
+çizilir ve ekrandaki önizlemenin baskıyla birebir aynı olması gerekir.
+Grafiklerin SVG etiketleri de `viewBox` biriminde kalır; kabın genişliğiyle
+ölçeklenirler ama yazı boyutu ayarını dinlemezler. Bunu değiştirmek grafik
+bileşenini yeniden kurmayı gerektirir.
 
 ---
 
@@ -735,6 +758,11 @@ ayrı bir iştir ve bu turda yapılmamıştır.
 npm run typecheck      # TypeScript tür kontrolü
 npm run test:surucu    # SQLite sürücü davranış testi (21 kontrol, saniyeler sürer)
 npm run build          # üretim derlemesi
+
+# Tarayıcı gerektirenler (sunucu ayakta ve demo verisi üretilmiş olmalı)
+npm run test:senaryo   # uçtan uca şikâyet akışı
+npm run test:sahiplik  # tek sorumlu ve sıra kuralı
+npm run test:olcek     # yazı ölçeği / erişilebilirlik
 ```
 
 `test:surucu` veritabanı sürücüsünün işlem semantiğini doğrular: commit,
@@ -777,9 +805,25 @@ ekranından demo verisi üretilmiş olmalıdır. Son bölümü açık dosyaları
 tarar ve sırası gelmiş aşamanın sorumlusuna gerçekten yapacak iş gösterildiğini
 doğrular — "sorumluya işlem yok denmez" değişmezi bu taramayla korunur.
 
+**Yazı ölçeği testi.** Arayüzün tarayıcının yazı boyutu ayarını dinlediğini
+doğrular. Kök yazı boyutunu 16, 20 ve 24px yapıp beş yoğun sayfayı gezer ve
+her birinde üç şeyi kontrol eder: gövde yazı boyutu kökle orantılı büyüyor
+mu (yani hiçbir yerde px'e sabitlenmemiş mi), sayfa yatay taşıyor mu,
+kutusuna sığmayıp kırpılan metin var mı. Üç nokta ile kısaltılan metinler
+kasıtlıdır, sayılmaz.
+
+```bash
+npm run test:olcek                          # varsayılan http://localhost:3000
+TEST_BASE=http://localhost:3100 npm run test:olcek
+```
+
+A4 çıktı sayfaları bilerek kapsam dışıdır; gerekçesi
+[erişilebilirlik notundadır](#türkşeker-sitesine-entegrasyon).
+
 > Kurumsal ağ arkasında `npx playwright install chromium` komutu tarayıcıyı
 > indiremeyebilir (indirme `playwright.azureedge.net` üzerinden yapılır). Bu
-> yalnızca senaryo testini etkiler; uygulamanın kendisi çalışmaya devam eder.
+> yalnızca tarayıcı gerektiren testleri etkiler; uygulamanın kendisi çalışmaya
+> devam eder.
 
 ## Talimattan sapmalar ve eklemeler
 

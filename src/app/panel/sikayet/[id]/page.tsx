@@ -147,7 +147,7 @@ export default async function ComplaintDetailPage({
       {/* 1. Şikâyet formunun kendisi — dosyayı açanın ilk gördüğü şey.
            Açık gelir; dosya ileri aşamalara geçtiğinde katlanabilir. */}
       <details open className="card overflow-hidden">
-        <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+        <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
           Müşteri Şikâyet Formu (FR PASAT 007) ·{" "}
           <span className="font-normal normal-case text-ink-500">
             müşterinin {fmtDate(c.received_at)} tarihli beyanı
@@ -161,7 +161,7 @@ export default async function ComplaintDetailPage({
       {/* 2. Aşamalar ve kayıt formları */}
       <section>
         <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+          <h2 className="text-baslik font-semibold tracking-wide text-ink-700 uppercase">
             Süreç
           </h2>
           <p className="text-xs text-ink-500">

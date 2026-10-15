@@ -60,6 +60,17 @@
   --color-info-200: #bfdbfe;
   --color-info-600: #1d4ed8;
 
+  /*
+   * Yazı boyutları. Hepsi rem'dir: tarayıcıda büyütülen varsayılan yazı
+   * boyutunu dinlerler (yakınlaştırma zaten her birimi büyütür, asıl mesele
+   * görme güçlüğü çekenin ayarladığı varsayılan boyuttur). Arayüzde tekrar
+   * eden üç ölçü burada ad alır; böylece çağrı yerinde sayı değil niyet durur
+   * ve ölçü tek yerden değişir.
+   */
+  --text-baslik: 0.8125rem;  /* 13px — kart ve bölüm başlığı, form etiketi */
+  --text-rozet: 0.6875rem;   /* 11px — rozet, adım numarası, menü grubu */
+  --text-mini: 0.625rem;     /* 10px — takvim hücresi, küçük işaret */
+
   --radius-card: 6px;
 }
 
@@ -71,7 +82,9 @@ body {
   background-color: var(--color-ink-100);
   color: var(--color-ink-800);
   font-family: var(--font-sans);
-  font-size: 14px;
+  /* 14px. Devralan metnin tamamı buradan beslendiği için rem olmak zorunda:
+     px yazılırsa sınıfsız her paragraf tarayıcı ayarını dinlemez. */
+  font-size: 0.875rem;
   line-height: 1.55;
 }
 * {
@@ -100,11 +113,11 @@ body {
     @apply rounded-[6px] border border-ink-200 bg-white p-4 sm:p-5;
   }
   .card-title {
-    @apply border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase;
+    @apply border-b border-ink-200 px-4 py-2.5 text-baslik font-semibold tracking-wide text-ink-700 uppercase;
   }
 
   .label {
-    @apply mb-1 block text-[13px] font-medium text-ink-700;
+    @apply mb-1 block text-baslik font-medium text-ink-700;
   }
   .hint {
     @apply mt-1 block text-xs leading-snug text-ink-500;
@@ -139,7 +152,7 @@ body {
     @apply border-transparent bg-transparent text-brand-600 hover:bg-brand-50;
   }
   .btn-sm {
-    @apply px-2.5 py-1 text-[13px];
+    @apply px-2.5 py-1 text-baslik;
   }
 
   .chip {

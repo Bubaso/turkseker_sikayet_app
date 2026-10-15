@@ -39,10 +39,10 @@ export default function HomePage() {
     <PublicShell>
       <div className="space-y-5">
         <section className="rounded-[6px] border border-brand-200 bg-brand-50 p-5 sm:p-7">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-[28px]">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-[1.75rem]">
             Şikâyetinizi buradan iletebilirsiniz
           </h1>
-          <p className="mt-2.5 max-w-[60ch] text-[15px] leading-relaxed text-ink-700">
+          <p className="mt-2.5 max-w-[60ch] text-[0.9375rem] leading-relaxed text-ink-700">
             Türkiye Şeker Fabrikaları A.Ş.’den aldığınız şeker, melas veya küspe ürünlerine
             ilişkin şikâyetinizi kaydedin; her aşamayı şikâyet numaranızla takip edin.
           </p>
@@ -78,7 +78,7 @@ export default function HomePage() {
             {ADIMLAR.map((a, i) => (
               <li key={a.baslik} className="flex gap-3">
                 <span
-                  className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-brand-200 bg-brand-50 text-[11px] font-semibold text-brand-700"
+                  className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-brand-200 bg-brand-50 text-rozet font-semibold text-brand-700"
                   aria-hidden
                 >
                   {i + 1}

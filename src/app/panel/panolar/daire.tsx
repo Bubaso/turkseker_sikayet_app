@@ -181,7 +181,7 @@ export async function DairePano({
       </div>
 
       <section className="card-pad">
-        <h2 className="mb-3 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+        <h2 className="mb-3 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
           Dönem: {fmtDate(aralik.from)} – {fmtDate(aralik.to)}
         </h2>
         <DonemSecici bas={aralik.from} bit={aralik.to} hedef="/panel" />

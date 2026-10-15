@@ -43,7 +43,7 @@ export function Ekler({
 
   return (
     <details className="card overflow-hidden">
-      <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-ink-700 uppercase">
+      <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
         Bütün ekler ({attachments.length + (form ? 1 : 0)})
       </summary>
 
@@ -61,7 +61,7 @@ export function Ekler({
                   <span className="block truncate text-xs font-medium text-ink-700" title={a.file_name}>
                     {a.file_name}
                   </span>
-                  <span className="block text-[11px] text-ink-500">
+                  <span className="block text-rozet text-ink-500">
                     {a.uploader_label ?? a.uploaded_by_name ?? "—"} · {fmtBytes(a.size)}
                   </span>
                 </figcaption>

@@ -120,7 +120,7 @@ export function PanelNav({
           if (items.length === 0) return null;
           return (
             <div key={g.title}>
-              <p className="mb-1 px-2 text-[11px] font-semibold tracking-wider text-ink-400 uppercase">
+              <p className="mb-1 px-2 text-rozet font-semibold tracking-wider text-ink-400 uppercase">
                 {g.title}
               </p>
               <ul className="space-y-0.5">
@@ -141,7 +141,7 @@ export function PanelNav({
                         {i.count != null && i.count > 0 && (
                           <span
                             className={
-                              "tnum rounded-full px-1.5 text-[11px] font-semibold " +
+                              "tnum rounded-full px-1.5 text-rozet font-semibold " +
                               (i.tone === "danger"
                                 ? "bg-danger-50 text-danger-700"
                                 : i.tone === "warn"

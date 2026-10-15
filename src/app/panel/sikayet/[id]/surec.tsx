@@ -346,7 +346,7 @@ function Isaretci({
         : "border-ink-300 bg-white text-ink-400";
   return (
     <span
-      className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold ${gorunum}`}
+      className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-rozet font-semibold ${gorunum}`}
       aria-hidden
     >
       {atlandi ? "–" : kapandi ? "✓" : sira}

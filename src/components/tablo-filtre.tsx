@@ -88,7 +88,7 @@ export function BaslikFiltre({ baslik, secenekler }: {
         aria-haspopup="listbox"
         aria-expanded={acik}
         aria-label={`${baslik} sütununu filtrele`}
-        className={`flex size-4 items-center justify-center rounded-[3px] text-[9px] leading-none transition-colors ${
+        className={`flex size-4 items-center justify-center rounded-[3px] text-[0.5625rem] leading-none transition-colors ${
           etkin
             ? "bg-brand-600 text-white"
             : "text-ink-400 hover:bg-ink-200 hover:text-ink-700"

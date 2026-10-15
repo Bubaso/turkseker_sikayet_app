@@ -65,7 +65,7 @@ export default function RoleSwitcher({
       >
         {etiket}
         <span
-          className={`tnum rounded-full px-1.5 text-[11px] ${
+          className={`tnum rounded-full px-1.5 text-rozet ${
             aktif ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-600"
           }`}
         >
@@ -118,7 +118,7 @@ export default function RoleSwitcher({
               {tab === "fabrika" && (
                 <>
                   <label className="label" htmlFor="rs-factory">
-                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-mini font-bold text-white">
                       1
                     </span>
                     Hangi fabrikada çalışacaksınız?
@@ -138,7 +138,7 @@ export default function RoleSwitcher({
                   </span>
 
                   <p className="label">
-                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-mini font-bold text-white">
                       2
                     </span>
                     Hangi unvanla gireceksiniz?

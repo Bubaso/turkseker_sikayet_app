@@ -364,7 +364,7 @@ export function Meter({
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-xs font-medium text-ink-700" title={label}>{label}</span>
         <span className="flex shrink-0 items-center gap-1.5">
-          <span aria-hidden className="flex size-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+          <span aria-hidden className="flex size-4 items-center justify-center rounded-full text-mini font-bold text-white"
                 style={{ background: BAND_FILL[band] }}>
             {BAND_ICON[band]}
           </span>

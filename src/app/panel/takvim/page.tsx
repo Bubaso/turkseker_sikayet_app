@@ -2,7 +2,7 @@ import Link from "next/link";
 import { all } from "@/lib/db";
 import { isGmRole } from "@/lib/roles";
 import {
-  DAY_NAMES_TR, daysInMonth, fmtDate, isWeekend, monthName, today, weekday,
+  DAY_SHORT_TR, daysInMonth, fmtDate, isWeekend, monthName, today, weekday,
 } from "@/lib/dates";
 import {requirePageUser} from "@/server/auth";
 import { fabrikaAcikAsamalari } from "@/server/asamalar-db";
@@ -73,8 +73,8 @@ export default async function CalendarPage({
 
       <Card bodyClass="p-2 sm:p-3">
         <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-ink-500">
-          {DAY_NAMES_TR.slice(1).concat(DAY_NAMES_TR[0]!).map((d) => (
-            <div key={d} className="py-1">{d.slice(0, 3)}</div>
+          {DAY_SHORT_TR.slice(1).concat(DAY_SHORT_TR[0]!).map((d) => (
+            <div key={d} className="py-1">{d}</div>
           ))}
         </div>
         <div className="mt-1 grid grid-cols-7 gap-1.5">
@@ -104,15 +104,15 @@ export default async function CalendarPage({
                   </span>
                   {overdueHere && <Chip tone="danger">!</Chip>}
                 </div>
-                {hol && <p className="mt-0.5 text-[10px] leading-tight text-warn-700">{hol}</p>}
+                {hol && <p className="mt-0.5 text-mini leading-tight text-warn-700">{hol}</p>}
                 {dayNew.length > 0 && (
-                  <p className="mt-0.5 text-[10px] text-info-600">{dayNew.length} yeni şikâyet</p>
+                  <p className="mt-0.5 text-mini text-info-600">{dayNew.length} yeni şikâyet</p>
                 )}
                 <ul className="mt-1 space-y-0.5">
                   {dayTasks.slice(0, 3).map((t) => (
                     <li key={t.id}>
                       <Link href={`/panel/sikayet/${t.complaint_id}`}
-                            className={`block truncate rounded px-1 py-0.5 text-[10px] leading-tight ${
+                            className={`block truncate rounded px-1 py-0.5 text-mini leading-tight ${
                               past ? "bg-danger-50 text-danger-700" : "bg-ink-100 text-ink-700"
                             } hover:bg-brand-100`}
                             title={`${t.title} — ${t.complaint_no} — ${t.assignee_name ?? "atanmadı"}`}>
@@ -121,7 +121,7 @@ export default async function CalendarPage({
                     </li>
                   ))}
                   {dayTasks.length > 3 && (
-                    <li className="px-1 text-[10px] text-ink-500">+{dayTasks.length - 3} aşama daha</li>
+                    <li className="px-1 text-mini text-ink-500">+{dayTasks.length - 3} aşama daha</li>
                   )}
                 </ul>
               </div>
