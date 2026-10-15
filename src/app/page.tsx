@@ -72,6 +72,13 @@ export default function HomePage() {
           </Notice>
         )}
 
+        {/*
+         * Geniş ekranda iki kutu ekranı ikiye böler: biri "ne olacak", diğeri
+         * "ne hazırlamalıyım" der ve ikisi de başvurmadan önce okunur. Alt
+         * alta dizildiklerinde ikincisi katlanmanın altında kalıyordu. Dar
+         * ekranda tek sütuna iner.
+         */}
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <section className="card-pad">
           <h2 className="text-sm font-semibold text-ink-900">Şikâyetiniz nasıl ilerler?</h2>
           <ol className="mt-3 space-y-3">
@@ -113,6 +120,7 @@ export default function HomePage() {
             tamamlanana kadar tüketmeden ve ambalajını bozmadan saklayın.
           </p>
         </section>
+        </div>
       </div>
     </PublicShell>
   );
