@@ -9,77 +9,10 @@
 
 import { all, one, run, scalar } from "@/lib/db";
 import { businessDaysBetween, dayOf, today } from "@/lib/dates";
-import { DEPT, PRODUCT_GROUP, type DeptCode, type ProductGroup } from "@/lib/domain";
+import type { DeptCode } from "@/lib/domain";
+import { mercekSuzgeci } from "@/lib/mercek";
 import { holidaySet } from "./settings";
 import type { PerfRange } from "./stats";
-
-/* --- Daire merceği -------------------------------------------------------- */
-
-/**
- * Her Daire Başkanlığının doğal bakış açısı. Pazarlama dökme şeker, melas ve
- * posadan; Perakende paketli şekerden sorumludur (md. 5-6). Üretim dairesi
- * üretim kaynaklı kusurlara, Mali İşler bedellere, Strateji kurum geneline
- * bakar. Pano ve listeler bu mercekle açılır, kullanıcı isterse tümünü görür.
- */
-export interface DaireMercegi {
-  /** Varsayılan ürün grubu süzgeci; boşsa tüm ürünler. */
-  productGroups: ProductGroup[];
-  /** Panoda öne çıkarılacak bakış. */
-  odak: "urun" | "uretim" | "mali" | "kurum";
-  aciklama: string;
-}
-
-export const DAIRE_MERCEGI: Record<DeptCode, DaireMercegi> = {
-  [DEPT.PAZARLAMA_SATIS]: {
-    productGroups: [PRODUCT_GROUP.DOKME_SEKER, PRODUCT_GROUP.MELAS, PRODUCT_GROUP.POSA],
-    odak: "urun",
-    aciklama: "Dökme şeker, melas ve küspe/posa satışlarına ilişkin şikâyetler",
-  },
-  [DEPT.PERAKENDE_LOJISTIK]: {
-    productGroups: [PRODUCT_GROUP.PAKETLI_SEKER],
-    odak: "urun",
-    aciklama: "Paketli şeker satışlarına ilişkin şikâyetler",
-  },
-  [DEPT.SEKER_URETIM]: {
-    productGroups: [],
-    odak: "uretim",
-    aciklama: "Üretim kaynaklı kusurlar — topaklanma, renk, nem, yabancı madde",
-  },
-  [DEPT.MALI_ISLER]: {
-    productGroups: [],
-    odak: "mali",
-    aciklama: "İade/mahsup ve nakliye bedellerinin fabrika ve ay bazında seyri",
-  },
-  [DEPT.STRATEJI]: {
-    productGroups: [],
-    odak: "kurum",
-    aciklama: "Kurum geneli göstergeler, seyir ve aylık tablo",
-  },
-};
-
-/** Üretim dairesinin merceğindeki şikâyet aileleri. */
-const URETIM_AILELERI = ["FIZIKSEL", "KIMYASAL", "MIKROBIYOLOJIK", "DUYUSAL"];
-
-export function mercekSuzgeci(code: DeptCode | null): { sql: string; params: unknown[] } {
-  if (!code) return { sql: "", params: [] };
-  const m = DAIRE_MERCEGI[code];
-  if (!m) return { sql: "", params: [] };
-  if (m.productGroups.length > 0) {
-    return {
-      sql: ` AND c.product_group IN (${m.productGroups.map(() => "?").join(",")})`,
-      params: [...m.productGroups],
-    };
-  }
-  if (m.odak === "uretim") {
-    return {
-      sql: ` AND EXISTS (SELECT 1 FROM complaint_categories cc
-                          WHERE cc.id = c.category_id
-                            AND cc.family IN (${URETIM_AILELERI.map(() => "?").join(",")}))`,
-      params: [...URETIM_AILELERI],
-    };
-  }
-  return { sql: "", params: [] };
-}
 
 /* --- Dönem karşılaştırması ------------------------------------------------ */
 
@@ -191,48 +124,6 @@ export function daireSayilari(deptCode: DeptCode | null): DaireSayilari {
                      AND t.status IN ('BEKLEMEDE','DEVAM_EDIYOR')
                      AND t.due_at IS NOT NULL AND t.due_at < date('now')`),
   };
-}
-
-export interface DaireAyi {
-  ay: string;
-  gelen: number;
-  hakli: number;
-  kapanan: number;
-}
-
-/** Dairenin merceğindeki aylık seyir. */
-export function daireSeyri(aySayisi: number, deptCode: DeptCode | null): DaireAyi[] {
-  const ek = mercekSuzgeci(deptCode);
-  return all<DaireAyi>(
-    `SELECT strftime('%Y-%m', c.received_at) AS ay,
-            COUNT(*) AS gelen,
-            SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS hakli,
-            SUM(CASE WHEN c.closed_at IS NOT NULL THEN 1 ELSE 0 END) AS kapanan
-       FROM complaints c
-      WHERE c.received_at >= date('now','start of month', ?)${ek.sql}
-      GROUP BY ay ORDER BY ay`,
-    `-${aySayisi - 1} months`, ...ek.params,
-  );
-}
-
-export interface DaireTuru {
-  ad: string;
-  aile: string;
-  adet: number;
-  hakli: number;
-}
-
-/** Dairenin merceğindeki şikâyet türü dağılımı. */
-export function daireTurDagilimi(deptCode: DeptCode | null, r: PerfRange): DaireTuru[] {
-  const ek = mercekSuzgeci(deptCode);
-  return all<DaireTuru>(
-    `SELECT cat.name AS ad, cat.family AS aile, COUNT(*) AS adet,
-            SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS hakli
-       FROM complaints c JOIN complaint_categories cat ON cat.id = c.category_id
-      WHERE c.received_at BETWEEN ? AND ?${ek.sql}
-      GROUP BY cat.id ORDER BY adet DESC`,
-    r.from, r.to, ...ek.params,
-  );
 }
 
 /* --- Maliyet seyri -------------------------------------------------------- */

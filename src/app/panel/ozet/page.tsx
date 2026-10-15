@@ -43,10 +43,11 @@ export default async function YonetimOzetiPage({
     : null;
 
   const kiyas = donemKiyasi(aralik, deptCode);
-  const fabrikalar = factoryPerformance(aralik).filter((f) => f.total > 0);
+  // Daire Başkanı açtığında özet, panosuyla aynı mercekten bakar.
+  const fabrikalar = factoryPerformance(aralik, null, deptCode).filter((f) => f.total > 0);
   const toplam = totalRow(fabrikalar);
   const enZayif = [...fabrikalar].sort((a, b) => (a.sla_rate ?? 101) - (b.sla_rate ?? 101)).slice(0, 5);
-  const turler = categoryBreakdown(aralik).slice(0, 5);
+  const turler = categoryBreakdown(aralik, null, deptCode).slice(0, 5);
   const kurum = one<{ value: string }>("SELECT value FROM settings WHERE key = 'kurum_adi'")?.value
     ?? "Türkiye Şeker Fabrikaları A.Ş.";
   const maliyet = kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli;

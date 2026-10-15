@@ -268,7 +268,11 @@ hepsi gösterge panelinde toplanmıştır.
 - Grafikler: 12 aylık seyir, fabrika karşılaştırma, fabrikalara göre SLA
   uyumu, şikâyet türü ve ürün grubu dağılımı, aşama bazında süre uyumu
 - Çıktılar: A4 yönetim özeti ve aylık şikâyet tablosu (Excel)
-- Daire Başkanlığına özel: kendi karar kuyruğu ve dairesine gelen resmî yazılar
+
+Daire Başkanı panosu **aynı ölçülerin tamamını** taşır; farkı, hepsinin
+dairenin merceğinden süzülmesi ve en üstte kendi karar kuyruğunun durmasıdır.
+Üstüne dört ölçü daha gelir: kararım bekleniyor, karara bağladığım, ortalama
+karar sürem, okunmamış resmî yazı.
 
 **Raporlama**
 
@@ -425,7 +429,7 @@ inceleme ve karar aşamaları ona düşer.
 
 | | Fabrika personeli | Genel Müdür Yrd. | Daire Başkanı |
 |---|---|---|---|
-| Gösterge paneli | günlük iş | 14 fabrikanın tamamı + raporlar | kendi alanı + karar kuyruğu |
+| Gösterge paneli | günlük iş | 14 fabrikanın tamamı + raporlar | aynısı, dairenin merceğiyle + karar kuyruğu |
 | Şikâyet dosyaları | kendi fabrikası | hepsi | hepsi |
 | Bana düşen aşamalar, Takvim, SMS kutusu, Performans panosu | ✓ | — | — |
 | Kararımı bekleyenler, Resmî yazılar | — | — | ✓ |
@@ -435,6 +439,16 @@ Genel Müdürlük tarafı izleyicidir: ayrı rapor, fabrika karşılaştırma, d
 listesi ve aylık tablo ekranları kaldırılmış, hepsi gösterge paneline
 toplanmıştır. Eşiği aşan itiraz ilgili **Daire Başkanlığına** gittiği için
 karar kuyruğu da yalnızca orada görünür.
+
+#### Daire merceği
+
+Her Daire Başkanlığının doğal bakış açısı `src/lib/mercek.ts` içinde tek yerde
+tanımlıdır ve hem gözetim hem performans sorgularını süzer: Pazarlama dökme
+şeker, melas ve posa; Perakende paketli şeker; Şeker Üretim üretim kaynaklı
+kusurlar (ürün kalitesi ve gıda güvenliği aileleri); Mali İşler ve Strateji
+kurum geneli. Daire Başkanı bu merceğin dışını görmek isterse şikâyet
+dosyalarından tüm ürün gruplarına geçer. A4 yönetim özeti de aynı mercekle
+üretilir.
 
 ### Bir ölçü, bir gösterim
 

@@ -4,6 +4,8 @@
 
 import { all, one, scalar } from "@/lib/db";
 import { businessDaysBetween, dayOf, today } from "@/lib/dates";
+import type { DeptCode } from "@/lib/domain";
+import { mercekSuzgeci } from "@/lib/mercek";
 import { holidaySet } from "./settings";
 
 export interface DashboardStats {
@@ -80,9 +82,17 @@ export interface FactoryPerf {
   avg_close_days: number | null;
 }
 
-export function factoryPerformance(r: PerfRange, factoryId?: number | null): FactoryPerf[] {
+/**
+ * Fabrika bazında performans. `deptCode` verilirse yalnızca o Daire
+ * Başkanlığının merceğindeki dosyalar sayılır.
+ */
+export function factoryPerformance(
+  r: PerfRange, factoryId?: number | null, deptCode?: DeptCode | null,
+): FactoryPerf[] {
   const holidays = holidaySet();
   const extra = factoryId ? `AND c.factory_id = ${Number(factoryId)}` : "";
+  const m = mercekSuzgeci(deptCode ?? null);
+  const m2 = mercekSuzgeci(deptCode ?? null, "c2");
 
   const rows = all<Omit<FactoryPerf, "sla_rate" | "avg_close_days">>(
     `SELECT f.id AS factory_id, f.short_name AS factory,
@@ -96,28 +106,29 @@ export function factoryPerformance(r: PerfRange, factoryId?: number | null): Fac
             IFNULL(SUM(c.refund_amount), 0) AS refund_amount,
             IFNULL(SUM(c.freight_amount), 0) AS freight_amount,
             (SELECT COUNT(*) FROM tasks t JOIN complaints c2 ON c2.id = t.complaint_id
-              WHERE c2.factory_id = f.id AND c2.received_at BETWEEN ? AND ?
+              WHERE c2.factory_id = f.id AND c2.received_at BETWEEN ? AND ?${m2.sql}
                 AND t.due_at IS NOT NULL
                 AND ((t.status = 'TAMAMLANDI' AND date(t.completed_at) > t.due_at)
                      OR (t.status IN ('BEKLEMEDE','DEVAM_EDIYOR') AND t.due_at < date('now')))
             ) AS overdue_tasks,
             (SELECT COUNT(*) FROM tasks t JOIN complaints c2 ON c2.id = t.complaint_id
-              WHERE c2.factory_id = f.id AND c2.received_at BETWEEN ? AND ?
+              WHERE c2.factory_id = f.id AND c2.received_at BETWEEN ? AND ?${m2.sql}
                 AND t.due_at IS NOT NULL AND t.status <> 'GEREKSIZ'
             ) AS total_tasks
        FROM factories f
-       LEFT JOIN complaints c ON c.factory_id = f.id AND c.received_at BETWEEN ? AND ? ${extra}
+       LEFT JOIN complaints c ON c.factory_id = f.id AND c.received_at BETWEEN ? AND ?${m.sql} ${extra}
       WHERE f.is_active = 1 ${factoryId ? `AND f.id = ${Number(factoryId)}` : ""}
       GROUP BY f.id
       ORDER BY f.short_name`,
-    r.from, r.to, r.from, r.to, r.from, r.to,
+    r.from, r.to, ...m2.params, r.from, r.to, ...m2.params, r.from, r.to, ...m.params,
   );
 
   return rows.map((row) => {
     const closeDays = all<{ received_at: string; closed_at: string }>(
-      `SELECT received_at, closed_at FROM complaints
-        WHERE factory_id = ? AND closed_at IS NOT NULL AND received_at BETWEEN ? AND ?`,
-      row.factory_id, r.from, r.to,
+      `SELECT c.received_at, c.closed_at FROM complaints c
+        WHERE c.factory_id = ? AND c.closed_at IS NOT NULL
+          AND c.received_at BETWEEN ? AND ?${m.sql}`,
+      row.factory_id, r.from, r.to, ...m.params,
     ).map((c) => businessDaysBetween(c.received_at, dayOf(c.closed_at)!, holidays));
 
     return {
@@ -139,15 +150,18 @@ export interface CategoryStat {
   justified: number;
 }
 
-export function categoryBreakdown(r: PerfRange, factoryId?: number | null): CategoryStat[] {
+export function categoryBreakdown(
+  r: PerfRange, factoryId?: number | null, deptCode?: DeptCode | null,
+): CategoryStat[] {
+  const m = mercekSuzgeci(deptCode ?? null);
   return all<CategoryStat>(
     `SELECT cat.name, cat.family, COUNT(c.id) AS count,
             SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS justified
        FROM complaints c JOIN complaint_categories cat ON cat.id = c.category_id
-      WHERE c.received_at BETWEEN ? AND ? ${factoryId ? "AND c.factory_id = ?" : ""}
+      WHERE c.received_at BETWEEN ? AND ? ${factoryId ? "AND c.factory_id = ?" : ""}${m.sql}
       GROUP BY cat.id HAVING count > 0
       ORDER BY count DESC`,
-    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]),
+    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]), ...m.params,
   );
 }
 
@@ -158,16 +172,19 @@ export interface MonthPoint {
   closed: number;
 }
 
-export function monthlyTrend(months: number, factoryId?: number | null): MonthPoint[] {
+export function monthlyTrend(
+  months: number, factoryId?: number | null, deptCode?: DeptCode | null,
+): MonthPoint[] {
+  const m = mercekSuzgeci(deptCode ?? null);
   return all<MonthPoint>(
-    `SELECT strftime('%Y-%m', received_at) AS ym,
+    `SELECT strftime('%Y-%m', c.received_at) AS ym,
             COUNT(*) AS total,
-            SUM(CASE WHEN verdict = 'HAKLI' THEN 1 ELSE 0 END) AS justified,
-            SUM(CASE WHEN status IN ('KAPANDI','REDDEDILDI') THEN 1 ELSE 0 END) AS closed
-       FROM complaints
-      WHERE received_at >= date('now', ?) ${factoryId ? "AND factory_id = ?" : ""}
+            SUM(CASE WHEN c.verdict = 'HAKLI' THEN 1 ELSE 0 END) AS justified,
+            SUM(CASE WHEN c.status IN ('KAPANDI','REDDEDILDI') THEN 1 ELSE 0 END) AS closed
+       FROM complaints c
+      WHERE c.received_at >= date('now', ?) ${factoryId ? "AND c.factory_id = ?" : ""}${m.sql}
       GROUP BY ym ORDER BY ym`,
-    ...(factoryId ? [`-${months} months`, factoryId] : [`-${months} months`]),
+    ...(factoryId ? [`-${months} months`, factoryId] : [`-${months} months`]), ...m.params,
   );
 }
 
@@ -177,13 +194,16 @@ export interface ProductGroupStat {
   quantity_kg: number;
 }
 
-export function productGroupBreakdown(r: PerfRange, factoryId?: number | null): ProductGroupStat[] {
+export function productGroupBreakdown(
+  r: PerfRange, factoryId?: number | null, deptCode?: DeptCode | null,
+): ProductGroupStat[] {
+  const m = mercekSuzgeci(deptCode ?? null);
   return all<ProductGroupStat>(
-    `SELECT product_group, COUNT(*) AS count, IFNULL(SUM(quantity_kg),0) AS quantity_kg
-       FROM complaints
-      WHERE received_at BETWEEN ? AND ? ${factoryId ? "AND factory_id = ?" : ""}
-      GROUP BY product_group ORDER BY count DESC`,
-    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]),
+    `SELECT c.product_group, COUNT(*) AS count, IFNULL(SUM(c.quantity_kg),0) AS quantity_kg
+       FROM complaints c
+      WHERE c.received_at BETWEEN ? AND ? ${factoryId ? "AND c.factory_id = ?" : ""}${m.sql}
+      GROUP BY c.product_group ORDER BY count DESC`,
+    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]), ...m.params,
   );
 }
 
@@ -197,7 +217,10 @@ export interface MilestoneSla {
   pendingLate: number;
 }
 
-export function milestoneSla(r: PerfRange, factoryId?: number | null): MilestoneSla[] {
+export function milestoneSla(
+  r: PerfRange, factoryId?: number | null, deptCode?: DeptCode | null,
+): MilestoneSla[] {
+  const m = mercekSuzgeci(deptCode ?? null);
   return all<MilestoneSla>(
     `SELECT t.code, t.title,
             COUNT(*) AS total,
@@ -206,9 +229,9 @@ export function milestoneSla(r: PerfRange, factoryId?: number | null): Milestone
             SUM(CASE WHEN t.status IN ('BEKLEMEDE','DEVAM_EDIYOR') AND t.due_at < date('now') THEN 1 ELSE 0 END) AS pendingLate
        FROM tasks t JOIN complaints c ON c.id = t.complaint_id
       WHERE t.due_at IS NOT NULL AND t.status <> 'GEREKSIZ'
-        AND c.received_at BETWEEN ? AND ? ${factoryId ? "AND c.factory_id = ?" : ""}
+        AND c.received_at BETWEEN ? AND ? ${factoryId ? "AND c.factory_id = ?" : ""}${m.sql}
       GROUP BY t.code ORDER BY MIN(t.sort_order)`,
-    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]),
+    ...(factoryId ? [r.from, r.to, factoryId] : [r.from, r.to]), ...m.params,
   );
 }
 
