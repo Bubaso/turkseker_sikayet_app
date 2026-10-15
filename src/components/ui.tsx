@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  STATUS_LABEL, STATUS_TONE, type Status,
+  STATUS_LABEL, STATUS_SHORT_LABEL, STATUS_TONE, type Status,
 } from "@/lib/domain";
 import { SLA_TONE, type SlaInfo } from "@/lib/dates";
 
@@ -46,11 +46,12 @@ export function Chip({
   );
 }
 
-export function StatusChip({ status }: { status: string }) {
+export function StatusChip({ status, kisa = false }: { status: string; kisa?: boolean }) {
   const s = status as Status;
+  const tam = STATUS_LABEL[s] ?? status;
   return (
-    <Chip tone={STATUS_TONE[s] ?? "ink"} dot>
-      {STATUS_LABEL[s] ?? status}
+    <Chip tone={STATUS_TONE[s] ?? "ink"} dot title={kisa ? tam : undefined}>
+      {kisa ? (STATUS_SHORT_LABEL[s] ?? tam) : tam}
     </Chip>
   );
 }
@@ -64,16 +65,20 @@ export function SlaChip({ sla, compact = false }: { sla: SlaInfo; compact?: bool
   );
 }
 
-export function VerdictChip({ verdict, bosGizle = false }: {
+export function VerdictChip({ verdict, bosGizle = false, nokta = true }: {
   verdict: string | null;
   /** Karar yoksa hiç çizme. Tabloda sütun hizası için tire gerekir, kartta
       yalnız bir tire anlamsız durur. */
   bosGizle?: boolean;
+  /** Durum rozetinin yanında dururken nokta gereksiz: yan yana iki nokta
+      gürültü yapıyor ve rozeti satıra sığmayacak kadar genişletiyor. */
+  nokta?: boolean;
 }) {
   if (!verdict) return bosGizle ? null : <span className="text-ink-400">—</span>;
   const ok = verdict === "HAKLI";
   return (
-    <Chip tone={ok ? "ok" : "ink"} dot title={ok ? "Şikâyet haklı bulundu" : "Şikâyet haklı bulunmadı"}>
+    <Chip tone={ok ? "ok" : "ink"} dot={nokta}
+          title={ok ? "Şikâyet haklı bulundu" : "Şikâyet haklı bulunmadı"}>
       {ok ? "Haklı" : "Haksız"}
     </Chip>
   );

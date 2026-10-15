@@ -71,6 +71,13 @@
   --text-rozet: 0.6875rem;   /* 11px — rozet, adım numarası, menü grubu */
   --text-mini: 0.625rem;     /* 10px — takvim hücresi, küçük işaret */
 
+  /*
+   * Geniş masaüstü. Listede ikincil sütunlar (ürün, miktar) ancak burada
+   * açılır: 2xl (1536px) yetmiyor, kenar çubuğu ve boşluklar düşünce tabloya
+   * kalan genişlik tüm sütunları taşımıyordu.
+   */
+  --breakpoint-genis: 1760px;
+
   --radius-card: 6px;
 }
 

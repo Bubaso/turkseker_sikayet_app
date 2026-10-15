@@ -8,7 +8,7 @@ import { checkEscalation } from "@/lib/esik";
 import { ASAMA } from "@/lib/asamalar";
 import { canAccessFactory, requirePageUser } from "@/server/auth";
 import { getComplaint, listFactories, suggestNearerFactory } from "@/server/complaints";
-import { dosyaAsamalari, atanabilirPersonel } from "@/server/asamalar-db";
+import { dosyaAsamalari, atanabilirPersonel, dosyaEkibi } from "@/server/asamalar-db";
 import { complaintDocuments } from "@/server/documents";
 import { ACCEPT_ATTR, complaintAttachments } from "@/server/attachments";
 import { complaintEvents } from "@/server/events";
@@ -17,6 +17,7 @@ import { Chip, Notice, PageHeader, StatusChip, VerdictChip } from "@/components/
 import { SikayetFormu } from "@/components/sikayet-formu";
 import { ActionForm } from "@/components/action-form";
 import { cancelAction } from "@/app/panel/actions";
+import { Ekip } from "./ekip";
 import { Surec } from "./surec";
 import { Ekler } from "./ekler";
 import { Gecmis } from "./gecmis";
@@ -47,6 +48,7 @@ export default async function ComplaintDetailPage({
   const mudur = user.role === "FABRIKA_MUDURU" || user.role === "SISTEM_YONETICISI";
 
   const asamalar = dosyaAsamalari(c.id, user);
+  const ekip = dosyaEkibi(c.id);
   const attachments = complaintAttachments(c.id);
   const events = complaintEvents(c.id);
   const form = complaintDocuments(c.id)[0] ?? null;
@@ -202,7 +204,10 @@ export default async function ComplaintDetailPage({
         </div>
       </section>
 
-      {/* 3. Belgeler ve ekler */}
+      {/* 3. Dosyanın ekibi — kurulduktan sonra da görünür */}
+      <Ekip uyeler={ekip} kurulma={c.team_formed_at} />
+
+      {/* 4. Belgeler ve ekler */}
       <Ekler
         complaintId={c.id}
         attachments={attachments}
@@ -212,7 +217,7 @@ export default async function ComplaintDetailPage({
         maxMb={getSettingNum("ek_dosya_max_mb", 10)}
       />
 
-      {/* 4. Geçmiş ve müşteriye giden bildirimler */}
+      {/* 5. Geçmiş ve müşteriye giden bildirimler */}
       <Gecmis events={events} notifications={notifications} />
 
       {!c.closed_at && mudur && can(user.role, PERMISSIONS.SIKAYET_KAPAT) && (

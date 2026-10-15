@@ -8,6 +8,7 @@
    =========================================================================== */
 
 import { ASAMA, ASAMALAR, type AsamaKodu } from "@/lib/asamalar";
+import { tutanakVarMi } from "@/lib/tutanak";
 import { VERDICT } from "@/lib/domain";
 import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { fmtBytes } from "@/lib/format";
@@ -266,6 +267,20 @@ function KayitFormu({ kod, v }: { kod: AsamaKodu; v: SurecVerisi }) {
             Belge fabrikada hazırlanır ve imzalanır; buraya yalnızca son hâli yüklenir.
             Her dosya en çok {v.maxMb} MB (PDF, JPG, PNG, Word, Excel).
           </span>
+
+          {/* Boş sayfayla başlamak zorunda değil: dosyanın bilgileri doldurulmuş
+              bir örnek açılır. Kullanmak zorunlu değildir. */}
+          {tutanakVarMi(kod) && (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <a href={`/belge/ornek/${v.c.id}/${kod}`} target="_blank" rel="noreferrer"
+                 className="btn btn-secondary btn-sm">
+                Tutanak örneğini aç
+              </a>
+              <span className="text-xs text-ink-500">
+                Dosyanın bilgileri dolu gelir; yazdırıp elle tamamlayabilirsiniz.
+              </span>
+            </p>
+          )}
         </div>
       )}
     </ActionForm>

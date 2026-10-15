@@ -22,6 +22,7 @@ belgeyle kayda geçtiğini tutmak ve süreci izlenebilir kılmaktır.
 - [Mimari](#mimari)
 - [Kurumsal kimlik](#kurumsal-kimlik)
 - [Dar ekran](#dar-ekran)
+- [Geniş ekran](#geniş-ekran)
 - [Yapılandırma](#yapılandırma)
 - [Canlıya geçiş adımları](#canlıya-geçiş-adımları)
 - [Türkşeker sitesine entegrasyon](#türkşeker-sitesine-entegrasyon)
@@ -464,6 +465,49 @@ başlığındaki okta durur (`src/components/tablo-filtre.tsx`). Seçim adres
 satırına yazıldığı için filtrelenmiş liste paylaşılabilir ve tarayıcının geri
 tuşu çalışır.
 
+### Ekip ve aşama görevlendirmesi
+
+Fabrika Müdürü ekibi kurarken iki şey söyler: **kim var** ve **hangi aşama
+kimde**. İkinci kısım `stage_assignments` tablosunda saklanır ve aşama
+açıldığında oradan okunur (`asamalariAc` → `gorevlendirilen`). Bunun önemi şu:
+iade/değişim ve resmî yazı aşamaları ancak karar verildikten sonra açılır, yani
+ekip kurulurken henüz ortada bir görev satırı yoktur. Görevlendirme beklemede
+durur ve aşama açıldığı anda uygulanır — iş akışı unvana göre değil, dosyayı
+bilen müdürün dediğine göre kurulur.
+
+Dağıtılabilen dört aşama vardır (`EKIP_ASAMALARI`): inceleme, karar tutanağı,
+iade/değişim, resmî yazı. Dışarıda kalanların sorumlusu tartışmasızdır — ekip
+kurma ve dosya kapanışı müdürün kendi işi, itiraz gönderimi yine müdürün, daire
+kararı ilgili Daire Başkanlığının.
+
+Görevlendirme **ekiple değil fabrikayla sınırlıdır**: iade/değişim ambarın,
+resmî yazı kalitenin işidir ve bu kişiler inceleme ekibinde olmayabilir. Ekip
+inceleme için kurulur; sonraki aşamalar işi yapan birime düşer. Varsayılan,
+unvanı aşamanın rolüne uyan kişidir (önce ekipten, yoksa kadrodan); boş
+bırakılan aşama o kişiye, o da yoksa ekip liderine düşer.
+
+Kurulan ekip dosya sayfasında kalıcı olarak durur: kim vardı, kim liderdi ve
+kim hangi aşamadan sorumluydu. "Bu dosyaya kim baktı" sorusu dosya kapandıktan
+sonra da sorulur; denetimde ilk sorulan budur.
+
+### Tutanak örnekleri
+
+Uygulama belge üretmez — bu kural değişmedi. Ama elle hazırlanan her tutanak
+için, kayıt kutusunda **"Tutanak örneğini aç"** düğmesi vardır. Açılan sayfa
+dosyanın bilinen bilgileri doldurulmuş, geri kalanı çizgili bırakılmış bir
+kâğıttır: künye, müşteri beyanı, işaretlenecek seçenekler, elle doldurulacak
+alanlar ve dosyanın gerçek görevlilerinden kurulu imza bloğu.
+
+Kullanıcı isterse yazdırıp elle tamamlar ve imzalatır, isterse hiç açmadan
+kendi belgesini yükler. Üretilen sayfa bir sistem belgesi değildir: belge
+numarası taşımaz, denetim izine yazılmaz, dosyaya kendiliğinden eklenmez.
+Aşamayı kapatan şey yüklenen ıslak imzalı nüshadır.
+
+Altı aşamanın örneği vardır: inceleme tutanağı, karar tutanağı, Daire
+Başkanlığına üst yazı, daire karar yazısı, iade/değişim tutanağı, resmî yazı.
+Şablonlar `src/lib/tutanak.ts` içinde **veri olarak** durur; çizim tek bir
+sayfada yapılır, yeni bir aşama için oraya bir kayıt eklemek yeter.
+
 ### Tek sorumlu ve sıra kuralı
 
 Sistemin temel kuralı: **her aşama tek bir kişinin üzerindedir ve aşamalar
@@ -664,6 +708,31 @@ dar ekranda 49.000 piksel uzuyordu, şimdi 7.000.
 gezer ve her birinde yatay taşma, 24px altı dokunma hedefi, 16px altı form
 alanı ve kırpılan metin arar; ardından çekmecenin ve kart listesinin
 davranışını sınar. 156 kontrol.
+
+---
+
+## Geniş ekran
+
+Panel bir veri aracıdır: geniş ekranda kenar boşluğuna değil tabloya yer
+ayrılır. İçerik 1760px'e kadar genişler; 1500px sınırı 1920'lik bir ekranda
+şikâyet tablosunu yana kaydırıyor ve en çok bakılan sütunları — durum, karar,
+sıradaki adım — ekranın dışında bırakıyordu.
+
+Tablo her masaüstü genişliğinde tam oturur (1280'den 2560'a kadar ölçülmüştür).
+Bunu üç karar sağlar:
+
+- **Durum ve karar tek sütundadır.** İkisi birlikte okunur; ayrı sütun 93px
+  yer alıyordu. Başlıkta iki süzgeç yan yana durur.
+- **Listede kısa durum adı kullanılır** (`STATUS_SHORT_LABEL`). "İnceleme ve
+  belge toplama" bir hücrede 215px kaplıyordu; "İncelemede" 120px. Tam ad
+  dosyanın başında ve rozetin `title` ipucunda durur.
+- **Ürün ve miktar ikincil sütunlardır** ve ancak `genis` kırılma noktasında
+  (1760px) açılır. Bu sayı `--breakpoint-genis` olarak tanımlıdır ve içerik
+  genişliğinin üst sınırıyla aynıdır: ikisi birlikte "ikincil sütunlar ancak
+  gerçekten yer varken görünür" kuralını kurar.
+
+Kesilen metinlerin tamamında `title` ipucu vardır; dar ekrandaki kart düzeni
+zaten tam metni gösterir.
 
 ---
 

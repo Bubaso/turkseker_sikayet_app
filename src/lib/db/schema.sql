@@ -255,6 +255,21 @@ CREATE TABLE IF NOT EXISTS team_members (
 CREATE INDEX IF NOT EXISTS idx_team_complaint ON team_members(complaint_id);
 CREATE INDEX IF NOT EXISTS idx_team_user      ON team_members(user_id);
 
+-- Fabrika Müdürünün ekibi kurarken yaptığı aşama görevlendirmesi.
+-- `tasks.assignee_id` yalnızca açılmış aşamanın sorumlusunu tutar; karar
+-- sonrası açılacak aşamaların (iade/değişim, resmî yazı) sorumlusu burada
+-- bekler ve aşama açıldığında oradan okunur.
+CREATE TABLE IF NOT EXISTS stage_assignments (
+  id            INTEGER PRIMARY KEY,
+  complaint_id  INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
+  code          TEXT    NOT NULL,              -- bkz. src/lib/asamalar.ts
+  user_id       INTEGER NOT NULL REFERENCES users(id),
+  assigned_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+  assigned_by   INTEGER REFERENCES users(id),
+  UNIQUE(complaint_id, code)
+);
+CREATE INDEX IF NOT EXISTS idx_stage_asg_complaint ON stage_assignments(complaint_id);
+
 -- --- Süreç aşamaları (kilometre taşları) -----------------------------------
 
 CREATE TABLE IF NOT EXISTS tasks (

@@ -32,6 +32,24 @@ export const STATUS_LABEL: Record<Status, string> = {
   IPTAL: "İptal",
 };
 
+/*
+ * Listede kullanılan kısa durum adı. Tam ad dosyanın başında ve müşteri
+ * görünümünde durur; yoğun bir tabloda "İnceleme ve belge toplama" tek başına
+ * 215 piksel yer kaplıyor ve asıl eylem sütunlarını ekrandan taşırıyordu.
+ */
+export const STATUS_SHORT_LABEL: Record<Status, string> = {
+  YENI: "Yeni kayıt",
+  YONLENDIRILDI: "Yönlendirildi",
+  INCELEMEDE: "İncelemede",
+  KARAR_VERILDI: "Karar verildi",
+  ITIRAZ_DEGERLENDIRME: "İtirazda",
+  ISLEMDE: "İade / değişim",
+  RAPORLAMA: "Resmî yazı",
+  KAPANDI: "Kapandı",
+  REDDEDILDI: "Haksız",
+  IPTAL: "İptal",
+};
+
 /** Müşteriye gösterilen sadeleştirilmiş durum metni. */
 export const STATUS_PUBLIC_LABEL: Record<Status, string> = {
   YENI: "Şikâyetiniz alındı, inceleme ekibi oluşturuluyor",

@@ -181,6 +181,18 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
   },
 };
 
+/*
+ * Fabrika Müdürünün ekip kurarken dağıtabileceği aşamalar.
+ *
+ * Dışarıda kalanların sorumlusu tartışmasızdır: ekip kurma ve dosya kapanışı
+ * müdürün kendi işi, itiraz gönderimi yine müdürün, daire kararı ilgili Daire
+ * Başkanlığının. Geriye fabrikada elle yürüyen dört belgeli aşama kalır ve
+ * bunların kime düşeceğini dosyayı bilen müdür söyler.
+ */
+export const EKIP_ASAMALARI: AsamaKodu[] = [
+  ASAMA.INCELEME, ASAMA.KARAR, ASAMA.ISLEM, ASAMA.RESMI_YAZI,
+];
+
 /** Kayıt anında açılan aşamalar — dosyanın yol haritası. */
 export function baslangicAsamalari(): AsamaKodu[] {
   return [ASAMA.EKIP, ASAMA.INCELEME, ASAMA.KARAR];

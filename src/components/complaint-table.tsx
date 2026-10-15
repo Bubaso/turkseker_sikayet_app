@@ -151,7 +151,7 @@ export function ComplaintTable({
                     </p>
 
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <StatusChip status={c.status} />
+                      <StatusChip status={c.status} kisa />
                       <VerdictChip verdict={c.verdict} bosGizle />
                     </div>
 
@@ -179,17 +179,30 @@ export function ComplaintTable({
               <th>{baslik("Tarih", filtreler?.tarih)}</th>
               <th>Müşteri</th>
               <th>{baslik("Konu", filtreler?.konu)}</th>
-              <th>{baslik("Ürün", filtreler?.urun)}</th>
-              <th className="text-right">Miktar</th>
-              <th>{baslik("Durum", filtreler?.durum)}</th>
-              <th>{baslik("Karar", filtreler?.karar)}</th>
+              <th className="hidden genis:table-cell">{baslik("Ürün", filtreler?.urun)}</th>
+              <th className="hidden text-right genis:table-cell">Miktar</th>
+              {/* Durum ve karar tek sütundadır: ikisi birlikte okunur ve
+                  ayrı sütun dar masaüstünde tabloyu taşırıyordu. Başlık da
+                  tek başlıktır, süzgeçleri yan yana durur. */}
+              <th>
+                <span className="inline-flex items-center gap-x-2">
+                  {baslik("Durum", filtreler?.durum)}
+                  {filtreler?.karar && (
+                    <>
+                      <span className="text-ink-400" aria-hidden>/</span>
+                      {baslik("Karar", filtreler.karar)}
+                    </>
+                  )}
+                  {!filtreler?.karar && " / Karar"}
+                </span>
+              </th>
               <th>{baslik("Sıradaki adım", filtreler?.sira)}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={showFactory ? 10 : 9} className="px-4 py-10 text-center text-sm text-ink-500">
+                <td colSpan={showFactory ? 9 : 8} className="px-4 py-10 text-center text-sm text-ink-500">
                   {bosMesaj}
                 </td>
               </tr>
@@ -199,15 +212,17 @@ export function ComplaintTable({
               const sla = slaInfo(e.nextDue, null, holidays);
               return (
                 <tr key={c.id}>
-                  <td className="whitespace-nowrap">
-                    <Link href={`/panel/sikayet/${c.id}`} className="font-mono text-xs font-semibold text-brand-700 hover:underline">
+                  <td>
+                    <Link href={`/panel/sikayet/${c.id}`}
+                          className="font-mono text-xs font-semibold whitespace-nowrap text-brand-700 hover:underline">
                       {c.complaint_no}
                     </Link>
-                    <span className="ml-1.5 inline-flex gap-1.5"><Isaretler c={c} /></span>
+                    {/* İşaretler gerekirse alt satıra iner; sütunu genişletmezler. */}
+                    <span className="mt-0.5 flex flex-wrap gap-1"><Isaretler c={c} /></span>
                   </td>
                   {showFactory && <td className="whitespace-nowrap text-ink-600">{c.factory_short}</td>}
                   <td className="tnum whitespace-nowrap text-ink-600">{fmtDate(c.received_at)}</td>
-                  <td className="max-w-[14rem]">
+                  <td className="max-w-[10rem] genis:max-w-[14rem]">
                     <span className="block truncate font-medium text-ink-800" title={c.customer_company}>
                       {c.customer_company}
                     </span>
@@ -215,22 +230,28 @@ export function ComplaintTable({
                       {c.province_name ?? "—"} · {DEMAND_LABEL[c.demand as Demand] ?? c.demand}
                     </span>
                   </td>
-                  <td className="max-w-[16rem]">
+                  <td className="max-w-[12rem] genis:max-w-[18rem]">
                     <span className="block truncate" title={c.subject}>{c.subject}</span>
                     {c.category_name && (
                       <span className="block truncate text-xs text-ink-500">{c.category_name}</span>
                     )}
                   </td>
-                  <td className="max-w-[12rem]">
+                  <td className="hidden max-w-[12rem] genis:table-cell">
                     <span className="block truncate text-ink-700">{c.product_name}</span>
                     {c.lot_no && <span className="block truncate text-xs text-ink-500">Lot {c.lot_no}</span>}
                   </td>
-                  <td className="tnum whitespace-nowrap text-right text-ink-700">
+                  <td className="tnum hidden text-right whitespace-nowrap text-ink-700 genis:table-cell">
                     {c.quantity_kg ? fmtQuantity(c.quantity_kg) : "—"}
                   </td>
-                  <td><StatusChip status={c.status} /></td>
-                  <td><VerdictChip verdict={c.verdict} /></td>
-                  <td className="max-w-[15rem]">
+                  <td>
+                    {/* Yan yana; yer kalmazsa alta sarar, satır yüksekliğini
+                        gereksiz yere iki katına çıkarmaz. */}
+                    <span className="flex flex-wrap items-center gap-1">
+                      <StatusChip status={c.status} kisa />
+                      <VerdictChip verdict={c.verdict} bosGizle nokta={false} />
+                    </span>
+                  </td>
+                  <td className="max-w-[10rem] genis:max-w-[14rem]">
                     {e.nextTitle ? (
                       <>
                         <span className="block truncate text-xs text-ink-700" title={e.nextTitle}>

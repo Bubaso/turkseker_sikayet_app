@@ -80,7 +80,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="h-1 bg-brand-600" aria-hidden />
 
       <header className="sticky top-0 z-10 border-b border-ink-200 bg-white">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-4 py-2.5">
+        <div className="mx-auto flex max-w-[1760px] items-center justify-between gap-2 px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-1.5">
             <PanelCekmece
               gm={gm}
@@ -128,7 +128,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-5 px-4 py-5 lg:flex-row">
+      <div className="mx-auto flex w-full max-w-[1760px] flex-1 flex-col gap-5 px-4 py-5 lg:flex-row">
         <PanelNav
           gm={gm}
           counts={menuSayaclari}

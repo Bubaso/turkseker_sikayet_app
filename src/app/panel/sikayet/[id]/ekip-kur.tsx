@@ -3,20 +3,32 @@
 import { useMemo, useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { Notice } from "@/components/ui";
+import { ASAMALAR, EKIP_ASAMALARI } from "@/lib/asamalar";
+import { ROLE_LABEL as ROL_ADI } from "@/lib/roles";
 import { formTeamAction, redirectAction } from "@/app/panel/actions";
 
 /* ===========================================================================
    Ekip kurma düzeneği.
 
-   Fabrika Müdürü ekibin kaç kişi olacağını seçer; o kadar kişi kutusu belirir.
-   Her kutuda önce unvan, sonra o unvandaki isim seçilir. Unvan listesi
+   İki adım: önce ekip, sonra görevlendirme.
+
+   Fabrika Müdürü ekibin kaç kişi olacağını seçer; o kadar kişi kutusu belirir
+   ve her kutuda önce unvan, sonra o unvandaki isim seçilir. Unvan listesi
    fabrikanın kadrosundan kendiliğinden gelir.
+
+   Ardından fabrikada elle yürüyen dört belgeli aşamanın her birinin kime
+   düşeceği seçilir. Varsayılan, aşamanın unvanına uyan ekip üyesidir; yoksa
+   ekip lideri. Bu dağıtım saklanır ve karar sonrası açılan aşamalar da
+   (iade/değişim, resmî yazı) buradan okunur — yani iş akışı müdürün dediği
+   kişiye göre kurulur, unvana göre değil.
    =========================================================================== */
 
 export interface EkipPersoneli {
   id: number;
   full_name: string;
   title: string;
+  /** Varsayılan görevlendirmede aşamanın rolüyle eşleştirmek için. */
+  role: string;
 }
 
 const EN_AZ = 1;
@@ -69,6 +81,43 @@ export function EkipKur({
   const secilenler = satirlar.map((s) => s.kisi).filter(Boolean);
   const eksik = satirlar.some((s) => !s.kisi);
 
+  /* --- Aşama görevlendirmesi --------------------------------------------- */
+
+  // Ekibe seçilmiş kişiler, seçildikleri sırayla. İlk kişi ekip lideridir.
+  const ekip = useMemo(
+    () =>
+      satirlar
+        .map((s) => personel.find((p) => String(p.id) === s.kisi))
+        .filter((p): p is EkipPersoneli => !!p),
+    [satirlar, personel],
+  );
+
+  // Kullanıcının elle değiştirdiği aşamalar. Dokunulmayanlar varsayılanı izler.
+  const [elle, setElle] = useState<Record<string, string>>({});
+
+  /*
+   * Aşamanın varsayılan sorumlusu: unvanı aşamanın rolüne uyan kişi — önce
+   * ekipten, yoksa fabrikanın kadrosundan. İade/değişim ambarın, resmî yazı
+   * kalitenin işidir ve bu kişiler inceleme ekibinde olmayabilir.
+   */
+  function varsayilan(kod: string): string {
+    const rol = ASAMALAR[kod as keyof typeof ASAMALAR]?.rol;
+    const ekipten = ekip.find((p) => p.role === rol);
+    if (ekipten) return String(ekipten.id);
+    const fabrikadan = personel.find((p) => p.role === rol);
+    return String((fabrikadan ?? ekip[0])?.id ?? "");
+  }
+
+  function gorevli(kod: string): string {
+    const secim = elle[kod];
+    // Elle seçilen kişi kadrodan çıkmışsa varsayılana dönülür.
+    if (secim && personel.some((p) => String(p.id) === secim)) return secim;
+    return varsayilan(kod);
+  }
+
+  // Seçim listesi: önce ekip, sonra fabrikanın geri kalanı.
+  const ekipDisi = personel.filter((p) => !ekip.some((e) => e.id === p.id));
+
   return (
     <div className="space-y-4">
       <ActionForm
@@ -83,7 +132,8 @@ export function EkipKur({
             </span>
           ) : (
             <span className="text-xs text-ink-500">
-              İlk sıradaki kişi ekip lideri olur; inceleme ve karar aşamaları ona düşer.
+              İlk sıradaki kişi ekip lideri olur. Aşamalar aşağıdaki görevlendirmeye
+              göre dağıtılır.
             </span>
           )
         }
@@ -157,6 +207,61 @@ export function EkipKur({
             );
           })}
         </ol>
+
+        {/* Aşama görevlendirmesi — ekip seçildikten sonra anlam kazanır. */}
+        {ekip.length > 0 && (
+          <fieldset className="rounded-[5px] border border-ink-200 p-3 sm:p-4">
+            <legend className="px-1 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
+              Hangi aşama kimde?
+            </legend>
+            <p className="mb-3 text-xs text-ink-500">
+              Fabrikada elle yürüyen aşamaların sorumlusu. Varsayılan olarak unvanı
+              uyan kişi gelir; değiştirebilirsiniz. Ekip dışından da
+              görevlendirebilirsiniz — iade/değişim ambarın, resmî yazı kalitenin
+              işidir. Karar sonrası açılacak aşamalar da bu dağıtıma göre atanır.
+            </p>
+            <ul className="space-y-2.5">
+              {EKIP_ASAMALARI.map((kod) => {
+                const a = ASAMALAR[kod];
+                const deger = gorevli(kod);
+                return (
+                  <li key={kod} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_16rem] sm:items-center sm:gap-3">
+                    <label className="text-sm text-ink-800" htmlFor={`gorev_${kod}`}>
+                      {a.baslik}
+                      <span className="block text-xs text-ink-500">
+                        Varsayılan: {ROL_ADI[a.rol] ?? a.rol}
+                      </span>
+                    </label>
+                    <select
+                      id={`gorev_${kod}`}
+                      name={`gorev_${kod}`}
+                      className="input"
+                      value={deger}
+                      onChange={(e) => setElle((o) => ({ ...o, [kod]: e.target.value }))}
+                    >
+                      <optgroup label="İnceleme ekibi">
+                        {ekip.map((p, i) => (
+                          <option key={p.id} value={p.id}>
+                            {p.full_name} — {p.title}{i === 0 ? " (lider)" : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                      {ekipDisi.length > 0 && (
+                        <optgroup label="Fabrikanın diğer personeli">
+                          {ekipDisi.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name} — {p.title}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        )}
 
         <div>
           <label className="label" htmlFor="note">Görevlendirme notu (isteğe bağlı)</label>

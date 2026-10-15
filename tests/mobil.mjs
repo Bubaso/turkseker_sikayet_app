@@ -46,6 +46,8 @@ const SAYFALAR = [
   { k: "ank.mudur",     yol: "/panel/bildirimler",     ad: "giden kutusu" },
   { k: "ank.mudur",     yol: "/panel/raporlar",        ad: "performans panosu" },
   { k: "ank.mudur",     yol: "/panel/sikayetler/yeni", ad: "elden şikâyet" },
+  { k: "ank.mudur",     yol: "/panel/sikayet/48",      ad: "şikâyet dosyası" },
+  { k: "ank.mudur",     yol: "/belge/ornek/48/KARAR",  ad: "tutanak örneği" },
   { k: "gm.genelmudur", yol: "/panel",                 ad: "üst yönetim panosu" },
   { k: "gm.genelmudur", yol: "/panel/sikayetler",      ad: "kurum listesi" },
   { k: "gm.genelmudur", yol: "/panel/ozet",            ad: "yönetim özeti" },

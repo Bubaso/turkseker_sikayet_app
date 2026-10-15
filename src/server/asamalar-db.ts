@@ -22,6 +22,14 @@ function rolSahibi(factoryId: number | null, role: string): number | null {
   )?.id ?? null;
 }
 
+/** Ekip kurulurken bu aşamaya atanan kişi (varsa). */
+function gorevlendirilen(complaintId: number, kod: AsamaKodu): number | null {
+  return one<{ user_id: number }>(
+    "SELECT user_id FROM stage_assignments WHERE complaint_id = ? AND code = ?",
+    complaintId, kod,
+  )?.user_id ?? null;
+}
+
 function daireSahibi(departmentId: number | null): number | null {
   if (!departmentId) return null;
   return one<{ id: number }>(
@@ -41,9 +49,15 @@ export function asamalariAc(c: Complaint, kodlar: AsamaKodu[]): number {
       ? ((c as unknown as Record<string, string | null>)[alan] ?? null)
       : null;
     const daireAsamasi = a.rol.startsWith("GM_");
+    /*
+     * Sorumlu sırasıyla aranır: Fabrika Müdürünün ekip kurarken yaptığı
+     * görevlendirme, yoksa unvana göre varsayılan. Böylece karar sonrası
+     * açılan aşamalar da (iade/değişim, resmî yazı) müdürün dediği kişiye
+     * düşer; ekibi tanımayan bir varsayılan devreye girmez.
+     */
     const sorumlu = daireAsamasi
       ? daireSahibi(c.escalated_dept_id)
-      : rolSahibi(c.factory_id, a.rol);
+      : (gorevlendirilen(c.id, kod) ?? rolSahibi(c.factory_id, a.rol));
 
     const r = run(
       `INSERT INTO tasks
@@ -204,6 +218,47 @@ export function atanabilirPersonel(
     `SELECT id, full_name, title, role FROM users
       WHERE factory_id = ? AND is_active = 1 ORDER BY id`, factoryId,
   );
+}
+
+/* --- Ekip görünümü ------------------------------------------------------- */
+
+export interface EkipUyesiGorunum {
+  user_id: number;
+  full_name: string;
+  title: string;
+  unit: string;
+  is_lead: number;
+  /** Bu kişiye düşen aşamaların kodları. */
+  asamalar: AsamaKodu[];
+}
+
+/**
+ * Dosyanın inceleme ekibi ve kimin hangi aşamadan sorumlu olduğu.
+ *
+ * Ekip kurulduktan sonra bir daha görünmüyordu; oysa "bu dosyada kim vardı"
+ * sorusu dosya kapandıktan sonra da sorulur.
+ */
+export function dosyaEkibi(complaintId: number): EkipUyesiGorunum[] {
+  const uyeler = all<Omit<EkipUyesiGorunum, "asamalar">>(
+    `SELECT tm.user_id, u.full_name, u.title, tm.unit, tm.is_lead
+       FROM team_members tm JOIN users u ON u.id = tm.user_id
+      WHERE tm.complaint_id = ? ORDER BY tm.is_lead DESC, tm.id`,
+    complaintId,
+  );
+  if (uyeler.length === 0) return [];
+
+  const gorevler = all<{ code: string; user_id: number }>(
+    "SELECT code, user_id FROM stage_assignments WHERE complaint_id = ?", complaintId,
+  );
+  const sirali = (k: string) => ASAMALAR[k as AsamaKodu]?.sira ?? 999;
+
+  return uyeler.map((u) => ({
+    ...u,
+    asamalar: gorevler
+      .filter((g) => g.user_id === u.user_id)
+      .map((g) => g.code as AsamaKodu)
+      .sort((a, b) => sirali(a) - sirali(b)),
+  }));
 }
 
 export function rolEtiketi(role: string | null): string {
