@@ -8,16 +8,20 @@ import { formTeamAction, redirectAction } from "@/app/panel/actions";
 /* ===========================================================================
    Ekip kurma düzeneği.
 
-   İki adım: önce ekip, sonra evrak sorumlusu.
+   Fabrika Müdürünün burada iki işi vardır, üçüncüsü yoktur:
+     1. ekibi seçmek,
+     2. ekipten birini evrak sorumlusu işaretlemek.
 
-   Fabrika Müdürü ekibin kaç kişi olacağını seçer; o kadar kişi kutusu belirir
-   ve her kutuda önce unvan, sonra o unvandaki isim seçilir. Unvan listesi
-   fabrikanın kadrosundan kendiliğinden gelir.
+   Müdür ekibin kaç kişi olacağını seçer; o kadar kişi kutusu belirir ve her
+   kutuda önce unvan, sonra o unvandaki isim seçilir. Unvan listesi fabrikanın
+   kadrosundan kendiliğinden gelir.
 
-   Ardından ekip üyelerinden biri evrak sorumlusu seçilir. Dosyanın fabrika
-   tarafındaki bütün belgeli aşamaları — inceleme, karar, varsa itiraz,
-   iade/değişim, resmî yazı — o kişiye düşer; dosya yalnızca onun ekranında
-   görünür ve sürecin sonundaki müdür onayına kadar tek elden yürür.
+   Evrak sorumlusu ayrı bir listeden değil, kişinin kendi kutusundaki
+   kutucuktan işaretlenir: seçim kimin üzerinde olduğu tek bakışta görünsün
+   diye. Dosyanın fabrika tarafındaki bütün belgeli aşamaları — inceleme,
+   karar, varsa itiraz, iade/değişim, resmî yazı — o kişiye düşer; dosya
+   yalnızca onun ekranında görünür ve sürecin sonundaki müdür onayına kadar
+   tek elden yürür.
 
    Aşamaları tek tek farklı kişilere dağıtmak, kimsenin dosyanın tamamını
    izlemediği bir süreç üretiyordu; onun yerine tek sorumlu konuldu.
@@ -79,27 +83,22 @@ export function EkipKur({
   const secilenler = satirlar.map((s) => s.kisi).filter(Boolean);
   const eksik = satirlar.some((s) => !s.kisi);
 
-  /* --- Aşama görevlendirmesi --------------------------------------------- */
-
-  // Ekibe seçilmiş kişiler, seçildikleri sırayla.
-  const ekip = useMemo(
-    () =>
-      satirlar
-        .map((s) => personel.find((p) => String(p.id) === s.kisi))
-        .filter((p): p is EkipPersoneli => !!p),
-    [satirlar, personel],
-  );
-
-  // Müdürün elle seçtiği evrak sorumlusu. Seçilmemişse ilk üye sorumludur.
-  const [elleSorumlu, setElleSorumlu] = useState("");
+  /* --- Evrak sorumlusu ---------------------------------------------------- */
 
   /*
-   * Evrak sorumlusu yalnızca ekip üyelerinden biri olabilir. Seçilen kişi
-   * ekipten çıkarılırsa seçim kendiliğinden ilk üyeye döner.
+   * İşaretlenen kutunun sırası. Kutucuk kişinin yanında durduğu için seçim
+   * satıra bağlıdır: o satırdaki isim değiştirilirse sorumluluk yeni isme
+   * geçer. Satır boşaltılır ya da ekip küçültülürse seçim, kişisi seçilmiş
+   * ilk satıra döner; böylece hiçbir anda sorumlusuz bir ekip görünmez.
    */
-  const sorumlu = ekip.some((p) => String(p.id) === elleSorumlu)
-    ? elleSorumlu
-    : String(ekip[0]?.id ?? "");
+  const [isaretli, setIsaretli] = useState(0);
+  const sorumlu = satirlar[isaretli]?.kisi
+    ? isaretli
+    : satirlar.findIndex((s) => s.kisi);
+
+  const sorumluKisi = personel.find(
+    (p) => String(p.id) === satirlar[sorumlu]?.kisi,
+  );
 
   return (
     <div className="space-y-4">
@@ -115,7 +114,10 @@ export function EkipKur({
             </span>
           ) : (
             <span className="text-xs text-ink-500">
-              Dosya, seçtiğiniz evrak sorumlusunun ekranına düşer.
+              Dosya evrak sorumlusuna düşer:{" "}
+              <strong className="font-semibold text-ink-700">
+                {sorumluKisi?.full_name}
+              </strong>
             </span>
           )
         }
@@ -137,6 +139,17 @@ export function EkipKur({
           </span>
         </div>
 
+        <p className="text-xs leading-relaxed text-ink-500">
+          Her kutuda önce unvan, sonra o unvandaki isim seçilir. Ardından ekip
+          üyelerinden birinin yanındaki{" "}
+          <strong className="font-semibold text-ink-700">Evrak sorumlusu</strong>{" "}
+          kutucuğunu işaretleyin: dosyanın fabrika tarafındaki bütün belgeli
+          aşamaları — inceleme, karar, varsa itiraz, iade/değişim, resmî yazı —
+          o kişiye düşer ve dosya, sürecin sonundaki kapanış onayına kadar onun
+          ekranında yürür. Kapanış onayı Fabrika Müdüründe, itiraz
+          değerlendirmesi ilgili Daire Başkanlığında kalır.
+        </p>
+
         <ol className="space-y-2.5">
           {satirlar.map((s, i) => {
             const adaylar = personel.filter(
@@ -147,11 +160,32 @@ export function EkipKur({
             return (
               <li
                 key={i}
-                className="rounded-[5px] border border-ink-200 bg-ink-50 p-2.5 sm:p-3"
+                className={
+                  "rounded-[5px] border p-2.5 sm:p-3 " +
+                  (sorumlu === i
+                    ? "border-brand-300 bg-brand-50"
+                    : "border-ink-200 bg-ink-50")
+                }
               >
-                <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-500 uppercase">
-                  {i + 1}. kişi
-                </p>
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                  <p className="text-xs font-semibold tracking-wide text-ink-500 uppercase">
+                    {i + 1}. kişi
+                  </p>
+                  {/* Kutucuk ancak kutuda bir isim varken anlam taşır. */}
+                  {s.kisi && (
+                    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-700">
+                      <input
+                        type="radio"
+                        name="evrakSorumlusu"
+                        value={s.kisi}
+                        checked={sorumlu === i}
+                        onChange={() => setIsaretli(i)}
+                        className="size-6 shrink-0 accent-brand-600"
+                      />
+                      Evrak sorumlusu
+                    </label>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   <div>
                     <label className="label" htmlFor={`unvan_${i}`}>Unvan / birim</label>
@@ -189,39 +223,6 @@ export function EkipKur({
             );
           })}
         </ol>
-
-        {/* Evrak sorumlusu — ekip seçildikten sonra anlam kazanır. */}
-        {ekip.length > 0 && (
-          <fieldset className="rounded-[5px] border border-ink-200 p-3 sm:p-4">
-            <legend className="px-1 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
-              Evrak sorumlusu
-            </legend>
-            <p className="mb-3 text-xs leading-relaxed text-ink-500">
-              Dosyanın fabrika tarafındaki bütün belgeli aşamaları bu kişiye düşer:
-              inceleme, karar, varsa itiraz, iade/değişim ve resmî yazı. Dosya
-              yalnızca onun ekranında görünür ve sürecin sonundaki dosya kapanış
-              onayına kadar tek elden yürür. Yalnızca ekip üyelerinden biri
-              seçilebilir.
-            </p>
-            <select
-              id="evrakSorumlusu"
-              name="evrakSorumlusu"
-              className="input sm:max-w-[26rem]"
-              value={sorumlu}
-              onChange={(e) => setElleSorumlu(e.target.value)}
-            >
-              {ekip.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name} — {p.title}
-                </option>
-              ))}
-            </select>
-            <span className="hint">
-              Kapanış onayı Fabrika Müdüründe, itiraz değerlendirmesi ilgili Daire
-              Başkanlığında kalır.
-            </span>
-          </fieldset>
-        )}
 
         <div>
           <label className="label" htmlFor="note">Görevlendirme notu (isteğe bağlı)</label>

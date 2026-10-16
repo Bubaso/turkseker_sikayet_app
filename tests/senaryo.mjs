@@ -212,22 +212,33 @@ try {
   await mudur.waitForTimeout(250);
 
   /*
-   * Evrak sorumlusu seçilir: fabrika tarafındaki bütün belgeli aşamalar ona
-   * düşer ve dosya kapanış onayına kadar tek elden yürür. Seçenekler yalnızca
-   * ekip üyeleridir.
+   * Evrak sorumlusu kişinin kendi kutusundaki kutucuktan işaretlenir: fabrika
+   * tarafındaki bütün belgeli aşamalar ona düşer ve dosya kapanış onayına
+   * kadar tek elden yürür. Kutucuk yalnızca ekip üyelerinin yanında çıkar,
+   * yani ekip dışından biri sorumlu yapılamaz.
    */
-  const sorumluSecenek = await mudur.locator("#evrakSorumlusu option").count();
-  sorumluSecenek === 3
-    ? ok("Evrak sorumlusu listesi yalnızca ekip üyelerini içeriyor (3 kişi)")
-    : hata(`Evrak sorumlusu seçenek sayısı beklenenden farklı: ${sorumluSecenek}`);
+  const kutucuk = mudur.locator('input[name="evrakSorumlusu"]');
+  (await kutucuk.count()) === 3
+    ? ok("Evrak sorumlusu kutucuğu yalnızca ekip üyelerinin yanında çıkıyor (3 kutucuk)")
+    : hata(`Kutucuk sayısı beklenenden farklı: ${await kutucuk.count()}`);
 
-  // Ekibin ilk üyesi (Kalite Sorumlusu) evrak sorumlusu yapılır.
+  (await kutucuk.first().isChecked())
+    ? ok("Hiçbir kutucuk elle işaretlenmeden ilk üye sorumlu geliyor")
+    : hata("Varsayılan evrak sorumlusu işaretli değil");
+
+  // Kalite Sorumlusu 1. kutudadır; kutucuğu işaretlenir.
   const kaliteId = await mudur.locator("#uye_0").inputValue();
-  await mudur.selectOption("#evrakSorumlusu", kaliteId);
-  const sorumluAdi = (await mudur.locator("#evrakSorumlusu option:checked").textContent()).trim();
-  sorumluAdi.includes("Kalite Sorumlusu")
-    ? ok(`Evrak sorumlusu seçildi: ${sorumluAdi}`)
-    : hata(`Evrak sorumlusu beklenenden farklı: ${sorumluAdi}`);
+  await kutucuk.first().check();
+  (await kutucuk.first().inputValue()) === kaliteId
+    ? ok("Evrak sorumlusu işaretlendi: Kalite Sorumlusu")
+    : hata("İşaretlenen kutucuk 1. kutudaki kişiye ait değil");
+
+  // Tek seçim: ikinciyi işaretlemek ilkini bırakır.
+  await kutucuk.nth(1).check();
+  !(await kutucuk.first().isChecked())
+    ? ok("Kutucuklar tek seçimli; ikinci işaretlenince ilki bırakıyor")
+    : hata("Aynı anda iki evrak sorumlusu işaretli kaldı");
+  await kutucuk.first().check();
 
   await mudur.fill("#note", "Ekip görevlendirilmiş, inceleme firma deposunda yapılacaktır.");
   await eylem(mudur, "Ekibi oluştur");

@@ -426,9 +426,10 @@ günlük işte gerekmediği için akışı bölmez.
 Yeni bir şikâyet Fabrika Müdürünün ekranına düştüğünde formun altında **ekip
 kurma düzeneği** çıkar: müdür ekibin kaç kişi olacağını seçer, o kadar kişi
 kutusu belirir, her kutuda önce unvan (fabrikanın kadrosundan otomatik
-listelenir), sonra o unvandaki isim seçilir. Ardından ekip üyelerinden biri
-**evrak sorumlusu** seçilir: dosyanın fabrika tarafındaki bütün belgeli
-aşamaları ona düşer ve dosya müdür onayına kadar onun ekranında yürür.
+listelenir), sonra o unvandaki isim seçilir. Ardından ekip üyelerinden birinin
+kendi kutusundaki **Evrak sorumlusu** kutucuğu işaretlenir: dosyanın fabrika
+tarafındaki bütün belgeli aşamaları ona düşer ve dosya müdür onayına kadar
+onun ekranında yürür.
 
 ### Hangi rol neyi görür
 
@@ -469,10 +470,16 @@ tuşu çalışır.
 
 ### Ekip ve evrak sorumlusu
 
-Fabrika Müdürü ekibi kurarken iki şey söyler: **kim var** ve **evrak kimde**.
-Ekibi seçer, sonra üyelerden birini **evrak sorumlusu** yapar. Dosyanın fabrika
-tarafındaki bütün belgeli aşamaları o kişiye düşer ve dosya, sürecin sonundaki
-müdür onayına kadar tek elden yürür.
+Fabrika Müdürünün bu ekranda iki işi vardır, üçüncüsü yoktur: **ekibi seçmek**
+ve **ekipten kimin evrak sorumlusu olacağını işaretlemek**. Başka hiçbir
+görevlendirme yapmaz. Dosyanın fabrika tarafındaki bütün belgeli aşamaları
+işaretlediği kişiye düşer ve dosya, sürecin sonundaki müdür onayına kadar tek
+elden yürür.
+
+Sorumlu ayrı bir listeden değil, kişinin kendi kutusundaki kutucuktan
+işaretlenir; seçilen kutu renklenir ve gönder düğmesinin yanında dosyanın
+kimin ekranına düşeceği adıyla yazar. Seçim kimin üzerinde olduğu tek bakışta
+görünsün diyedir.
 
 Evrak sorumlusuna düşen beş aşama vardır (`EVRAK_ASAMALARI`): inceleme, karar
 tutanağı, varsa itiraz gönderimi, iade/değişim, resmî yazı. Dışarıda kalan
@@ -487,10 +494,12 @@ durur ve aşama açıldığı anda uygulanır. Böylece dosya, açılan her yeni
 yine aynı kişinin **Bana düşen aşamalar** listesinde belirir; kimsenin sırayı
 elden ele devretmesi gerekmez.
 
-Evrak sorumlusu **ekip üyelerinden biri olmak zorundadır**; arayüz yalnızca
-ekiptekileri listeler, sunucu da aynı kuralı yeniden uygular ve ekip dışından
-gelen bir seçimi yok sayıp ilk üyeye döner (`ekibiKur`). Dosyada çalışan herkes
-ekiptedir, böylece "bu dosyaya kim baktı" sorusunun tek bir cevabı olur.
+Evrak sorumlusu **ekip üyelerinden biri olmak zorundadır**; kutucuk zaten
+yalnızca ismi seçilmiş kutuların yanında çıkar, sunucu da aynı kuralı yeniden
+uygular ve ekip dışından gelen bir seçimi yok sayıp ilk üyeye döner
+(`ekibiKur`). Hiçbir kutucuk işaretlenmezse ilk üye sorumlu olur; müdür bu
+adımı atlayarak dosyayı sorumlusuz bırakamaz. Dosyada çalışan herkes ekiptedir,
+böylece "bu dosyaya kim baktı" sorusunun tek bir cevabı olur.
 
 Aşamalar bir dönem tek tek farklı kişilere dağıtılabiliyordu; bundan vazgeçildi.
 Dağıtım, dosyanın tamamını kimsenin izlemediği bir süreç üretiyordu: her aşama
@@ -1106,8 +1115,8 @@ eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
     ekibin hangi birimlerden kurulacağını sayar ama kişi sayısını
     belirlemez. Düzenek 1-8 kişi arası serbest bırakılmıştır; unvan listesi
     fabrikanın kadrosundan otomatik gelir ve aynı kişi iki kez seçilemez.
-    Müdür ekibi kurduktan sonra üyelerden birini evrak sorumlusu yapar;
-    seçmezse ilk sıradaki kişi sorumlu olur.
+    Müdür ekibi kurarken üyelerden birinin yanındaki kutucuğu işaretleyerek
+    onu evrak sorumlusu yapar; işaretlemezse ilk sıradaki kişi sorumlu olur.
 
 11. **Fabrika Müdürü bir aşamanın kaydını sorumlusu yerine girebilir.** İş
     fabrikada elle yapıldığı ve belge dışarıda hazırlandığı için, kaydın
