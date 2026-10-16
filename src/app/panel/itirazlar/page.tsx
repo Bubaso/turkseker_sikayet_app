@@ -73,44 +73,6 @@ export default async function EscalationsPage({
         }
       />
 
-      {ozet && ozet.toplam > 0 && (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Karara bağladığım" value={ozet.toplam} />
-            <Stat label="Kabul oranı"
-                  value={`%${Math.round((ozet.kabul / ozet.toplam) * 1000) / 10}`}
-                  hint={`${ozet.kabul} kabul · ${ozet.ret} ret`} />
-            <Stat label="Ortalama karar süresi"
-                  value={ozet.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
-                  tone={ozet.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
-                  hint="Hedef: 5 iş günü" />
-            <Stat label="Süreye uyum"
-                  value={ozet.sureyeUyum == null ? "—" : `%${ozet.sureyeUyum}`}
-                  tone={ozet.sureyeUyum != null && ozet.sureyeUyum < 95 ? "danger" : "ok"}
-                  hint="5 iş günü içinde karara bağlanan" />
-          </div>
-
-          {seyir.length > 1 && (
-            <Grafik
-              baslik="İtirazların 12 aylık seyri"
-              tablo={{
-                headers: ["Ay", "Gelen", "Kabul"],
-                rows: seyir.map((a) => [a.ay, a.gelen, a.kabul]),
-              }}
-            >
-              <LineChart
-                labels={seyir.map((a) => a.ay)}
-                series={[
-                  { name: "Gelen itiraz", slot: 1, values: seyir.map((a) => a.gelen) },
-                  { name: "Kabul edilen", slot: 2, values: seyir.map((a) => a.kabul) },
-                ]}
-                caption="Dairenize gelen itiraz sayısı ve kabul edilen itirazlar."
-              />
-            </Grafik>
-          )}
-        </>
-      )}
-
       {!showHistory && (
         <Notice tone="info" title="İtiraz hangi dosyalar için gelir?">
           Fabrika tarafından haklı bulunmayan şikâyetlerde, şikâyete konu miktar{" "}
@@ -123,6 +85,14 @@ export default async function EscalationsPage({
         </Notice>
       )}
 
+      {/*
+        Ölçüler ve seyir grafiği listenin ALTINA alındı.
+
+        Bu sayfayı açan Daire Başkanının tek işi karar vermek; karar verilecek
+        dosya masaüstünde 700, mobilde 950 piksel aşağıda başlıyordu çünkü
+        üstünde dört kart ve bir grafik duruyordu. Ölçüler silinmedi — kendi
+        performansını görmek isteyen aşağı iner.
+      */}
       {rows.length === 0 ? (
         <Card>
           <EmptyState
@@ -226,6 +196,43 @@ export default async function EscalationsPage({
             );
           })}
         </div>
+      )}
+      {ozet && ozet.toplam > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Karara bağladığım" value={ozet.toplam} />
+            <Stat label="Kabul oranı"
+                  value={`%${Math.round((ozet.kabul / ozet.toplam) * 1000) / 10}`}
+                  hint={`${ozet.kabul} kabul · ${ozet.ret} ret`} />
+            <Stat label="Ortalama karar süresi"
+                  value={ozet.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
+                  tone={ozet.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
+                  hint="Hedef: 5 iş günü" />
+            <Stat label="Süreye uyum"
+                  value={ozet.sureyeUyum == null ? "—" : `%${ozet.sureyeUyum}`}
+                  tone={ozet.sureyeUyum != null && ozet.sureyeUyum < 95 ? "danger" : "ok"}
+                  hint="5 iş günü içinde karara bağlanan" />
+          </div>
+
+          {seyir.length > 1 && (
+            <Grafik
+              baslik="İtirazların 12 aylık seyri"
+              tablo={{
+                headers: ["Ay", "Gelen", "Kabul"],
+                rows: seyir.map((a) => [a.ay, a.gelen, a.kabul]),
+              }}
+            >
+              <LineChart
+                labels={seyir.map((a) => a.ay)}
+                series={[
+                  { name: "Gelen itiraz", slot: 1, values: seyir.map((a) => a.gelen) },
+                  { name: "Kabul edilen", slot: 2, values: seyir.map((a) => a.kabul) },
+                ]}
+                caption="Dairenize gelen itiraz sayısı ve kabul edilen itirazlar."
+              />
+            </Grafik>
+          )}
+        </>
       )}
     </div>
   );

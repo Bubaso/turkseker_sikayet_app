@@ -9,9 +9,14 @@ export default function TrackPage() {
     <PublicShell>
       <div className="mb-5">
         <h1 className="text-xl font-semibold tracking-tight text-ink-900">Şikâyet takibi</h1>
+        {/*
+          Tek açıklama. Sayfadaki 48 kelimenin 42'si açıklamaydı ve "SMS" üç
+          ayrı yerde geçiyordu: alt başlık, alan ipucu ve dipnot. Alanların
+          etiketleri ne isteneceğini zaten söylüyor; geriye numarasını
+          bulamayan için tek cümle kalıyor.
+        */}
         <p className="mt-0.5 text-sm text-ink-600">
-          Şikâyet numaranız ve cep telefonunuzun son 4 hanesiyle dosyanızın hangi aşamada
-          olduğunu görebilirsiniz.
+          Şikâyet numaranızı kayıt sonrası gönderilen SMS veya e-postada bulabilirsiniz.
         </p>
       </div>
 
@@ -19,10 +24,6 @@ export default function TrackPage() {
         <LookupForm />
       </div>
 
-      <p className="mt-4 max-w-xl text-xs leading-relaxed text-ink-500">
-        Şikâyet numaranızı bulamıyorsanız, kayıt sırasında gönderilen SMS veya e-postadaki
-        bağlantıyı kullanabilir ya da ürünü aldığınız şeker fabrikamızla iletişime geçebilirsiniz.
-      </p>
     </PublicShell>
   );
 }

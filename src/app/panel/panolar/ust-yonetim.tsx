@@ -11,7 +11,7 @@ import {
 } from "@/server/stats";
 import { countComplaints } from "@/server/complaints";
 import { PageHeader, Stat } from "@/components/ui";
-import { BarChartH, LineChart, Meter, StackedBarH } from "@/components/charts";
+import { BarChartH, LineChart, StackedBarH } from "@/components/charts";
 import { Grafik } from "@/components/grafik";
 
 /* ===========================================================================
@@ -63,7 +63,6 @@ export async function UstYonetimPano({ user }: { user: SessionUser }) {
   ];
 
   const siraliPerf = [...perf].sort((a, b) => b.total - a.total);
-  const slaSirali = [...perf].sort((a, b) => (a.sla_rate ?? 101) - (b.sla_rate ?? 101));
 
   return (
     <div className="space-y-5">
@@ -127,9 +126,17 @@ export async function UstYonetimPano({ user }: { user: SessionUser }) {
         />
       </Grafik>
 
-      {/* 4. Fabrika karşılaştırma — adet grafiği, tablosunda tüm ölçüler */}
+      {/*
+        4. Fabrika karşılaştırma — adet grafiği, tablosunda tüm ölçüler.
+
+        SLA uyumu buraya katıldı: her çubuğun sağında fabrikanın yüzdesi,
+        hedefe göre renklenmiş olarak duruyor. Altında aynı 14 fabrikayı
+        ölçer ölçer yeniden listeleyen ayrı bir kutu vardı; iki kutu
+        masaüstünde 1068, mobilde 1516 piksel tutuyordu.
+      */}
       <Grafik
         baslik="Fabrika karşılaştırma"
+        aciklama="Sağdaki yüzde SLA uyumudur; hedef %95. Yeşil hedefte, sarı dikkat, kırmızı hedef altı."
         tablo={{
           headers: ["Fabrika", "Toplam", "Açık", "Kapandı", "Haklı", "Haksız",
                     "SLA %", "Ort. kapanma", "İade (kg)", "Değişim (kg)", "Nakliye (₺)"],
@@ -149,36 +156,15 @@ export async function UstYonetimPano({ user }: { user: SessionUser }) {
           rows={siraliPerf.map((p) => ({
             label: p.factory,
             value: p.total,
+            sag: p.sla_rate == null ? "—" : `SLA %${p.sla_rate}`,
+            bant: p.sla_rate == null ? undefined
+                  : p.sla_rate >= 95 ? "iyi" : p.sla_rate >= 85 ? "dikkat" : "kotu",
             hint: `${p.factory}: ${p.total} şikâyet · ${p.open} açık · SLA ${
               p.sla_rate == null ? "—" : `%${p.sla_rate}`}`,
           }))}
           unit="şikâyet"
-          caption="Her fabrikaya düşen toplam şikâyet dosyası sayısı."
+          caption="Her fabrikaya düşen toplam şikâyet dosyası sayısı ve SLA uyumu."
         />
-      </Grafik>
-
-      {/* 5. SLA — ölçerler sayıyı zaten taşıdığı için ayrı tablo yok */}
-      <Grafik
-        baslik="Fabrikalara göre SLA uyumu"
-        aciklama="Süresinde tamamlanan aşamaların tüm aşamalara oranı. Hedef: %95 ve üzeri. En zayıf fabrika başta."
-      >
-        {slaSirali.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-500">Henüz veri yok.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            {slaSirali.map((p) => (
-              <Link key={p.factory_id} href={`/panel/sikayetler?fabrika=${p.factory_id}`}>
-                <Meter
-                  label={p.factory}
-                  rate={p.sla_rate}
-                  hint={p.total_tasks > 0
-                    ? `${p.total_tasks - p.overdue_tasks} / ${p.total_tasks} aşama süresinde · ${p.total} dosya`
-                    : "Dosyası olmayan fabrika"}
-                />
-              </Link>
-            ))}
-          </div>
-        )}
       </Grafik>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">

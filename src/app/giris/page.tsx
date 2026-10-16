@@ -6,7 +6,6 @@ import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { currentUser } from "@/server/auth";
 import { isDemoMode } from "@/server/settings";
 import { PublicShell } from "@/components/public-shell";
-import { Notice } from "@/components/ui";
 import { LogoDikey } from "@/components/marka";
 import LoginForm from "./form";
 
@@ -45,15 +44,23 @@ export default async function LoginPage({
           </div>
         </div>
 
+        {/*
+          Uyarı kutusu ile hesap tablosu tek katlanır kutuda toplandı: ikisi
+          birlikte telefonda sayfanın %39'unu (584 piksel) kaplıyordu, oysa
+          giriş ekranına gelen kişi önce giriş kutusunu arıyor. Şifre açıkta
+          kalır; gerisini merak eden açar.
+
+          "DEMO_MODE=false yapın" cümlesi ekrandan çıkarıldı — giriş ekranına
+          bakan kişiye değil, kurulumu yapana söylenecek bir şey.
+        */}
         {demo && samples.length > 0 && (
-          <div className="mt-5 space-y-3">
-            <Notice tone="warn" title="Demo modu açık">
-              Tüm demo hesaplarının şifresi <code className="rounded bg-white px-1 py-0.5 text-xs font-semibold">Demo2026!</code>{" "}
-              Giriş yaptıktan sonra üst menüden tek tıkla rol değiştirebilirsiniz.
-              Canlıya geçerken <code className="rounded bg-white px-1 py-0.5 text-xs">DEMO_MODE=false</code> yapın.
-            </Notice>
-            <div className="card">
-              <h2 className="card-title">Örnek hesaplar</h2>
+          <details className="card mt-5">
+            <summary className="cursor-pointer px-4 py-3 text-sm text-ink-700">
+              <span className="font-medium">Demo modu</span> — tüm hesapların şifresi{" "}
+              <code className="rounded bg-ink-100 px-1 py-0.5 text-xs font-semibold">Demo2026!</code>
+              <span className="ml-1 text-ink-500">· örnek hesaplar ({samples.length})</span>
+            </summary>
+            <div className="border-t border-ink-200">
               <div className="table-wrap">
                 <table className="tbl">
                   <thead>
@@ -75,10 +82,11 @@ export default async function LoginPage({
               <p className="border-t border-ink-100 px-4 py-2.5 text-xs text-ink-500">
                 14 fabrikanın her birinde 12 unvan tanımlı. Kullanıcı adı kalıbı:{" "}
                 <code className="font-mono">fabrikakodu.unvan</code> (örnek{" "}
-                <code className="font-mono">yoz.ambar</code>, <code className="font-mono">kas.lab</code>).
+                <code className="font-mono">yoz.ambar</code>). Giriş sonrası üst menüden
+                tek tıkla rol değiştirilebilir.
               </p>
             </div>
-          </div>
+          </details>
         )}
 
         <p className="mt-5 text-center text-sm text-ink-500">

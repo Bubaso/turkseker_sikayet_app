@@ -35,6 +35,13 @@ export interface BarRow {
   value: number;
   /** İpucu metni. */
   hint?: string;
+  /*
+   * Çubuğun sağına, değerin ardına yazılan ikinci ölçü — örneğin fabrikanın
+   * SLA yüzdesi. Aynı 14 satırı ikinci bir kutuda tekrar listelemek yerine
+   * ölçü buraya katılır. "bant" rengi belirler: hedefte / dikkat / hedef altı.
+   */
+  sag?: string;
+  bant?: "iyi" | "dikkat" | "kotu";
 }
 
 /**
@@ -57,7 +64,8 @@ export function BarChartH({
   const GAP = 12;
   const PAD_T = 18;
   const PAD_B = 22;
-  const PAD_R = 54;
+  // Sağda ikinci ölçü varsa yer açılır.
+  const PAD_R = rows.some((r) => r.sag) ? 108 : 54;
   const W = 640;
   const H = PAD_T + rows.length * (BAR + GAP) + PAD_B;
   const plotW = W - labelWidth - PAD_R;
@@ -107,6 +115,18 @@ export function BarChartH({
                     style={{ fontVariantNumeric: "tabular-nums" }}>
                 {fmt(r.value)}
               </text>
+              {r.sag && (
+                <text x={W - 6} y={y + BAR / 2 + 3.5} textAnchor="end" fontSize="11" fontWeight="600"
+                      fill={
+                        r.bant === "kotu" ? "var(--viz-critical)"
+                        : r.bant === "dikkat" ? "var(--viz-warn)"
+                        : r.bant === "iyi" ? "var(--viz-good)"
+                        : "var(--viz-ink-2)"
+                      }
+                      style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {r.sag}
+                </text>
+              )}
             </g>
           );
         })}

@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function ResmiYazilarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ daire?: string; durum?: string }>;
+  searchParams: Promise<{ daire?: string; durum?: string; s?: string }>;
 }) {
   const q = await searchParams;
   const user = await requirePageUser();
@@ -36,8 +36,26 @@ export default async function ResmiYazilarPage({
   const seciliId = user.department_id ?? (q.daire ? Number(q.daire) : daireler[0]?.id);
   const secili = daireler.find((d) => d.id === seciliId);
   const hepsi = secili ? daireyeGelenYazilar(secili.id) : [];
-  const yazilar = q.durum === "okunmamis" ? hepsi.filter((y) => y.okundu_mu === 0) : hepsi;
+  const suzulmus = q.durum === "okunmamis" ? hepsi.filter((y) => y.okundu_mu === 0) : hepsi;
   const okunmamis = hepsi.filter((y) => y.okundu_mu === 0).length;
+
+  /*
+   * Sayfalama. Liste 85 yazıyı tek seferde çiziyordu: telefonda 63 bin,
+   * masaüstünde 11 bin piksel. Bildirim kutusundaki düzeneğin aynısı —
+   * 40 kayıt, ?s= parametresi.
+   */
+  const SAYFA = 40;
+  const sayfa = Math.max(1, Number(q.s ?? 1));
+  const toplam = suzulmus.length;
+  const yazilar = suzulmus.slice((sayfa - 1) * SAYFA, sayfa * SAYFA);
+  const sayfaBagi = (n: number) => {
+    const p = new URLSearchParams();
+    if (q.daire) p.set("daire", q.daire);
+    if (q.durum) p.set("durum", q.durum);
+    if (n > 1) p.set("s", String(n));
+    const qs = p.toString();
+    return `/panel/resmi-yazilar${qs ? `?${qs}` : ""}`;
+  };
 
   return (
     <div className="space-y-5">
@@ -120,9 +138,11 @@ export default async function ResmiYazilarPage({
                       {y.factory && ` · ${y.factory}`}
                       {" · "}{y.product_name}
                     </p>
-                    {y.note && (
-                      <p className="mt-1 text-sm leading-relaxed text-ink-600">{y.note}</p>
-                    )}
+                    {/*
+                      Yazının notu satırdan çıkarıldı: listenin işi hangi
+                      yazının geldiğini ve okunup okunmadığını göstermek.
+                      Notun tamamı dosyanın kendi ekranında duruyor.
+                    */}
                     <p className="mt-1 text-xs text-ink-500">
                       Gönderim: {fmtDate(y.sent_at)}
                       {y.okunma_zamani && ` · Okuyan: ${y.okuyan} (${fmtDateTime(y.okunma_zamani)})`}
@@ -143,6 +163,22 @@ export default async function ResmiYazilarPage({
               </li>
             ))}
           </ul>
+
+          {toplam > SAYFA && (
+            <div className="flex items-center justify-between gap-2 border-t border-ink-200 px-4 py-2.5">
+              <p className="text-xs text-ink-500">
+                Sayfa {sayfa} / {Math.ceil(toplam / SAYFA)}
+              </p>
+              <div className="flex gap-2">
+                {sayfa > 1 && (
+                  <Link href={sayfaBagi(sayfa - 1)} className="btn btn-secondary btn-sm">← Önceki</Link>
+                )}
+                {sayfa * SAYFA < toplam && (
+                  <Link href={sayfaBagi(sayfa + 1)} className="btn btn-secondary btn-sm">Sonraki →</Link>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
       )}
     </div>

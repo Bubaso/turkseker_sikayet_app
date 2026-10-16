@@ -15,7 +15,6 @@ export default function LookupForm() {
         <label className="label" htmlFor="no">Şikâyet numaranız</label>
         <input id="no" name="no" className="input tnum font-mono" placeholder="2026-ANK-0001"
                autoComplete="off" autoCapitalize="characters" required />
-        <span className="hint">Kayıt sonrası gönderilen SMS'te yer alır.</span>
       </div>
 
       <div className="w-44">

@@ -11,9 +11,9 @@ import {
   categoryBreakdown, factoryPerformance, milestoneSla, monthlyTrend,
   productGroupBreakdown, totalRow, tumAralik, tumAySayisi,
 } from "@/server/stats";
-import { daireKararOzeti, daireSayilari, okunmamisYaziSayisi } from "@/server/yonetim";
+import { daireKararOzeti, daireSayilari } from "@/server/yonetim";
 import { Card, Chip, EmptyState, PageHeader, SlaChip, Stat } from "@/components/ui";
-import { BarChartH, LineChart, Meter, StackedBarH } from "@/components/charts";
+import { BarChartH, LineChart, StackedBarH } from "@/components/charts";
 import { Grafik } from "@/components/grafik";
 
 interface BekleyenItiraz {
@@ -54,7 +54,6 @@ export async function DairePano({
 
   const sayilar = daireSayilari(deptCode);
   const ozet = deptId ? daireKararOzeti(deptId) : null;
-  const okunmamis = deptId ? okunmamisYaziSayisi(deptId) : 0;
 
   // Üst yönetimin gördüğü ölçülerin aynısı; hepsi dairenin merceğiyle süzülür.
   const perf = factoryPerformance(aralik, null, deptCode).filter((f) => f.total > 0);
@@ -97,7 +96,6 @@ export async function DairePano({
   ];
 
   const siraliPerf = [...perf].sort((a, b) => b.total - a.total);
-  const slaSirali = [...perf].sort((a, b) => (a.sla_rate ?? 101) - (b.sla_rate ?? 101));
 
   /*
    * Kartların açtığı liste, kartın saydığı dosyaları göstermelidir. Mercek tek
@@ -204,10 +202,14 @@ export async function DairePano({
               hint="İade/mahsup + nakliye bedeli" />
       </div>
 
-      {/* Dairenin kendi karar performansı — üst yönetimde karşılığı yok */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Kararım bekleniyor" value={ozet?.bekleyen ?? 0}
-              tone={(ozet?.bekleyen ?? 0) > 0 ? "warn" : "ink"} href="/panel/itirazlar" />
+      {/*
+        Dairenin kendi karar performansı. Dört karttan ikisi kaldırıldı:
+        "Kararım bekleniyor" ve "Okunmamış resmî yazı" soldaki menüde aynı
+        sayaçla duruyor, üstelik bekleyen itirazlar bu sayfanın en üstünde
+        dosya dosya listeli. Kalan ikisinin başka hiçbir yerde karşılığı yok —
+        dairenin kendi işini ne kadar hızlı bitirdiğini yalnızca bunlar söyler.
+      */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Stat label="Karara bağladığım" value={ozet?.toplam ?? 0}
               hint={ozet ? `${ozet.kabul} kabul · ${ozet.ret} ret` : undefined}
               href="/panel/itirazlar?gecmis=1" />
@@ -215,8 +217,6 @@ export async function DairePano({
               value={ozet?.ortKararGunu == null ? "—" : `${ozet.ortKararGunu} iş günü`}
               tone={ozet?.ortKararGunu != null && ozet.ortKararGunu > 5 ? "warn" : "ink"}
               hint="Hedef: 5 iş günü" />
-        <Stat label="Okunmamış resmî yazı" value={okunmamis}
-              tone={okunmamis ? "warn" : "ink"} href="/panel/resmi-yazilar?durum=okunmamis" />
       </div>
 
       <Grafik
@@ -237,9 +237,13 @@ export async function DairePano({
         />
       </Grafik>
 
+      {/*
+        SLA uyumu çubuğun sağına katıldı; aynı 14 fabrikayı ölçer ölçer
+        yeniden listeleyen ikinci kutu kaldırıldı.
+      */}
       <Grafik
         baslik="Fabrika karşılaştırma"
-        aciklama="Yalnızca dairenizin alanındaki dosyalar sayılır."
+        aciklama="Yalnızca dairenizin alanındaki dosyalar sayılır. Sağdaki yüzde SLA uyumudur; hedef %95."
         tablo={{
           headers: ["Fabrika", "Toplam", "Açık", "Kapandı", "Haklı", "Haksız",
                     "SLA %", "Ort. kapanma", "İade (kg)", "Değişim (kg)", "Nakliye (₺)"],
@@ -259,35 +263,15 @@ export async function DairePano({
           rows={siraliPerf.map((p) => ({
             label: p.factory,
             value: p.total,
+            sag: p.sla_rate == null ? "—" : `SLA %${p.sla_rate}`,
+            bant: p.sla_rate == null ? undefined
+                  : p.sla_rate >= 95 ? "iyi" : p.sla_rate >= 85 ? "dikkat" : "kotu",
             hint: `${p.factory}: ${p.total} şikâyet · ${p.open} açık · SLA ${
               p.sla_rate == null ? "—" : `%${p.sla_rate}`}`,
           }))}
           unit="şikâyet"
-          caption="Dairenizin alanında her fabrikaya düşen toplam şikâyet sayısı."
+          caption="Dairenizin alanında her fabrikaya düşen şikâyet sayısı ve SLA uyumu."
         />
-      </Grafik>
-
-      <Grafik
-        baslik="Fabrikalara göre SLA uyumu"
-        aciklama="Süresinde tamamlanan aşamaların tüm aşamalara oranı. Hedef: %95 ve üzeri. En zayıf fabrika başta."
-      >
-        {slaSirali.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-500">Henüz veri yok.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            {slaSirali.map((p) => (
-              <Link key={p.factory_id} href={`/panel/sikayetler?fabrika=${p.factory_id}`}>
-                <Meter
-                  label={p.factory}
-                  rate={p.sla_rate}
-                  hint={p.total_tasks > 0
-                    ? `${p.total_tasks - p.overdue_tasks} / ${p.total_tasks} aşama süresinde · ${p.total} dosya`
-                    : "Dosyası olmayan fabrika"}
-                />
-              </Link>
-            ))}
-          </div>
-        )}
       </Grafik>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
