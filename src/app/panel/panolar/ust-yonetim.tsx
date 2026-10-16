@@ -67,14 +67,15 @@ export async function UstYonetimPano({ user }: { user: SessionUser }) {
 
   return (
     <div className="space-y-5">
+      {/*
+        Ad, unvan ve birim üst şeritte duruyor; başlık sayfanın adını söyler.
+        "Yönetim özeti" düğmesi menüdeki maddenin kopyasıydı, kaldırıldı.
+      */}
       <PageHeader
-        title={`Merhaba, ${user.full_name.split(" ")[0]}`}
-        subtitle={`${user.department_name ?? "Genel Müdürlük"} — 14 fabrikanın tüm şikâyet dosyaları`}
+        title="Gösterge paneli"
+        subtitle="14 fabrikanın tüm şikâyet dosyaları"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/panel/ozet" className="btn btn-secondary btn-sm">Yönetim özeti</Link>
-            <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
-          </div>
+          <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
         }
       />
 
@@ -218,6 +219,7 @@ export async function UstYonetimPano({ user }: { user: SessionUser }) {
       {/* 6. Aşama bazında süre uyumu */}
       <Grafik
         baslik="Aşama bazında süre uyumu"
+        aciklama="Sağdaki yüzde, süresinde tamamlananın payıdır."
         tablo={{
           headers: ["Aşama", "Toplam", "Süresinde", "Gecikmeli", "Hâlâ gecikmede", "Uyum %"],
           rows: asamalar.map((m) => [

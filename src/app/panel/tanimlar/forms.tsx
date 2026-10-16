@@ -14,11 +14,14 @@ export interface SettingField {
   hint?: string;
 }
 
-export function SettingsForm({ fields }: { fields: SettingField[] }) {
-  return (
-    <ActionForm action={settingsAction} submitLabel="Ayarları kaydet">
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        {fields.map((f) => (
+export function SettingsForm({
+  fields, gelismis = [],
+}: {
+  fields: SettingField[];
+  /** Kurulumda bir kez girilip bir daha dokunulmayanlar; katlı durur. */
+  gelismis?: SettingField[];
+}) {
+  const alan = (f: SettingField) => (
           <div key={f.key} className={f.type === "textarea" ? "sm:col-span-2" : undefined}>
             <label className="label" htmlFor={`ayar_${f.key}`}>{f.label}</label>
             {f.type === "bool" ? (
@@ -36,8 +39,22 @@ export function SettingsForm({ fields }: { fields: SettingField[] }) {
             )}
             {f.hint && <span className="hint">{f.hint}</span>}
           </div>
-        ))}
-      </div>
+  );
+
+  return (
+    <ActionForm action={settingsAction} submitLabel="Ayarları kaydet">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{fields.map(alan)}</div>
+
+      {gelismis.length > 0 && (
+        <details className="rounded-[5px] border border-ink-200 px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-ink-700">
+            Gelişmiş ayarlar ({gelismis.length})
+          </summary>
+          <div className="mt-3 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            {gelismis.map(alan)}
+          </div>
+        </details>
+      )}
     </ActionForm>
   );
 }
@@ -74,14 +91,11 @@ export function DemoDataForms({ complaintCount }: { complaintCount: number }) {
     <div className="space-y-5">
       <Card title="Örnek (demo) verisi üret">
         <ActionForm action={generateDemoAction} submitLabel="Demo verisi üret">
-          <Notice tone="info">
-            Üretilen kayıtlar gerçek süreç motorundan geçer: ekip kurulur, sonra her aşama bir
-            belge yüklenerek kapatılır (inceleme tutanağı, imzalı karar tutanağı, iade/değişim
-            belgesi, resmî yazı); itiraz dalı ve kapanış da gerçek süreç fonksiyonlarıyla
-            yürütülür. Sonrasında zaman damgaları geçmişe yayılmış gerçekçi bir takvime yazılır,
-            böylece SLA ve trend raporları anlamlı görünür. Dosyaların bir kısmı bilinçli olarak
-            açık ve gecikmeli bırakılır.
-          </Notice>
+          {/*
+            Uzun anlatım kaldırıldı: üretimin hangi fonksiyonlardan geçtiği
+            geliştirici ayrıntısı. Kullanıcının bilmesi gereken tek şey
+            kayıtların gerçek süreçten geçtiği ve bir kısmının açık kaldığı.
+          */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-40">
               <label className="label" htmlFor="count">Şikâyet sayısı</label>
@@ -93,8 +107,9 @@ export function DemoDataForms({ complaintCount }: { complaintCount: number }) {
             </div>
           </div>
           <p className="text-xs text-ink-500">
-            Mevcut {complaintCount} dosyaya ekleme yapılır; silme yapılmaz. 48 kayıt yaklaşık
-            10-20 saniye sürer.
+            Kayıtlar gerçek süreçten geçirilir; bir kısmı bilinçli olarak açık ve gecikmeli
+            bırakılır. Mevcut {complaintCount} dosyaya eklenir, silme yapılmaz; 48 kayıt
+            yaklaşık 10-20 saniye sürer.
           </p>
         </ActionForm>
       </Card>
@@ -102,14 +117,15 @@ export function DemoDataForms({ complaintCount }: { complaintCount: number }) {
       <Card title="Tüm şikâyet verisini sil">
         <ActionForm action={clearDataAction} submitLabel="Verileri sil" submitTone="danger"
                     confirm="Tüm şikâyet dosyaları, ekler ve bildirimler kalıcı olarak silinecek. Bu işlem geri alınamaz. Onaylıyor musunuz?">
-          <Notice tone="danger" title="Bu işlem geri alınamaz">
-            {complaintCount} şikâyet dosyası ve bunlara bağlı tüm aşamalar, ekler, resmî yazılar
-            ve bildirimler silinir. Fabrika, ürün, kategori, resmî tatil tanımları ve kullanıcı
-            hesapları korunur.
-          </Notice>
+          {/*
+            Üç katmanlı onaydan ikisi kaldı: SIL yazmak ve tarayıcı onayı.
+            Ayrıca bir de kırmızı kutu aynı uyarıyı üçüncü kez yazıyordu —
+            yazdırılan uyarı sayısı arttıkça okunma olasılığı düşer.
+          */}
           <div className="w-56">
             <label className="label" htmlFor="onay">
-              Onaylamak için <code className="font-mono font-semibold">SIL</code> yazın
+              {complaintCount} dosya ve tüm ekleri silinecek. Onaylamak için{" "}
+              <code className="font-mono font-semibold">SIL</code> yazın
             </label>
             <input id="onay" name="onay" required className="input font-mono" autoComplete="off" />
           </div>

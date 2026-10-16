@@ -112,23 +112,19 @@ export async function DairePano({
 
   return (
     <div className="space-y-5">
+      {/*
+        Başlık sayfanın adını söyler, kimliği değil: ad, unvan ve daire adı
+        yapışkan üst şeritte 80 piksel yukarıda zaten duruyor.
+
+        "Resmî yazılar (84)" ve "Yönetim özeti" düğmeleri kaldırıldı; ikisi de
+        soldaki menüde aynı sayaçla duruyor. Aylık Excel'in menüde karşılığı
+        olmadığı için kaldı.
+      */}
       <PageHeader
-        title={`Merhaba, ${user.full_name.split(" ")[0]}`}
-        subtitle={
-          <>
-            {user.department_name ?? "Daire Başkanlığı"}
-            {mercek && <> — {mercek.aciklama}</>}
-          </>
-        }
+        title="Gösterge paneli"
+        subtitle={mercek ? mercek.aciklama : undefined}
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/panel/resmi-yazilar" className="btn btn-secondary btn-sm">
-              Resmî yazılar{okunmamis > 0 && ` (${okunmamis})`}
-            </Link>
-            <Link href="/panel/ozet"
-                  className="btn btn-secondary btn-sm">Yönetim özeti</Link>
-            <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
-          </div>
+          <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
         }
       />
 
@@ -331,6 +327,7 @@ export async function DairePano({
 
       <Grafik
         baslik="Aşama bazında süre uyumu"
+        aciklama="Sağdaki yüzde, süresinde tamamlananın payıdır."
         tablo={{
           headers: ["Aşama", "Toplam", "Süresinde", "Gecikmeli", "Hâlâ gecikmede", "Uyum %"],
           rows: asamalar.map((m) => [

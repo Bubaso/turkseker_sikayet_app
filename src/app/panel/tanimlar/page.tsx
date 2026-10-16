@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { all, scalar } from "@/lib/db";
 import { PERMISSIONS, ROLE_LABEL, can, type Role } from "@/lib/roles";
@@ -16,9 +17,10 @@ export const dynamic = "force-dynamic";
 export default async function DefinitionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sekme?: string }>;
+  searchParams: Promise<{ sekme?: string; tatil?: string }>;
 }) {
-  const { sekme } = await searchParams;
+  const q = await searchParams;
+  const sekme = q.sekme;
   const user = await requirePageUser();
   if (!can(user.role, PERMISSIONS.TANIM_YONET)) redirect("/panel");
 
@@ -30,9 +32,17 @@ export default async function DefinitionsPage({
     all<{ key: string; value: string }>("SELECT key, value FROM settings").map((s) => [s.key, s.value]),
   );
 
+  /*
+   * İki ölü alan kaldırıldı: "Uygulama adı" ve "SMS gönderen başlığı" hiçbir
+   * yerde okunmuyordu — kaydedilen değerin hiçbir etkisi olmuyor, ekran
+   * yöneticiye yanlış bir denetim duygusu veriyordu. SMS başlığı gerçekte
+   * ortam değişkeninden (SMS_SENDER_TITLE) geliyor.
+   *
+   * Kalanlar ikiye ayrılır: günlük açılıp kapanan anahtarlar üstte, kurulumda
+   * bir kez girilip bir daha dokunulmayanlar "Gelişmiş" katında.
+   */
   const fields: SettingField[] = [
     { key: "kurum_adi", label: "Kurum adı", value: settings.kurum_adi ?? "", type: "text" },
-    { key: "uygulama_adi", label: "Uygulama adı", value: settings.uygulama_adi ?? "", type: "text" },
     {
       key: "halka_acik_form_aktif", label: "Halka açık şikâyet formu",
       value: settings.halka_acik_form_aktif ?? "1", type: "bool",
@@ -51,11 +61,6 @@ export default async function DefinitionsPage({
       key: "form_saatlik_ip_limiti", label: "Saatlik IP başına kayıt sınırı",
       value: settings.form_saatlik_ip_limiti ?? "5", type: "number",
       hint: "Kötüye kullanımı sınırlar.",
-    },
-    {
-      key: "sms_gonderen_basligi", label: "SMS gönderen başlığı",
-      value: settings.sms_gonderen_basligi ?? "TURKSEKER", type: "text",
-      hint: "Operatörde tanımlı başlıkla aynı olmalıdır.",
     },
     {
       key: "sms_turkce_karakter", label: "SMS'lerde Türkçe karakter",
@@ -77,6 +82,10 @@ export default async function DefinitionsPage({
     },
   ];
 
+  const SIK = new Set(["halka_acik_form_aktif", "otp_zorunlu", "kvkk_metni"]);
+  const sikAyarlar = fields.filter((f) => SIK.has(f.key));
+  const gelismisAyarlar = fields.filter((f) => !SIK.has(f.key));
+
   const factories = all<{ id: number; code: string; name: string; province: string; users: number }>(
     `SELECT f.id, f.code, f.name, f.province,
             (SELECT COUNT(*) FROM users u WHERE u.factory_id = f.id) AS users
@@ -88,8 +97,17 @@ export default async function DefinitionsPage({
   const categories = all<{ id: number; name: string; family: string; is_critical: number }>(
     "SELECT id, name, family, is_critical FROM complaint_categories WHERE is_active = 1 ORDER BY sort_order",
   );
+  /*
+   * Yalnızca bundan sonrası. Geçmiş yılın tatilleri tabloyu ikiye katlıyor ve
+   * her satırda "SLA hesapları değişir" uyarılı bir Sil düğmesi taşıyordu —
+   * düzeltilecek olan daima önümüzdeki tarih. Geçmişi görmek isteyen
+   * ?tatil=tumu ile açar.
+   */
+  const tumTatiller = q.tatil === "tumu";
   const holidays = all<{ date: string; name: string }>(
-    "SELECT date, name FROM holidays WHERE date >= date('now','-1 year') ORDER BY date",
+    tumTatiller
+      ? "SELECT date, name FROM holidays WHERE date >= date('now','-1 year') ORDER BY date"
+      : "SELECT date, name FROM holidays WHERE date >= date('now') ORDER BY date",
   );
   const departments = all<{ code: string; name: string; can_decide: number; users: number }>(
     `SELECT d.code, d.name, d.can_decide,
@@ -196,7 +214,7 @@ export default async function DefinitionsPage({
 
       {tab === "ayarlar" && (
         <Card title="Sistem ayarları">
-          <SettingsForm fields={fields} />
+          <SettingsForm fields={sikAyarlar} gelismis={gelismisAyarlar} />
         </Card>
       )}
 
@@ -210,7 +228,14 @@ export default async function DefinitionsPage({
           <Card title="Tatil ekle veya güncelle">
             <HolidayForm />
           </Card>
-          <Card title={`Resmî tatil takvimi (${holidays.length} gün)`} bodyClass="">
+          <Card title={`Resmî tatil takvimi (${holidays.length} gün)`}
+                actions={
+                  <Link href={`/panel/tanimlar?sekme=tatil${tumTatiller ? "" : "&tatil=tumu"}`}
+                        className="btn btn-ghost btn-sm">
+                    {tumTatiller ? "Yalnızca bundan sonrası" : "Geçmişi de göster"}
+                  </Link>
+                }
+                bodyClass="">
             <div className="table-wrap">
               <table className="tbl">
                 <thead><tr><th>Tarih</th><th>Tatil adı</th><th></th></tr></thead>

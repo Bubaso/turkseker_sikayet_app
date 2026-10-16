@@ -65,6 +65,7 @@ export default async function ComplaintDetailPage({
 
   const simdiki = asamalar.find((a) => !a.kapandi && a.sirasiGeldi) ?? null;
   const step = STATUS_STEP[c.status as keyof typeof STATUS_STEP] ?? 1;
+  const bekleyenDaire = !!c.escalated_at && !c.escalation_decided_at;
 
   return (
     <div className="space-y-5">
@@ -77,7 +78,7 @@ export default async function ComplaintDetailPage({
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="font-mono">{c.complaint_no}</span>
             <StatusChip status={c.status} />
-            <VerdictChip verdict={c.verdict} />
+            <VerdictChip verdict={c.verdict} durum={c.status} />
             {c.category_critical === 1 && <Chip tone="danger" dot>Gıda güvenliği ihbarı</Chip>}
           </span>
         }
@@ -102,41 +103,54 @@ export default async function ComplaintDetailPage({
         }
       />
 
-      {/* Dosya nerede: tek satırda şu anki adım ve ilerleme */}
-      <div className="card px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-200">
-            <div
-              className={`h-full rounded-full ${
-                c.status === "REDDEDILDI" || c.status === "IPTAL" ? "bg-ink-400" : "bg-brand-600"
-              }`}
-              style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }}
-            />
-          </div>
-          <span className="tnum shrink-0 text-xs text-ink-500">Adım {step} / {TOTAL_STEPS}</span>
-        </div>
-        {simdiki && !c.closed_at && (
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            <span className="text-ink-500">Şu anki adım:</span>
-            <span className="font-semibold text-ink-900">{simdiki.title}</span>
-            <span className="text-ink-600">
-              — {simdiki.assignee_name
-                ? `${simdiki.assignee_name} (${simdiki.assignee_title})`
-                : "sorumlu atanmadı"}
-            </span>
-            {simdiki.due_at && (
-              <span className="tnum text-ink-500">· en geç {fmtDate(simdiki.due_at)}</span>
-            )}
-            {simdiki.islenebilir && <Chip tone="brand" dot>Sıra sizde</Chip>}
-          </p>
-        )}
-      </div>
+      {/*
+        Dosya nerede: tek satırda şu anki adım ve ilerleme.
 
-      {c.escalated_at && !c.escalation_decided_at && (
-        <Notice tone="warn" title="Daire Başkanlığı değerlendirmesinde">
-          Dosya {c.department_name} birimine gönderildi. Karar en geç{" "}
-          {fmtDate(c.escalation_due_at)} tarihine kadar verilecek.
-        </Notice>
+        Kapanmış dosyada çubuk daima dolu ve "şu anki adım" diye bir şey yok;
+        kutunun tamamı o hâlde yalnızca yer kaplıyordu, bu yüzden çizilmiyor.
+
+        Daire Başkanlığı değerlendirmesi ayrı bir uyarı kutusuydu; aynı olgu
+        durum rozetinde ve aşama kutusunda da yazılıydı. Birim adı ve karar
+        tarihi bu satıra alındı, kutu kaldırıldı.
+      */}
+      {!c.closed_at && (
+        <div className="card px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-200">
+              <div
+                className={`h-full rounded-full ${
+                  c.status === "REDDEDILDI" || c.status === "IPTAL" ? "bg-ink-400" : "bg-brand-600"
+                }`}
+                style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }}
+              />
+            </div>
+            <span className="tnum shrink-0 text-xs text-ink-500">Adım {step} / {TOTAL_STEPS}</span>
+          </div>
+          {bekleyenDaire ? (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="text-ink-500">Şu anki adım:</span>
+              <span className="font-semibold text-ink-900">İtiraz değerlendirmesi</span>
+              <span className="text-ink-600">— {c.department_name}</span>
+              {c.escalation_due_at && (
+                <span className="tnum text-ink-500">· en geç {fmtDate(c.escalation_due_at)}</span>
+              )}
+            </p>
+          ) : simdiki ? (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="text-ink-500">Şu anki adım:</span>
+              <span className="font-semibold text-ink-900">{simdiki.title}</span>
+              <span className="text-ink-600">
+                — {simdiki.assignee_name
+                  ? `${simdiki.assignee_name} (${simdiki.assignee_title})`
+                  : "sorumlu atanmadı"}
+              </span>
+              {simdiki.due_at && (
+                <span className="tnum text-ink-500">· en geç {fmtDate(simdiki.due_at)}</span>
+              )}
+              {simdiki.islenebilir && <Chip tone="brand" dot>Sıra sizde</Chip>}
+            </p>
+          ) : null}
+        </div>
       )}
 
       {c.redirected_at && (
@@ -146,9 +160,15 @@ export default async function ComplaintDetailPage({
         </Notice>
       )}
 
-      {/* 1. Şikâyet formunun kendisi — dosyayı açanın ilk gördüğü şey.
-           Açık gelir; dosya ileri aşamalara geçtiğinde katlanabilir. */}
-      <details open className="card overflow-hidden">
+      {/*
+        1. Şikâyet formunun kendisi.
+
+        Yeni dosyada açık gelir: ekibi kuracak müdürün ilk okuduğu şey budur.
+        Dosya ilerledikten sonra katlı gelir — 800-1100 pikseli, sıradaki işi
+        ekranın dışına iten bir beyanı yeniden okumak için harcamak gerekmez;
+        başlığa tıklayınca yine açılır.
+      */}
+      <details open={!c.team_formed_at} className="card overflow-hidden">
         <summary className="cursor-pointer border-b border-ink-200 px-4 py-2.5 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
           Müşteri Şikâyet Formu (FR PASAT 007) ·{" "}
           <span className="font-normal normal-case text-ink-500">
@@ -166,9 +186,11 @@ export default async function ComplaintDetailPage({
           <h2 className="text-baslik font-semibold tracking-wide text-ink-700 uppercase">
             Süreç
           </h2>
-          <p className="text-xs text-ink-500">
-            Her aşama, fabrikada hazırlanan belgenin yüklenmesiyle kapanır.
-          </p>
+          {!c.closed_at && (
+            <p className="text-xs text-ink-500">
+              Her aşama, fabrikada hazırlanan belgenin yüklenmesiyle kapanır.
+            </p>
+          )}
         </div>
 
         {gm && !asamalar.some((a) => a.islenebilir) && (

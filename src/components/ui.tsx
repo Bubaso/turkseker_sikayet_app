@@ -65,8 +65,14 @@ export function SlaChip({ sla, compact = false }: { sla: SlaInfo; compact?: bool
   );
 }
 
-export function VerdictChip({ verdict, bosGizle = false, nokta = true }: {
+export function VerdictChip({ verdict, durum, bosGizle = false, nokta = true }: {
   verdict: string | null;
+  /*
+   * Yanında duran durum rozetinin durumu. REDDEDILDI durumu zaten "Haksız"
+   * yazıyor; karar rozeti aynı kelimeyi ikinci kez basıyordu. Durum verilirse
+   * bu tekrar önlenir.
+   */
+  durum?: string | null;
   /** Karar yoksa hiç çizme. Tabloda sütun hizası için tire gerekir, kartta
       yalnız bir tire anlamsız durur. */
   bosGizle?: boolean;
@@ -75,6 +81,7 @@ export function VerdictChip({ verdict, bosGizle = false, nokta = true }: {
   nokta?: boolean;
 }) {
   if (!verdict) return bosGizle ? null : <span className="text-ink-400">—</span>;
+  if (durum === "REDDEDILDI" && verdict !== "HAKLI") return bosGizle ? null : null;
   const ok = verdict === "HAKLI";
   return (
     <Chip tone={ok ? "ok" : "ink"} dot={nokta}

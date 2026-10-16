@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import {
-  CHANNEL_LABEL, DEMAND, DEMAND_LABEL, PRODUCT_GROUP_LABEL, type Demand,
+  DEMAND, DEMAND_LABEL, PRODUCT_GROUP_LABEL, type Demand,
 } from "@/lib/domain";
 import { fmtPhone, isValidEmail, isValidPhone } from "@/lib/format";
 import { Notice, ProgressSteps } from "@/components/ui";
@@ -167,6 +167,11 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-5">
+      {/*
+        Kullanıcı kaçıncı adımda olduğunu buradan okur. Kart başlıkları ("1.
+        Başvuru sahibi") aynı adı ikinci kez yazdığı için kaldırıldı; ekran
+        okuyucu için her kutunun sr-only legend'i yerinde duruyor.
+      */}
       <div className="card-pad">
         <ProgressSteps steps={STEPS.map((label) => ({ label }))} current={step} />
       </div>
@@ -176,7 +181,6 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
       {/* ---------------- Adım 1: Başvuru sahibi ---------------- */}
       <fieldset className={step === 1 ? "card" : "hidden"}>
         <legend className="sr-only">Başvuru sahibi bilgileri</legend>
-        <h2 className="card-title">1. Başvuru sahibi</h2>
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
           <div className="sm:col-span-2">
             <label className="label" htmlFor="customer_company">
@@ -251,7 +255,6 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
       {/* ---------------- Adım 2: Ürün bilgisi ---------------- */}
       <fieldset className={step === 2 ? "card" : "hidden"}>
         <legend className="sr-only">Ürün bilgileri</legend>
-        <h2 className="card-title">2. Ürün bilgisi</h2>
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
           <div className="sm:col-span-2">
             <label className="label" htmlFor="origin_factory_id">
@@ -328,7 +331,6 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
       {/* ---------------- Adım 3: Şikâyet ---------------- */}
       <fieldset className={step === 3 ? "card" : "hidden"}>
         <legend className="sr-only">Şikâyet bilgileri</legend>
-        <h2 className="card-title">3. Şikâyet</h2>
         <div className="grid grid-cols-1 gap-4 p-4 sm:p-5">
           <div>
             <label className="label" htmlFor="category_id">Şikâyet türü</label>
@@ -407,7 +409,6 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
         <legend className="sr-only">Onay ve gönderim</legend>
 
         <div className="card">
-          <h2 className="card-title">4. Gözden geçirin</h2>
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 p-4 sm:grid-cols-2 sm:p-5">
             {[
               ["Başvuru sahibi", v.customer_company],
@@ -506,7 +507,11 @@ export default function ComplaintForm({ refs }: { refs: FormRefs }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={back} disabled={step === 1 || pending}
                 className="btn btn-secondary">← Geri</button>
-        <p className="text-xs text-ink-500">Adım {step} / 4 — {CHANNEL_LABEL.WEB} başvurusu</p>
+        {/*
+          "Adım 2 / 4" üstteki şeritte zaten işaretli duruyor; "İnternet sitesi
+          başvurusu" ise kurum içi kanal etiketi — formu internet sitesinden
+          dolduran kişiye bir şey anlatmıyor.
+        */}
         {step < 4 ? (
           <button type="button" onClick={next} className="btn btn-primary">İleri →</button>
         ) : (

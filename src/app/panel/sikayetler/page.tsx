@@ -5,7 +5,7 @@ import {
   PRODUCT_GROUP_LABEL, STATUS_LABEL, VERDICT_LABEL,
   type DeptCode, type ProductGroup, type Status, type Verdict,
 } from "@/lib/domain";
-import { addDays, today } from "@/lib/dates";
+import { addDays, fmtDate, today } from "@/lib/dates";
 import { requirePageUser } from "@/server/auth";
 import { countComplaints, listComplaints, type ComplaintFilter } from "@/server/complaints";
 import { nextDue } from "@/server/stats";
@@ -163,7 +163,11 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
   if (q.fabrika) {
     ekle(factories.find((f) => f.id === Number(q.fabrika))?.short_name ?? "Fabrika", { fabrika: "" });
   }
-  if (q.bas || q.bit) ekle(`${q.bas ?? "…"} – ${q.bit ?? "…"}`, { bas: "", bit: "" });
+  // Ham ISO tarih yerine okunur aralık: "01.09.2026 – 30.09.2026".
+  if (q.bas || q.bit) {
+    ekle(`${q.bas ? fmtDate(q.bas) : "en baştan"} – ${q.bit ? fmtDate(q.bit) : "bugüne"}`,
+         { bas: "", bit: "" });
+  }
   if (q.kategori) {
     ekle(categories.find((c) => c.id === Number(q.kategori))?.name ?? "Şikâyet türü", { kategori: "" });
   }
@@ -208,7 +212,12 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
             <button type="submit" className="btn btn-secondary h-11 shrink-0 sm:h-auto sm:px-2.5 sm:py-1 sm:text-baslik">Ara</button>
           </form>
 
-          <div className="flex flex-1 flex-wrap items-center gap-1.5">
+          {/*
+            Çipler yalnızca masaüstünde. Telefonda her süzgeç zaten sütun
+            başlığındaki düğmenin üzerinde yazılı olduğu için bu şerit aynı
+            bilgiyi ikinci kez, tam genişlikte tekrarlıyordu.
+          */}
+          <div className="hidden flex-1 flex-wrap items-center gap-1.5 sm:flex">
             {etkinler.map((f) => (
               <Link key={f.etiket} href={f.temizHref}
                     className="chip border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"

@@ -18,11 +18,17 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
         <div className={`mx-auto flex flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3.5 ${en}`}>
           <Link href="/" className="flex items-center gap-3.5" aria-label="Ana sayfa">
             <Logo yukseklik={30} />
-            <span className="border-l border-ink-200 pl-3.5 text-sm leading-tight font-medium text-ink-600">
+            {/*
+              Telefonda gizlenir. İki satırlık ad anteti 105 piksele çıkarıp
+              gezinti düğmelerini alt satıra itiyordu; logo kurumu zaten
+              söylüyor, sayfa başlığı da ne olduğunu. Ekran okuyucuya kalır.
+            */}
+            <span className="hidden border-l border-ink-200 pl-3.5 text-sm leading-tight font-medium text-ink-600 sm:inline">
               Müşteri Şikâyet
               <br />
               Takip Sistemi
             </span>
+            <span className="sr-only">Müşteri Şikâyet Takip Sistemi</span>
           </Link>
           <nav className="flex items-center gap-1 text-sm">
             <Link href="/takip" className="btn btn-ghost btn-sm">Şikâyet takibi</Link>

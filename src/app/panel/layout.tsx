@@ -88,6 +88,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               kademe={kademe}
               canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
               canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}
+              canRecord={can(user.role, PERMISSIONS.SIKAYET_KAYDET)}
               altbilgi={
                 <div className="leading-tight">
                   <span className="block text-sm font-medium text-ink-800">{user.full_name}</span>
@@ -135,6 +136,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           kademe={kademe}
           canManageDefs={can(user.role, PERMISSIONS.TANIM_YONET)}
           canSeeNotifications={can(user.role, PERMISSIONS.BILDIRIM_GOR)}
+          canRecord={can(user.role, PERMISSIONS.SIKAYET_KAYDET)}
         />
         <main className="min-w-0 flex-1">
           <Suspense fallback={null}>

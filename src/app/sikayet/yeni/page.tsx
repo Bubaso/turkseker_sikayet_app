@@ -36,8 +36,7 @@ export default function NewComplaintPage() {
       <div className="mb-5">
         <h1 className="text-xl font-semibold tracking-tight text-ink-900">Müşteri Şikâyet Formu</h1>
         <p className="mt-0.5 text-sm text-ink-600">
-          Yıldızlı (<span className="text-danger-600">*</span>) alanlar zorunludur. Formu 4 adımda
-          tamamlayacaksınız.
+          Yıldızlı (<span className="text-danger-600">*</span>) alanlar zorunludur.
         </p>
       </div>
 

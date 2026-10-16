@@ -1,6 +1,6 @@
 import { all } from "@/lib/db";
 import {
-  DEMAND_LABEL, STATUS_PUBLIC_LABEL, STATUS_STEP, STATUS_TONE, TOTAL_STEPS,
+  DEMAND_LABEL, STATUS_PUBLIC_LABEL, STATUS_TONE,
   type Demand, type Status,
 } from "@/lib/domain";
 import { fmtDateLong, fmtDateTime } from "@/lib/dates";
@@ -134,7 +134,6 @@ export function TrackingView({ c }: { c: ComplaintView }) {
     }
   }
 
-  const step = STATUS_STEP[status] ?? 1;
 
   return (
     <div className="space-y-5">
@@ -154,21 +153,23 @@ export function TrackingView({ c }: { c: ComplaintView }) {
           </div>
         </div>
 
-        <div className="px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-200">
-              <div
-                className={`h-full rounded-full ${
-                  status === "REDDEDILDI" || status === "IPTAL" ? "bg-ink-400" : "bg-brand-600"
-                }`}
-                style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }}
-              />
-            </div>
-            <span className="tnum text-xs text-ink-500">{step} / {TOTAL_STEPS}</span>
-          </div>
-        </div>
-
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-ink-100 px-4 py-4 sm:grid-cols-2 sm:px-5">
+        {/*
+          İlerleme çubuğu kaldırıldı. Müşteri dosyasının nerede olduğunu üç
+          yerde birden okuyordu: üstteki durum rozeti, bu yüzde çubuğu ve
+          aşağıdaki numaralı süreç şeridi. Şerit üçünün en açığı — hangi adımın
+          ne zaman bittiğini tarihiyle söylüyor.
+        */}
+        {/*
+          Başvurunun künyesi katlı gelir. Müşteri kendi yazdığı bilgiyi değil,
+          şikâyetinin ne durumda olduğunu görmeye geliyor; açık hâlde bu kutu
+          telefonda 640 piksel tutup süreç adımlarını ekranın tamamen dışına
+          itiyordu. Başlığa dokununca açılır.
+        */}
+        <details className="border-t border-ink-100">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-ink-700 sm:px-5">
+            Başvuru bilgileriniz
+          </summary>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 px-4 pb-4 sm:grid-cols-2 sm:px-5">
           {[
             ["Şikâyet tarihi", fmtDateLong(c.received_at)],
             ["İnceleyen fabrika", c.factory_name],
@@ -189,6 +190,7 @@ export function TrackingView({ c }: { c: ComplaintView }) {
             <dd className="mt-0.5 text-sm text-ink-900">{c.subject}</dd>
           </div>
         </dl>
+        </details>
       </section>
 
       <section className="card">

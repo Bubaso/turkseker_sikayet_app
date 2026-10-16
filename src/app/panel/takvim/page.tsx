@@ -235,26 +235,12 @@ export default async function CalendarPage({
           </p>
         </Card>
 
-        <Card title="Bu ay gelen şikâyetler" bodyClass="">
-          {received.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-ink-500">Bu ayda şikâyet kaydı yok.</p>
-          ) : (
-            <ul className="max-h-64 divide-y divide-ink-100 overflow-y-auto">
-              {received.map((r) => (
-                <li key={r.id}>
-                  {/* Satırın tamamı dokunma hedefidir: küçük bir şikâyet
-                      numarasına nişan almak gerekmez. */}
-                  <Link href={`/panel/sikayet/${r.id}`}
-                        className="flex min-h-11 items-center justify-between gap-2 px-4 py-2 text-sm transition-colors hover:bg-brand-50/45 active:bg-brand-50">
-                    <span className="font-mono text-xs text-brand-700">{r.complaint_no}</span>
-                    <span className="min-w-0 flex-1 truncate text-ink-700">{r.customer_company}</span>
-                    <span className="tnum text-xs text-ink-500">{fmtDate(r.received_at)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        {/*
+          "Bu ay gelen şikâyetler" kartı kaldırıldı: sayfa kaydırmasının içine
+          ikinci bir kaydırma kutusu koyuyordu (max-h-64 + overflow-y-auto) ve
+          aynı liste şikâyet dosyalarında tarih süzgeciyle, bütün sütunlarıyla
+          zaten var. Takvimin işi son tarihleri ve tatilleri göstermek.
+        */}
       </div>
     </div>
   );

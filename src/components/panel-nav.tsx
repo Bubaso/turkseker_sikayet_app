@@ -22,11 +22,14 @@ export function PanelNav(props: MenuArgumanlari) {
   return (
     <nav aria-label="Panel menüsü" className="hidden shrink-0 lg:block lg:w-56">
       <div className="space-y-4 lg:sticky lg:top-20">
-        {gruplar.map((g) => (
-          <div key={g.title}>
-            <p className="mb-1 px-2 text-rozet font-semibold tracking-wider text-ink-400 uppercase">
-              {g.title}
-            </p>
+        {gruplar.map((g, gi) => (
+          <div key={g.title ?? gi}>
+            {/* Başlıksız grup: yalnızca maddeler çizilir. */}
+            {g.title && (
+              <p className="mb-1 px-2 text-rozet font-semibold tracking-wider text-ink-400 uppercase">
+                {g.title}
+              </p>
+            )}
             <ul className="space-y-0.5">
               {g.items.map((i) => {
                 const on = menuAktifMi(i.href, path, (k) => search.get(k), (k) => search.has(k));

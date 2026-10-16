@@ -105,7 +105,7 @@ export default function RoleSwitcher({
             <div className="border-b border-ink-200 bg-warn-50 px-3.5 py-2">
               <p className="text-xs font-semibold text-warn-700">Demo modu — rol değiştirme</p>
               <p className="mt-0.5 text-xs text-ink-600">
-                Şu an: <strong>{currentLabel}</strong>. Şifre sorulmadan başka bir kullanıcıya geçer.
+                Şu an: <strong>{currentLabel}</strong>
               </p>
             </div>
 
@@ -117,12 +117,11 @@ export default function RoleSwitcher({
             <div className="max-h-[24rem] overflow-y-auto p-3.5">
               {tab === "fabrika" && (
                 <>
-                  <label className="label" htmlFor="rs-factory">
-                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-mini font-bold text-white">
-                      1
-                    </span>
-                    Hangi fabrikada çalışacaksınız?
-                  </label>
+                  {/*
+                    İki açılır liste numaralı adım gerektirmiyor; etiketleri
+                    kendi başına anlaşılır. Pencere bu sayede yarıya indi.
+                  */}
+                  <label className="label" htmlFor="rs-factory">Fabrika</label>
                   <select
                     id="rs-factory"
                     className="input"
@@ -133,16 +132,9 @@ export default function RoleSwitcher({
                       <option key={f.id} value={f.id}>{f.name}</option>
                     ))}
                   </select>
-                  <span className="hint mb-3">
-                    Fabrikayı değiştirince aşağıdaki unvanlar o fabrikanın personeline döner.
-                  </span>
+                  <div className="mb-3" />
 
-                  <p className="label">
-                    <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-mini font-bold text-white">
-                      2
-                    </span>
-                    Hangi unvanla gireceksiniz?
-                  </p>
+                  <p className="label">Unvan</p>
                 </>
               )}
 

@@ -4,12 +4,18 @@ import { isGmRole } from "@/lib/roles";
 import { fmtDateTime } from "@/lib/dates";
 import {requirePageUser} from "@/server/auth";
 import { TEMPLATE_LABEL, type TemplateCode } from "@/server/notify";
-import { isSimulation, smsProvider, mailProvider } from "@/server/providers";
+import { isSimulation } from "@/server/providers";
 import type { NotificationView } from "@/lib/types";
 import { Card, Chip, EmptyState, Notice, PageHeader, Stat } from "@/components/ui";
 import { RetryButton } from "./retry";
 
 export const dynamic = "force-dynamic";
+
+const DURUM_ETIKET: Record<string, string> = {
+  GONDERILDI: "Gönderilen",
+  HATA: "Hatalı",
+  KUYRUKTA: "Kuyrukta",
+};
 
 /** SMS ve e-posta giden kutusu. */
 export default async function OutboxPage({
@@ -18,6 +24,17 @@ export default async function OutboxPage({
   searchParams: Promise<{ kanal?: string; durum?: string; s?: string }>;
 }) {
   const q = await searchParams;
+
+  /* Kutulara ve çiplere adres üreten tek yer; sayfa numarası her zaman sıfırlanır. */
+  const suzgec = (yama: { kanal?: string | null; durum?: string | null }) => {
+    const p = new URLSearchParams();
+    const kanal = yama.kanal === undefined ? q.kanal : yama.kanal;
+    const durum = yama.durum === undefined ? q.durum : yama.durum;
+    if (kanal) p.set("kanal", kanal);
+    if (durum) p.set("durum", durum);
+    const qs = p.toString();
+    return `/panel/bildirimler${qs ? `?${qs}` : ""}`;
+  };
   const user = await requirePageUser();
   const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
   const page = Math.max(1, Number(q.s ?? 1));
@@ -61,51 +78,67 @@ export default async function OutboxPage({
       <PageHeader
         title="SMS / e-posta giden kutusu"
         subtitle={`${total} bildirim${gm ? " — tüm fabrikalar" : ` — ${user.factory_name}`}`}
-        actions={failed > 0 ? <RetryButton /> : undefined}
+        actions={
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Kanal süzgeci: kaldırılan Filtreler kutusunun karşılığı. */}
+            {([["SMS", "SMS"], ["EPOSTA", "E-posta"]] as const).map(([deger, etiket]) => (
+              <Link key={deger}
+                    href={suzgec({ kanal: q.kanal === deger ? null : deger })}
+                    className={`btn btn-sm ${q.kanal === deger ? "btn-primary" : "btn-secondary"}`}>
+                {etiket}
+              </Link>
+            ))}
+            {failed > 0 && <RetryButton />}
+          </div>
+        }
       />
 
+      {/*
+        Simülasyon uyarısı tek satıra indi. Kurulum yönergesi (.env.local,
+        SMS_PROVIDER, sağlayıcı adları) bu ekranı her gün açan Kalite
+        Sorumlusunu ilgilendirmiyor; sistem yöneticisi aynı bilgiyi Tanımlar
+        sayfasında bulur. Burada bilinmesi gereken tek şey mesajların
+        gerçekten gitmediği.
+      */}
       {isSimulation() && (
-        <Notice tone="warn" title="Sağlayıcı simülasyon modunda">
-          SMS ve e-postalar gerçekten gönderilmiyor; yalnızca bu listeye yazılıyor. Canlıya geçmek
-          için <code className="rounded bg-white px-1 py-0.5 text-xs">.env.local</code> dosyasında{" "}
-          <code className="rounded bg-white px-1 py-0.5 text-xs">SMS_PROVIDER</code> değerini{" "}
-          <code className="rounded bg-white px-1 py-0.5 text-xs">netgsm</code> veya{" "}
-          <code className="rounded bg-white px-1 py-0.5 text-xs">iletimerkezi</code> yapıp API
-          bilgilerini girin. Aktif sağlayıcılar: SMS <strong>{smsProvider().name}</strong>, e-posta{" "}
-          <strong>{mailProvider().name}</strong>.
+        <Notice tone="warn">
+          Sağlayıcı simülasyon modunda: mesajlar gerçekten gönderilmiyor, yalnızca bu listeye
+          yazılıyor.
         </Notice>
       )}
 
+      {/*
+        Sayıların kendisi süzgeç. Üç kutu zaten Gönderilen / Hatalı / Kuyrukta
+        diye sayıyordu; altlarında aynı üç durumu seçtiren ayrı bir "Filtreler"
+        kutusu duruyordu. Kutuya tıklamak artık o durumu süzüyor — iki tıklama
+        yerine bir tıklama, bir kutu eksik. Kanal süzgeci başlıktaki iki
+        düğmede kaldı.
+      */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Gönderilen" value={sum((r) => r.status === "GONDERILDI")} tone="ok" />
-        <Stat label="Hatalı" value={failed} tone={failed ? "danger" : "ink"} />
-        <Stat label="Kuyrukta" value={kuyrukta} tone={kuyrukta ? "warn" : "ink"} />
+        <Stat label="Gönderilen" value={sum((r) => r.status === "GONDERILDI")}
+              tone="ok" href={suzgec({ durum: "GONDERILDI" })} />
+        <Stat label="Hatalı" value={failed} tone={failed ? "danger" : "ink"}
+              href={suzgec({ durum: "HATA" })} />
+        <Stat label="Kuyrukta" value={kuyrukta} tone={kuyrukta ? "warn" : "ink"}
+              href={suzgec({ durum: "KUYRUKTA" })} />
         <Stat label="SMS kredisi" value={smsCredits} hint="Operatörün ücretlendireceği mesaj adedi" />
       </div>
 
-      <Card title="Filtreler" bodyClass="p-3.5">
-        <form method="get" className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="label" htmlFor="kanal">Kanal</label>
-            <select id="kanal" name="kanal" defaultValue={q.kanal ?? ""} className="input">
-              <option value="">Tümü</option>
-              <option value="SMS">SMS</option>
-              <option value="EPOSTA">E-posta</option>
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="durum">Durum</label>
-            <select id="durum" name="durum" defaultValue={q.durum ?? ""} className="input">
-              <option value="">Tümü</option>
-              <option value="GONDERILDI">Gönderildi</option>
-              <option value="HATA">Hata</option>
-              <option value="KUYRUKTA">Kuyrukta</option>
-            </select>
-          </div>
-          <button type="submit" className="btn btn-primary">Filtrele</button>
-          <Link href="/panel/bildirimler" className="btn btn-secondary">Temizle</Link>
-        </form>
-      </Card>
+      {(q.kanal || q.durum) && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-ink-500">Süzgeç:</span>
+          {q.durum && (
+            <Link href={suzgec({ durum: null })} className="chip border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100">
+              {DURUM_ETIKET[q.durum] ?? q.durum} ✕
+            </Link>
+          )}
+          {q.kanal && (
+            <Link href={suzgec({ kanal: null })} className="chip border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100">
+              {q.kanal === "SMS" ? "SMS" : "E-posta"} ✕
+            </Link>
+          )}
+        </div>
+      )}
 
       <Card bodyClass="">
         {rows.length === 0 ? (

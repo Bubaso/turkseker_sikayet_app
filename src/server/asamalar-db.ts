@@ -247,8 +247,18 @@ export function dosyaEkibi(complaintId: number): EkipUyesiGorunum[] {
   );
   if (uyeler.length === 0) return [];
 
+  /*
+   * Yalnızca gerçekten açılmış aşamalar. Görevlendirme ekip kurulurken beş
+   * aşamanın tamamına yazılır, ama itiraz ve iade/değişim yalnızca koşulu
+   * oluşursa açılır. Açılmamış aşamayı ekip kartında rozetlemek, yapılmamış
+   * işi yapılmış gibi gösteriyordu.
+   */
   const gorevler = all<{ code: string; user_id: number }>(
-    "SELECT code, user_id FROM stage_assignments WHERE complaint_id = ?", complaintId,
+    `SELECT sa.code, sa.user_id FROM stage_assignments sa
+      WHERE sa.complaint_id = ?
+        AND EXISTS (SELECT 1 FROM tasks t
+                     WHERE t.complaint_id = sa.complaint_id AND t.code = sa.code)`,
+    complaintId,
   );
   const sirali = (k: string) => ASAMALAR[k as AsamaKodu]?.sira ?? 999;
 

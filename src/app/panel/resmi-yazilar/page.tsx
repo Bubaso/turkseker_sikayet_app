@@ -96,10 +96,18 @@ export default async function ResmiYazilarPage({
                   className={`px-4 py-3.5 sm:px-5 ${y.okundu_mu === 0 ? "bg-brand-50/40" : ""}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
+                    {/*
+                      Satır başına tek kimlik: yazı numarası zaten yıl ile
+                      şikâyet numarasından üretiliyordu, ikisini yan yana
+                      yazmak aynı dosyayı iki kez adlandırmaktı. Dosyaya giden
+                      bağlantı şikâyet numarasında kaldı.
+                    */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm font-semibold text-ink-900">
-                        {y.letter_no}
-                      </span>
+                      {/* min-h-6: dokunma hedefi 24 pikselin altına düşmesin. */}
+                      <Link href={`/panel/sikayet/${y.complaint_id}`}
+                            className="link inline-flex min-h-6 items-center font-mono text-sm font-semibold">
+                        {y.complaint_no}
+                      </Link>
                       {y.okundu_mu === 0 ? (
                         <Chip tone="brand" dot>Okunmadı</Chip>
                       ) : (
@@ -108,10 +116,7 @@ export default async function ResmiYazilarPage({
                       <VerdictChip verdict={y.verdict} />
                     </div>
                     <p className="mt-1 text-sm text-ink-700">
-                      <Link href={`/panel/sikayet/${y.complaint_id}`} className="link font-mono">
-                        {y.complaint_no}
-                      </Link>
-                      {" · "}{y.customer_company}
+                      {y.customer_company}
                       {y.factory && ` · ${y.factory}`}
                       {" · "}{y.product_name}
                     </p>
@@ -123,11 +128,12 @@ export default async function ResmiYazilarPage({
                       {y.okunma_zamani && ` · Okuyan: ${y.okuyan} (${fmtDateTime(y.okunma_zamani)})`}
                     </p>
                   </div>
+                  {/*
+                    "Ekleri gör" düğmesi kaldırıldı: yukarıdaki şikâyet
+                    numarasıyla aynı adrese gidiyordu. Satırda yalnızca
+                    yapılacak iş kalır.
+                  */}
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Link href={`/panel/sikayet/${y.complaint_id}`}
-                          className="btn btn-secondary btn-sm">
-                      Ekleri gör
-                    </Link>
                     {y.okundu_mu === 0 && secili && (
                       <ActionButton action={letterReadAction} label="Okundu olarak işaretle"
                                     tone="primary" fields={{ letterId: y.id, departmentId: secili.id }} />

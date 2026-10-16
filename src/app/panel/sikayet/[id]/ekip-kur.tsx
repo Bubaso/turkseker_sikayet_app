@@ -139,15 +139,15 @@ export function EkipKur({
           </span>
         </div>
 
+        {/*
+          Tek cümle yetiyor. Hangi aşamaların sorumluya düştüğünü saymak,
+          kutuların kendi etiketlerinin ve gönder satırındaki "Dosya evrak
+          sorumlusuna düşer: <ad>" bilgisinin söylediğini tekrar etmekti.
+        */}
         <p className="text-xs leading-relaxed text-ink-500">
-          Her kutuda önce unvan, sonra o unvandaki isim seçilir. Ardından ekip
-          üyelerinden birinin yanındaki{" "}
+          Her kutuda unvan ve isim seçin, sonra birinin yanındaki{" "}
           <strong className="font-semibold text-ink-700">Evrak sorumlusu</strong>{" "}
-          kutucuğunu işaretleyin: dosyanın fabrika tarafındaki bütün belgeli
-          aşamaları — inceleme, karar, varsa itiraz, iade/değişim, resmî yazı —
-          o kişiye düşer ve dosya, sürecin sonundaki kapanış onayına kadar onun
-          ekranında yürür. Kapanış onayı Fabrika Müdüründe, itiraz
-          değerlendirmesi ilgili Daire Başkanlığında kalır.
+          kutucuğunu işaretleyin: dosyanın bütün belgeli aşamaları ona düşer.
         </p>
 
         <ol className="space-y-2.5">

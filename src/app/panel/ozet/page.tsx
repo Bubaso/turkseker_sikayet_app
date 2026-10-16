@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { one } from "@/lib/db";
 import { fmtDate } from "@/lib/dates";
-import { fmtQuantity, fmtTl } from "@/lib/format";
+import { fmtPct, fmtQuantity, fmtTl } from "@/lib/format";
 import { isGmRole } from "@/lib/roles";
 import type { DeptCode } from "@/lib/domain";
 import { requirePageUser } from "@/server/auth";
@@ -14,11 +14,18 @@ import { PrintToolbar } from "@/app/belge/[id]/toolbar";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * Değişim sütunu yalnızca yönü söyler.
+ *
+ * Eskiden farkın ham değerini de basıyordu; para satırlarında bu, aynı satırda
+ * "45.586.884,00 ₺" ile "▼ 10059420" yan yana gelmesi demekti — toplantıya
+ * götürülen kâğıtta iki ayrı sayı biçimi. Fark zaten iki sütunun arasında
+ * duruyor; okuyanın ihtiyacı olan tek şey artış mı azalış mı, iyi mi kötü mü.
+ */
 function yon(simdi: number | null, onceki: number | null, iyiYon: "artis" | "azalis"): string {
   if (simdi == null || onceki == null || simdi === onceki) return "—";
-  const fark = simdi - onceki;
-  const iyi = (fark > 0) === (iyiYon === "artis");
-  return `${fark > 0 ? "▲" : "▼"} ${Math.abs(Math.round(fark * 10) / 10)} ${iyi ? "(iyileşme)" : "(kötüleşme)"}`;
+  const iyi = (simdi > onceki) === (iyiYon === "artis");
+  return `${simdi > onceki ? "▲" : "▼"} ${iyi ? "iyileşme" : "kötüleşme"}`;
 }
 
 /**
@@ -89,8 +96,8 @@ export default async function YonetimOzetiPage({
                 ["Haklı bulunan", String(kiyas.simdi.haklı), String(kiyas.onceki.haklı),
                  yon(kiyas.simdi.haklı, kiyas.onceki.haklı, "azalis")],
                 ["SLA uyumu",
-                 kiyas.simdi.slaOrani == null ? "—" : `%${kiyas.simdi.slaOrani}`,
-                 kiyas.onceki.slaOrani == null ? "—" : `%${kiyas.onceki.slaOrani}`,
+                 fmtPct(kiyas.simdi.slaOrani, 1),
+                 fmtPct(kiyas.onceki.slaOrani, 1),
                  yon(kiyas.simdi.slaOrani, kiyas.onceki.slaOrani, "artis")],
                 ["Ortalama kapanma (iş günü)",
                  String(kiyas.simdi.ortKapanma ?? "—"), String(kiyas.onceki.ortKapanma ?? "—"),
@@ -138,7 +145,7 @@ export default async function YonetimOzetiPage({
                   <td className="tnum py-1 text-right">{f.total}</td>
                   <td className="tnum py-1 text-right">{f.open}</td>
                   <td className="tnum py-1 text-right font-semibold">
-                    {f.sla_rate == null ? "—" : `%${f.sla_rate}`}
+                    {fmtPct(f.sla_rate, 1)}
                   </td>
                   <td className="tnum py-1 text-right">{f.avg_close_days ?? "—"}</td>
                 </tr>
@@ -148,7 +155,7 @@ export default async function YonetimOzetiPage({
                 <td className="tnum py-1 text-right">{toplam.total}</td>
                 <td className="tnum py-1 text-right">{toplam.open}</td>
                 <td className="tnum py-1 text-right">
-                  {toplam.sla_rate == null ? "—" : `%${toplam.sla_rate}`}
+                  {fmtPct(toplam.sla_rate, 1)}
                 </td>
                 <td className="tnum py-1 text-right">{toplam.avg_close_days ?? "—"}</td>
               </tr>

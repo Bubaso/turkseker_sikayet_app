@@ -15,7 +15,7 @@ export interface MenuMaddesi {
 }
 
 export interface MenuGrubu {
-  title: string;
+  title?: string;
   items: MenuMaddesi[];
 }
 
@@ -34,6 +34,8 @@ export interface MenuArgumanlari {
   counts: MenuSayaclari;
   canManageDefs: boolean;
   canSeeNotifications: boolean;
+  /** Elden şikâyet kaydedebilir mi? Laboratuvar gibi roller kaydedemez. */
+  canRecord: boolean;
 }
 
 /**
@@ -45,21 +47,24 @@ export interface MenuArgumanlari {
  * Gösterilmeyecek maddeler burada ayıklanır; çizen taraf boş grup görmez.
  */
 export function panelMenusu({
-  gm, kademe, counts, canManageDefs, canSeeNotifications,
+  gm, kademe, counts, canManageDefs, canSeeNotifications, canRecord,
 }: MenuArgumanlari): MenuGrubu[] {
   const daire = kademe === "daire";
 
   const gruplar: MenuGrubu[] = gm
     ? [
         {
-          title: "Gözetim",
+          /*
+           * Genel Müdürlük menüsünde grup başlığı yok: üç-dört maddeyi iki
+           * başlık altına bölmek, "Yönetim özeti"ni "Daire Başkanlığı"
+           * başlığının altına — yani yanlış kademeye — düşürüyordu.
+           */
           items: [
             { href: "/panel", label: "Gösterge paneli" },
             { href: "/panel/sikayetler", label: "Şikâyet dosyaları", count: counts.open },
           ],
         },
         {
-          title: daire ? "Daire Başkanlığı" : "Çıktı",
           items: [
             {
               href: "/panel/itirazlar",
@@ -99,6 +104,13 @@ export function panelMenusu({
               tone: "danger",
             },
             { href: "/panel/takvim", label: "Takvim" },
+            /*
+             * Elden kayıt günlük işin parçası; ayrı bir "Yönetim" grubu
+             * açmaya değmiyordu. show ile Laboratuvar gibi kayıt yetkisi
+             * olmayan rollerde çizilmez — eskiden maddeye tıklayan kullanıcı
+             * anında panele geri atılıyordu.
+             */
+            { href: "/panel/sikayetler/yeni", label: "Elden şikâyet kaydet", show: canRecord },
           ],
         },
         {
@@ -108,13 +120,12 @@ export function panelMenusu({
             { href: "/panel/raporlar", label: "Performans panosu" },
           ],
         },
-        {
-          title: "Yönetim",
-          items: [
-            { href: "/panel/sikayetler/yeni", label: "Elden şikâyet kaydet" },
-            { href: "/panel/tanimlar", label: "Tanımlar ve ayarlar", show: canManageDefs },
-          ],
-        },
+        /*
+         * "Tanımlar ve ayarlar" buradan kaldırıldı: fabrika dalında
+         * canManageDefs daima false (tanım yetkisi yalnızca Sistem
+         * Yöneticisinde, o da Genel Müdürlük dalını görüyor), yani madde
+         * hiçbir zaman çizilmiyordu.
+         */
       ];
 
   return gruplar

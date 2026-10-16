@@ -10,7 +10,7 @@ import {
   monthlyTrend, productGroupBreakdown, totalRow,
 } from "@/server/stats";
 import { Notice, PageHeader, Stat } from "@/components/ui";
-import { BarChartH, LineChart, Meter, StackedBarH } from "@/components/charts";
+import { BarChartH, LineChart, StackedBarH } from "@/components/charts";
 import { Grafik } from "@/components/grafik";
 import { DonemSecici } from "@/components/donem-secici";
 
@@ -75,6 +75,18 @@ export default async function ReportsPage({
         <DonemSecici bas={range.from} bit={range.to} hedef="/panel/raporlar" />
       </section>
 
+      {/*
+        Veri yoksa sayfanın gerisi çizilmez. Boş dönemde on dört kart sıfır
+        yazıyor, grafikler boş eksen çiziyor ve seyir grafiği seçilen dönemi
+        değil son 12 ayı gösterdiği için "veri yok" denen ekranda veri
+        görünüyordu. Tek cümle hem daha dürüst hem daha sade.
+      */}
+      {toplam.total === 0 ? (
+        <Notice tone="info" title="Seçilen aralıkta veri yok">
+          Bu aralıkta kayıtlı şikâyet bulunmuyor. Yukarıdan daha geniş bir dönem seçin.
+        </Notice>
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Toplam şikâyet" value={toplam.total}
               hint={`${toplam.open} açık · ${toplam.closed} kapandı`} />
@@ -94,12 +106,6 @@ export default async function ReportsPage({
         <Stat label="İade / mahsup bedeli" value={fmtTl(toplam.refund_amount)} />
         <Stat label="Ödenen nakliye bedeli" value={fmtTl(toplam.freight_amount)} tone="warn" />
       </div>
-
-      {toplam.total === 0 && (
-        <Notice tone="info" title="Seçilen aralıkta veri yok">
-          Rapor aralığını genişletin veya şikâyet kaydı oluşturun.
-        </Notice>
-      )}
 
       <Grafik
         baslik="Son 12 ayın seyri"
@@ -156,6 +162,7 @@ export default async function ReportsPage({
 
       <Grafik
         baslik="Aşama bazında süre uyumu"
+        aciklama="Sağdaki yüzde, süresinde tamamlananın payıdır."
         tablo={{
           headers: ["Aşama", "Toplam", "Süresinde", "Gecikmeli", "Hâlâ gecikmede", "Uyum %"],
           rows: asamalar.map((m) => [
@@ -183,15 +190,14 @@ export default async function ReportsPage({
         />
       </Grafik>
 
-      <Grafik baslik="SLA uyumu" aciklama="Süresinde tamamlanan aşamaların tüm aşamalara oranı. Hedef: %95 ve üzeri.">
-        <Meter
-          label={gm ? "Tüm fabrikalar" : (user.factory_name ?? "Fabrika")}
-          rate={toplam.sla_rate}
-          hint={toplam.total_tasks > 0
-            ? `${toplam.total_tasks - toplam.overdue_tasks} / ${toplam.total_tasks} aşama süresinde`
-            : "Bu aralıkta aşama yok"}
-        />
-      </Grafik>
+      {/*
+        Tek ölçerlik "SLA uyumu" kutusu kaldırıldı: yüzdeyi de, "x / y aşama
+        süresinde" ipucunu da yukarıdaki SLA kutusu zaten aynı sayılarla
+        gösteriyordu. Kıyas yapmayan, tek çubuklu bir ölçer ikinci kez
+        çizilmeye değmiyor.
+      */}
+      </>
+      )}
 
       <p className="text-xs text-ink-500">
         Rapor {fmtDate(today())} tarihinde üretildi. SLA hesapları iş günü bazlıdır; hafta sonları

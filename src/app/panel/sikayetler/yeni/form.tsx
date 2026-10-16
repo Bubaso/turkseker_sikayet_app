@@ -33,12 +33,12 @@ export default function StaffComplaintForm({ refs }: { refs: StaffFormRefs }) {
 
   return (
     <ActionForm action={staffComplaintAction} submitLabel="Şikâyeti kaydet" className="space-y-5">
-      <Notice tone="info">
-        Çevrim içi formdan gelmeyen başvurular burada kaydedilir. Kayıt açıldığı anda Müşteri
-        Şikâyet Formu (FR PASAT 007) düzenlenir, görev kartları açılır ve SLA süreleri şikâyet
-        tarihinden itibaren işlemeye başlar.
-      </Notice>
-
+      {/*
+        Üst bilgi kutusu kaldırıldı: "çevrim içi formdan gelmeyen başvurular"
+        zaten sayfa başlığının söylediği şey, formun açılması ve sürelerin
+        işlemeye başlaması da formun altındaki dayanak satırında yazılı.
+        Ekranın ilk gördüğü şey artık doldurulacak alanlar.
+      */}
       <Card title="Başvuru bilgisi">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>

@@ -92,8 +92,12 @@ export function Gecmis({
                   <span className="tnum text-xs text-ink-500">{fmtDateTime(n.created_at)}</span>
                   <span className="tnum text-xs text-ink-500">→ {n.recipient}</span>
                 </div>
-                {n.subject && <p className="mt-1 text-sm font-medium text-ink-800">{n.subject}</p>}
-                <p className="mt-0.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-600">{n.body}</p>
+                {/*
+                  Burada aranan şey "müşteriye haber verildi mi" sorusunun cevabı:
+                  kanal, durum, hangi bildirim, ne zaman, kime. Gönderilen metnin
+                  tamamı dosyada bir duvar kuruyordu; metni okumak gerektiğinde
+                  SMS/e-posta giden kutusunda tam hâliyle duruyor.
+                */}
                 {n.error && <p className="mt-1 text-xs text-danger-700">Hata: {n.error}</p>}
               </li>
             ))}

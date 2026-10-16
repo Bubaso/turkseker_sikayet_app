@@ -47,6 +47,7 @@ export function BarChartH({
   rows: BarRow[];
   unit?: string;
   labelWidth?: number;
+  /** Grafiğin aria-label'ı. Ekranda yazılmaz: başlık ve gösterge zaten orada. */
   caption: string;
 }) {
   if (rows.length === 0) {
@@ -110,7 +111,6 @@ export function BarChartH({
           );
         })}
       </svg>
-      <figcaption className="mt-1.5 text-xs text-ink-500">{caption}</figcaption>
     </figure>
   );
 }
@@ -132,6 +132,7 @@ export function LineChart({
 }: {
   labels: string[];
   series: Series[];
+  /** Grafiğin aria-label'ı. Ekranda yazılmaz: başlık ve gösterge zaten orada. */
   caption: string;
 }) {
   if (labels.length === 0 || series.length === 0) {
@@ -212,7 +213,6 @@ export function LineChart({
           );
         })}
       </svg>
-      <figcaption className="mt-1.5 text-xs text-ink-500">{caption}</figcaption>
     </figure>
   );
 }
@@ -236,6 +236,7 @@ export function StackedBarH({
 }: {
   rows: StackRow[];
   legend: { name: string; slot: 1 | 2 | 3 }[];
+  /** Grafiğin aria-label'ı. Ekranda yazılmaz: başlık ve gösterge zaten orada. */
   caption: string;
   labelWidth?: number;
 }) {
@@ -301,7 +302,6 @@ export function StackedBarH({
           );
         })}
       </svg>
-      <figcaption className="mt-1.5 text-xs text-ink-500">{caption}</figcaption>
     </figure>
   );
 }

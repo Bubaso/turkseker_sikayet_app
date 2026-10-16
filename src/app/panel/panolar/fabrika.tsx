@@ -3,12 +3,10 @@ import { isGmRole } from "@/lib/roles";
 import { fmtDate, slaInfo } from "@/lib/dates";
 import { all, scalar } from "@/lib/db";
 import type { SessionUser } from "@/server/auth";
-import { listComplaints } from "@/server/complaints";
 import { benimAsamalarim } from "@/server/asamalar-db";
-import { dashboardStats, nextDue } from "@/server/stats";
+import { dashboardStats } from "@/server/stats";
 import { holidaySet } from "@/server/settings";
 import { Card, EmptyState, Notice, PageHeader, SlaChip, Stat, StatusChip } from "@/components/ui";
-import { ComplaintTable, type TableRowExtra } from "@/components/complaint-table";
 
 export async function FabrikaPano({ user }: { user: SessionUser }) {
   const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
@@ -22,13 +20,6 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
   const simdi = new Date();
   const buAy = `${simdi.getFullYear()}-${String(simdi.getMonth() + 1).padStart(2, "0")}`;
   const sonYediGun = new Date(simdi.getTime() - 6 * 864e5).toISOString().slice(0, 10);
-  const recent = listComplaints({ factoryId, limit: 8, orderBy: "received_desc" });
-  const extras: Record<number, TableRowExtra> = {};
-  for (const c of recent) {
-    const d = nextDue(c.id);
-    extras[c.id] = { nextDue: d.due_at, nextTitle: d.title };
-  }
-
   const totalComplaints = scalar<number>("SELECT COUNT(*) FROM complaints") ?? 0;
   const statusMix = all<{ status: string; n: number }>(
     `SELECT status, COUNT(*) AS n FROM complaints
@@ -39,13 +30,13 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
 
   return (
     <div className="space-y-5">
+      {/*
+        Ad, unvan ve fabrika üst şeritte duruyor; "Merhaba, Fatih / Ankara
+        Şeker Fabrikası — Kalite Sorumlusu" aynı üç bilgiyi 80 piksel aşağıda
+        ikinci kez yazıyordu.
+      */}
       <PageHeader
-        title={`Merhaba, ${user.full_name.split(" ")[0]}`}
-        subtitle={
-          gm
-            ? `${user.department_name ?? "Genel Müdürlük"} — 14 fabrikanın tüm şikâyet dosyaları`
-            : `${user.factory_name} — ${user.title}`
-        }
+        title="Gösterge paneli"
         actions={
           !gm && (
             <Link href="/panel/sikayetler/yeni" className="btn btn-primary btn-sm">
@@ -145,12 +136,13 @@ export async function FabrikaPano({ user }: { user: SessionUser }) {
         </Card>
       </div>
 
-      <Card title="Son gelen şikâyetler"
-            actions={<Link href="/panel/sikayetler" className="btn btn-ghost btn-sm">Tümü →</Link>}
-            bodyClass="">
-        <ComplaintTable rows={recent} extras={extras} holidays={holidays} showFactory={gm}
-                        emptyHint="Henüz şikâyet kaydı oluşturulmamış." />
-      </Card>
+      {/*
+        "Son gelen şikâyetler" tablosu buradan kaldırıldı. Mobilde tek başına
+        1300 pikselden fazla yer kaplıyor, satırlarının çoğu kapanmış ve
+        kullanıcıdan bir şey beklemeyen dosyalar oluyordu. Günlük iş "bana düşen
+        aşamalar" ve "geciken dosyalar" kutularında; dosyaların tamamı bir tık
+        ötede, kendi süzgeçleriyle birlikte duruyor.
+      */}
     </div>
   );
 }

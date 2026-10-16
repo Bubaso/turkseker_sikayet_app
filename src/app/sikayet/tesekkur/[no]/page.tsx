@@ -53,11 +53,14 @@ export default async function ThanksPage({
               hanesiyle durumu sorgulayabilirsiniz.
             </p>
             <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-ink-100 pt-4 sm:grid-cols-2">
+              {/*
+                Fabrika adı ve inceleme son tarihi buradan çıkarıldı: ikisi de
+                aşağıdaki "Sırada ne var?" kutusunda zaten yazılı. Künyede
+                müşterinin kendi beyanı kalır.
+              */}
               {[
                 ["Şikâyet tarihi", fmtDateLong(c.received_at)],
-                ["İnceleyen fabrika", c.factory_name],
                 ["Ürün", `${c.product_name}${c.packaging ? ` — ${c.packaging}` : ""}`],
-                ["İnceleme son tarihi", fmtDateLong(c.due_inspection_at)],
               ].map(([k, val]) => (
                 <div key={k}>
                   <dt className="text-xs font-medium tracking-wide text-ink-500 uppercase">{k}</dt>
@@ -69,9 +72,10 @@ export default async function ThanksPage({
         </section>
 
         <Notice tone="brand" title="Sırada ne var?">
-          En geç <strong>1 iş günü</strong> içinde inceleme ekibi oluşturulacak ve size SMS ile
-          bilgi verilecek. İnceleme en geç{" "}
-          <strong>{fmtDateLong(c.due_inspection_at)}</strong> tarihine kadar tamamlanacak.
+          Dosyanız <strong>{c.factory_name}</strong> tarafından incelenecek. En geç{" "}
+          <strong>1 iş günü</strong> içinde inceleme ekibi oluşturulacak ve size SMS ile bilgi
+          verilecek; inceleme en geç{" "}
+          <strong>{fmtDateLong(c.due_inspection_at)}</strong> tarihinde tamamlanır.
         </Notice>
 
         <div className="flex flex-wrap gap-3">

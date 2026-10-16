@@ -124,11 +124,14 @@ export function PanelCekmece(props: MenuArgumanlari & { altbilgi?: React.ReactNo
               className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             >
               <div className="space-y-5">
-                {gruplar.map((g) => (
-                  <div key={g.title}>
-                    <p className="mb-1 px-2 text-rozet font-semibold tracking-wider text-ink-400 uppercase">
-                      {g.title}
-                    </p>
+                {gruplar.map((g, gi) => (
+                  <div key={g.title ?? gi}>
+                    {/* Başlıksız grup: yalnızca maddeler çizilir. */}
+                    {g.title && (
+                      <p className="mb-1 px-2 text-rozet font-semibold tracking-wider text-ink-400 uppercase">
+                        {g.title}
+                      </p>
+                    )}
                     <ul>
                       {g.items.map((i) => {
                         const on = menuAktifMi(i.href, path, (k) => search.get(k), (k) => search.has(k));

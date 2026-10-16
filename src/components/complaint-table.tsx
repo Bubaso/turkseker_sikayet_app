@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { fmtDate, slaInfo, type HolidaySet } from "@/lib/dates";
 import { fmtQuantity } from "@/lib/format";
-import { DEMAND_LABEL, type Demand } from "@/lib/domain";
 import type { ComplaintView } from "@/lib/types";
 import { Chip, EmptyState, SlaChip, StatusChip, VerdictChip } from "./ui";
 import { BaslikFiltre, type FiltreSecenegi } from "./tablo-filtre";
@@ -143,16 +142,21 @@ export function ComplaintTable({
                     </p>
                     <p className="mt-0.5 text-sm break-words text-ink-600">{c.subject}</p>
 
+                    {/*
+                      Talep ("Ürünün iadesi + nakliye") listeden çıkarıldı:
+                      masaüstünde zaten kırpılıp okunamıyordu, mobilde kartı
+                      bir satır uzatıyordu. Dosyayı açan ilk ekranda görüyor.
+                    */}
                     <p className="mt-1 text-xs text-ink-500">
                       {showFactory && <>{c.factory_short} · </>}
-                      {c.province_name ?? "—"} · {DEMAND_LABEL[c.demand as Demand] ?? c.demand}
+                      {c.province_name ?? "—"}
                       {" · "}{c.product_name}
                       {c.quantity_kg ? ` · ${fmtQuantity(c.quantity_kg)}` : ""}
                     </p>
 
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <StatusChip status={c.status} kisa />
-                      <VerdictChip verdict={c.verdict} bosGizle />
+                      <VerdictChip verdict={c.verdict} durum={c.status} bosGizle />
                     </div>
 
                     {e.nextTitle && (
@@ -227,7 +231,7 @@ export function ComplaintTable({
                       {c.customer_company}
                     </span>
                     <span className="block truncate text-xs text-ink-500">
-                      {c.province_name ?? "—"} · {DEMAND_LABEL[c.demand as Demand] ?? c.demand}
+                      {c.province_name ?? "—"}
                     </span>
                   </td>
                   <td className="max-w-[12rem] genis:max-w-[18rem]">
@@ -248,7 +252,7 @@ export function ComplaintTable({
                         gereksiz yere iki katına çıkarmaz. */}
                     <span className="flex flex-wrap items-center gap-1">
                       <StatusChip status={c.status} kisa />
-                      <VerdictChip verdict={c.verdict} bosGizle nokta={false} />
+                      <VerdictChip verdict={c.verdict} durum={c.status} bosGizle nokta={false} />
                     </span>
                   </td>
                   <td className="max-w-[10rem] genis:max-w-[14rem]">

@@ -44,11 +44,12 @@ export function Ekip({ uyeler, kurulma }: {
             </div>
 
             <div className="min-w-0 flex-1">
-              {u.asamalar.length === 0 ? (
-                <p className="text-sm text-ink-500">
-                  Evrak sorumlusu değil; incelemeye katılır.
-                </p>
-              ) : (
+              {/*
+                Sorumlu olmayan üyenin satırı boş kalır. "Evrak sorumlusu değil"
+                cümlesi her üyede tekrarlanıyordu; rozetin yokluğu zaten aynı
+                şeyi söylüyor.
+              */}
+              {u.asamalar.length > 0 && (
                 <ul className="flex flex-wrap gap-1.5">
                   {u.asamalar.map((kod) => (
                     <li key={kod}
