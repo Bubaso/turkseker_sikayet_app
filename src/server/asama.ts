@@ -17,7 +17,7 @@ import { addBusinessDays, today } from "@/lib/dates";
 import {
   ATTACHMENT_KIND, DEPT, SLA, STATUS, VERDICT, type Verdict,
 } from "@/lib/domain";
-import { ASAMA, ASAMALAR, EKIP_ASAMALARI, bekleyenOnculler, durumHaritasi, kararSonrasiAsamalar,
+import { ASAMA, ASAMALAR, EVRAK_ASAMALARI, bekleyenOnculler, durumHaritasi, kararSonrasiAsamalar,
          sureAlani, type AsamaKodu } from "@/lib/asamalar";
 import { checkEscalation, escalationDepartment, letterRecipients } from "@/lib/esik";
 import type { Complaint } from "@/lib/types";
@@ -101,73 +101,53 @@ export interface EkipUyesi {
   unvan: string;
 }
 
-/** Hangi aşamanın kime düştüğü. Ekip kurulurken Fabrika Müdürü belirler. */
-export interface AsamaGorevi {
-  kod: AsamaKodu;
-  userId: number;
-}
+
 
 export async function ekibiKur(
   complaintId: number, uyeler: EkipUyesi[], not: string | null,
-  gorevler: AsamaGorevi[] = [],
+  evrakSorumlusuId?: number,
 ): Promise<void> {
   const { user, c } = await asamaYetkisi(complaintId, ASAMA.EKIP);
   const temiz = uyeler.filter((u) => Number.isFinite(u.userId) && u.userId > 0);
   if (temiz.length === 0) throw new Error("Ekibe en az bir personel eklenmelidir.");
 
-  const lider = temiz[0].userId;
-
   /*
-   * Görevlendirme ekiple sınırlıdır: dosyada çalışacak herkes ekiptedir, bir
-   * aşamayı başkasına vermek için önce o kişiyi ekibe almak gerekir. Böylece
-   * "bu dosyaya kim baktı" sorusunun tek bir cevabı olur.
-   *
-   * Boş bırakılan ya da ekip dışından gelen aşama, unvanı uyan ekip üyesine,
-   * o da yoksa ekip liderine düşer; her aşamanın sahibi belli olur.
+   * Evrak sorumlusu: fabrika tarafındaki bütün belgeli aşamalar bu kişiye
+   * düşer, dosya tek elden yürür ve yalnızca onun ekranında görünür. Ekip
+   * dışından biri seçilemez; seçilmemişse ilk üye sorumlu olur.
    */
-  const unvanlar = new Map(
-    all<{ id: number; role: string }>(
-      `SELECT id, role FROM users WHERE id IN (${temiz.map(() => "?").join(",")})`,
-      ...temiz.map((u) => u.userId),
-    ).map((r) => [r.id, r.role]),
-  );
-
-  const dagitim = new Map<AsamaKodu, number>();
-  for (const g of gorevler) {
-    if (!EKIP_ASAMALARI.includes(g.kod)) continue;
-    if (!unvanlar.has(g.userId)) continue;      // ekip dışı seçim yok sayılır
-    dagitim.set(g.kod, g.userId);
-  }
-  for (const kod of EKIP_ASAMALARI) {
-    if (dagitim.has(kod)) continue;
-    const uygun = temiz.find((u) => unvanlar.get(u.userId) === ASAMALAR[kod].rol);
-    dagitim.set(kod, uygun?.userId ?? lider);
-  }
+  const sorumlu = temiz.some((u) => u.userId === evrakSorumlusuId)
+    ? evrakSorumlusuId!
+    : temiz[0].userId;
 
   tx(() => {
     run("DELETE FROM team_members WHERE complaint_id = ?", complaintId);
-    temiz.forEach((u, i) => {
+    temiz.forEach((u) => {
       run(
         `INSERT INTO team_members (complaint_id, user_id, unit, is_lead, assigned_by)
          VALUES (?, ?, ?, ?, ?)`,
-        complaintId, u.userId, u.unvan, i === 0 ? 1 : 0, user.id,
+        complaintId, u.userId, u.unvan, u.userId === sorumlu ? 1 : 0, user.id,
       );
     });
     run("UPDATE complaints SET team_formed_at = datetime('now') WHERE id = ?", complaintId);
 
-    // Görevlendirme saklanır: karar sonrası açılacak aşamalar da buradan okunur.
+    /*
+     * Sorumluluk saklanır: karar sonrası açılacak aşamalar (iade/değişim,
+     * resmî yazı) ekip kurulurken henüz açılmamıştır, açıldıklarında buradan
+     * okunur.
+     */
     run("DELETE FROM stage_assignments WHERE complaint_id = ?", complaintId);
-    for (const [kod, uid] of dagitim) {
+    for (const kod of EVRAK_ASAMALARI) {
       run(
         `INSERT INTO stage_assignments (complaint_id, code, user_id, assigned_by)
          VALUES (?, ?, ?, ?)`,
-        complaintId, kod, uid, user.id,
+        complaintId, kod, sorumlu, user.id,
       );
       // Hâlihazırda açık olan aşamalara hemen uygulanır.
       run(
         `UPDATE tasks SET assignee_id = ? WHERE complaint_id = ? AND code = ?
            AND status IN ('BEKLEMEDE','DEVAM_EDIYOR')`,
-        uid, complaintId, kod,
+        sorumlu, complaintId, kod,
       );
     }
 
@@ -177,15 +157,16 @@ export async function ekibiKur(
         WHERE tm.complaint_id = ? ORDER BY tm.id`, complaintId,
     ).map((r) => `${r.full_name} (${r.unit})`);
 
-    const gorevMetni = [...dagitim].map(([kod, uid]) => {
-      const kisi = one<{ full_name: string }>("SELECT full_name FROM users WHERE id = ?", uid);
-      return `${ASAMALAR[kod].kisa}: ${kisi?.full_name ?? "—"}`;
-    }).join(" · ");
+    const sorumluAdi = one<{ full_name: string; title: string }>(
+      "SELECT full_name, title FROM users WHERE id = ?", sorumlu,
+    );
 
     logEvent({
       complaintId, type: EVENT_TYPE.EKIP,
       title: `İnceleme ekibi oluşturuldu (${temiz.length} kişi)`,
-      note: `${adlar.join(", ")}\nGörevlendirme — ${gorevMetni}`, actorId: user.id,
+      note: `${adlar.join(", ")}\nEvrak sorumlusu: ` +
+            `${sorumluAdi?.full_name ?? "—"}${sorumluAdi ? ` (${sorumluAdi.title})` : ""}`,
+      actorId: user.id,
     });
     durumYaz(dosya(complaintId), STATUS.INCELEMEDE, user, "Ekip oluşturuldu");
   });

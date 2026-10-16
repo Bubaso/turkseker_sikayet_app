@@ -201,11 +201,6 @@ try {
     ? ok("Seçilen kişi sayısına göre 3 kişi kutusu belirdi")
     : hata(`Kişi kutusu sayısı beklenenden farklı: ${kutuSayisi}`);
 
-  /*
-   * Ekip, dosyada çalışacak herkesi içerir: aşama yalnızca ekip üyelerine
-   * verilebildiği için iade/değişimi yapacak Ambar Şefi de ekipte olmalıdır.
-   * Senaryonun ilerleyen adımlarında o aşamayı Ambar Şefi kaydediyor.
-   */
   const unvanlar = ["Kalite Sorumlusu", "Teknik (İşletme) Yetkilisi", "Ambar Şefi"];
   for (let i = 0; i < 3; i++) {
     await mudur.selectOption(`#unvan_${i}`, { label: unvanlar[i] });
@@ -214,8 +209,25 @@ try {
     const secenekler = await mudur.locator(`#uye_${i} option`).count();
     if (secenekler > 1) await mudur.selectOption(`#uye_${i}`, { index: 1 });
   }
-  const liderAdi = await mudur.locator("#uye_0 option:checked").textContent();
-  ok(`Unvan ve isim kutuları dolduruldu (ekip lideri: ${liderAdi.trim()})`);
+  await mudur.waitForTimeout(250);
+
+  /*
+   * Evrak sorumlusu seçilir: fabrika tarafındaki bütün belgeli aşamalar ona
+   * düşer ve dosya kapanış onayına kadar tek elden yürür. Seçenekler yalnızca
+   * ekip üyeleridir.
+   */
+  const sorumluSecenek = await mudur.locator("#evrakSorumlusu option").count();
+  sorumluSecenek === 3
+    ? ok("Evrak sorumlusu listesi yalnızca ekip üyelerini içeriyor (3 kişi)")
+    : hata(`Evrak sorumlusu seçenek sayısı beklenenden farklı: ${sorumluSecenek}`);
+
+  // Ekibin ilk üyesi (Kalite Sorumlusu) evrak sorumlusu yapılır.
+  const kaliteId = await mudur.locator("#uye_0").inputValue();
+  await mudur.selectOption("#evrakSorumlusu", kaliteId);
+  const sorumluAdi = (await mudur.locator("#evrakSorumlusu option:checked").textContent()).trim();
+  sorumluAdi.includes("Kalite Sorumlusu")
+    ? ok(`Evrak sorumlusu seçildi: ${sorumluAdi}`)
+    : hata(`Evrak sorumlusu beklenenden farklı: ${sorumluAdi}`);
 
   await mudur.fill("#note", "Ekip görevlendirilmiş, inceleme firma deposunda yapılacaktır.");
   await eylem(mudur, "Ekibi oluştur");
@@ -226,7 +238,7 @@ try {
     : hata("Ekip aşaması kapanmadı");
 
   /* --- 4. İnceleme tutanağı yükleniyor ---------------------------------- */
-  baslik("Ekip lideri inceleme tutanağını yüklüyor (md. 4)");
+  baslik("Evrak sorumlusu inceleme tutanağını yüklüyor (md. 4)");
   const kalite = await girisYap("ank.kalite");
   await asamayiKaydet(kalite, dosyaYolu, {
     not: "Firma deposunda yerinde inceleme yapılmış, 180 çuvalda topaklanma teyit edilmiştir.",
@@ -255,9 +267,19 @@ try {
     : hata(`Karar sonrası aşama sayısı beklenenden farklı: ${islemAcildi}`);
 
   /* --- 6. İade / değişim belgesi ---------------------------------------- */
-  baslik("Ambar Şefi iade/değişim belgesini yüklüyor (md. 6)");
+  /*
+   * Dosya evrak sorumlusunun üzerinde: iade/değişim aşamasını da o kaydeder.
+   * Ekipteki Ambar Şefi bu aşamayı göremez; aşağıda ayrıca sınanıyor.
+   */
+  baslik("Evrak sorumlusu iade/değişim belgesini yüklüyor (md. 6)");
   const ambar = await girisYap("ank.ambar");
-  await asamayiKaydet(ambar, dosyaYolu, {
+  await ambar.goto(`${BASE}${dosyaYolu}`, { waitUntil: "domcontentloaded" });
+  const ambarFormu = await ambar.locator('button:has-text("Kaydet ve aşamayı kapat")').count();
+  ambarFormu === 0
+    ? ok("Ekipteki diğer üyede kayıt formu çıkmıyor; dosya tek elden yürüyor")
+    : hata("Evrak sorumlusu olmayan üyede kayıt formu açıldı");
+
+  await asamayiKaydet(kalite, dosyaYolu, {
     not: "9.000 kg ürün iadesi alınmış, nakliye bedeli firmaya ödenmiştir.",
     belgeAdi: "iade-irsaliyesi.pdf",
     ekstra: async (form) => {
@@ -265,8 +287,8 @@ try {
       await form.locator('input[name="nakliye"]').fill("8400");
     },
   });
-  const islemEki = await ambar.locator('a:has-text("iade-irsaliyesi.pdf")').count();
-  const islemKapandi = await kapananAsama(ambar, dosyaYolu);
+  const islemEki = await kalite.locator('a:has-text("iade-irsaliyesi.pdf")').count();
+  const islemKapandi = await kapananAsama(kalite, dosyaYolu);
   islemEki > 0 && islemKapandi === 4
     ? ok("İade belgesi kaydedildi, işlem aşaması kapandı")
     : hata(`İade aşaması kapanmadı (ek: ${islemEki}, kapanan: ${islemKapandi})`);

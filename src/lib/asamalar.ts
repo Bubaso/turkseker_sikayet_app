@@ -182,15 +182,19 @@ export const ASAMALAR: Record<AsamaKodu, Asama> = {
 };
 
 /*
- * Fabrika Müdürünün ekip kurarken dağıtabileceği aşamalar.
+ * Evrak sorumlusuna düşen aşamalar.
  *
- * Dışarıda kalanların sorumlusu tartışmasızdır: ekip kurma ve dosya kapanışı
- * müdürün kendi işi, itiraz gönderimi yine müdürün, daire kararı ilgili Daire
- * Başkanlığının. Geriye fabrikada elle yürüyen dört belgeli aşama kalır ve
- * bunların kime düşeceğini dosyayı bilen müdür söyler.
+ * Fabrika Müdürü ekibi kurarken üyelerden birini evrak sorumlusu seçer ve
+ * dosyanın fabrika tarafındaki bütün belgeli aşamaları o kişiye düşer: dosya
+ * tek bir kişinin ekranında, tek bir elden yürür. Aşama aşama farklı kişilere
+ * dağıtmak, kimsenin dosyanın tamamını izlemediği bir süreç üretiyordu.
+ *
+ * Dışarıda kalan üçünün sorumlusu tartışmasızdır: ekip kurma müdürün kendi
+ * işi, daire kararı ilgili Daire Başkanlığının, dosya kapanışı ise sürecin
+ * sonundaki müdür onayı.
  */
-export const EKIP_ASAMALARI: AsamaKodu[] = [
-  ASAMA.INCELEME, ASAMA.KARAR, ASAMA.ISLEM, ASAMA.RESMI_YAZI,
+export const EVRAK_ASAMALARI: AsamaKodu[] = [
+  ASAMA.INCELEME, ASAMA.KARAR, ASAMA.ITIRAZ, ASAMA.ISLEM, ASAMA.RESMI_YAZI,
 ];
 
 /** Kayıt anında açılan aşamalar — dosyanın yol haritası. */

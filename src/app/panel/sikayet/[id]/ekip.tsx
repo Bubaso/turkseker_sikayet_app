@@ -6,9 +6,11 @@ import type { EkipUyesiGorunum } from "@/server/asamalar-db";
    Dosyanın inceleme ekibi.
 
    Ekip kurulduktan sonra bir daha görünmüyordu; oysa "bu dosyaya kim baktı,
-   hangi aşama kimdeydi" sorusu dosya kapandıktan sonra da sorulur — denetimde
-   ilk sorulan budur. Kart dosya açıldığı sürece durur ve görevlendirmeyi
-   kimin yaptığını da yazar.
+   evrak kimdeydi" sorusu dosya kapandıktan sonra da sorulur — denetimde ilk
+   sorulan budur. Kart dosya açıldığı sürece durur.
+
+   Evrak sorumlusu başta ve işaretli durur: fabrika tarafındaki bütün belgeli
+   aşamalar onun üzerindedir, diğer üyeler incelemeye katılır.
    =========================================================================== */
 
 export function Ekip({ uyeler, kurulma }: {
@@ -34,7 +36,7 @@ export function Ekip({ uyeler, kurulma }: {
                 {u.full_name}
                 {u.is_lead === 1 && (
                   <span className="ml-2 rounded-full bg-brand-50 px-1.5 py-0.5 text-rozet font-semibold text-brand-700">
-                    Ekip lideri
+                    Evrak sorumlusu
                   </span>
                 )}
               </p>
@@ -44,7 +46,7 @@ export function Ekip({ uyeler, kurulma }: {
             <div className="min-w-0 flex-1">
               {u.asamalar.length === 0 ? (
                 <p className="text-sm text-ink-500">
-                  Belirli bir aşamadan sorumlu değil; incelemeye katılır.
+                  Evrak sorumlusu değil; incelemeye katılır.
                 </p>
               ) : (
                 <ul className="flex flex-wrap gap-1.5">

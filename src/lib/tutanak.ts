@@ -139,7 +139,7 @@ function beyan(v: TutanakVerisi): TutanakSatiri[] {
 function ekipImzalari(v: TutanakVerisi): TutanakImzasi[] {
   if (v.ekip.length > 0) {
     return v.ekip.map((u) => ({
-      unvan: u.is_lead === 1 ? `${u.title} (Ekip lideri)` : u.title,
+      unvan: u.is_lead === 1 ? `${u.title} (Evrak sorumlusu)` : u.title,
       ad: u.full_name,
     }));
   }

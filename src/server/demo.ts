@@ -424,10 +424,10 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
 
     /* 3) Ekip ------------------------------------------------------------- */
     /*
-     * Aşama yalnızca ekip üyelerine verilebildiği için, dosyada iş yapacak
-     * herkes ekipte olmalıdır: iade/değişimi Ambar Şefi kaydeder, onun da
-     * ekipte olması gerekir. Kalite Sorumlusu ve Ambar Şefi bu yüzden
-     * zorunlu; diğer unvanlar rastgele katılır ki ekipler tek tip olmasın.
+     * İlk üye evrak sorumlusu olur; demo verisinde bu daima Kalite
+     * Sorumlusudur. Diğer unvanlar rastgele katılır ki ekipler tek tip
+     * olmasın — evrak tek kişide olduğu için kimin katıldığı akışı
+     * etkilemez.
      */
     const kadro = all<{ id: number; title: string; role: string }>(
       `SELECT id, title, role FROM users WHERE factory_id = ? AND is_active = 1
@@ -439,16 +439,19 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
                 END, id`,
       fid,
     );
-    // İlk üye ekip lideridir; demo verisinde lider daima Kalite Sorumlusudur.
-    const zorunlu = new Set([ROLES.KALITE_SORUMLUSU, ROLES.AMBAR_SEFI]);
     const uyeler = kadro
-      .filter((u, idx) => idx === 0 || zorunlu.has(u.role as never) || rnd() < 0.7)
+      .filter((u, idx) => idx === 0 || rnd() < 0.6)
       .map((u) => ({ userId: u.id, unvan: u.title }));
 
+    /*
+     * Evrak sorumlusu ekibin ilk üyesidir (demo verisinde daima Kalite
+     * Sorumlusu). Fabrika tarafındaki bütün belgeli aşamaları o kaydeder;
+     * aşağıdaki adımlar da onun adına çalışır.
+     */
+    const evrakId = uyeler[0]!.userId;
     await runAsRole(fid, ROLES.FABRIKA_MUDURU, () =>
-      ekibiKur(cid, uyeler, "Şikâyetin mahiyetine göre ekip görevlendirilmiştir."),
+      ekibiKur(cid, uyeler, "Şikâyetin mahiyetine göre ekip görevlendirilmiştir.", evrakId),
     );
-    const liderId = uyeler[0]!.userId;
 
     if (durak === "EKIP") { result.open++; retime(cid, tk); continue; }
 
@@ -457,7 +460,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
     const incelemeNotu = uzaktan
       ? "Firmaya gidilemediğinden şikâyet, iletilen ürün görselleri ve sevk belgeleri üzerinden incelenmiştir."
       : "Şikâyetçi firma deposunda yerinde inceleme yapılmış, numune alınmıştır.";
-    await runAs(liderId, async () => {
+    await runAs(evrakId, async () => {
       const ek = await demoBelge("Inceleme tutanagi", [
         "INCELEME TUTANAGI",
         `Sikayet no: ${created.complaintNo}`,
@@ -476,7 +479,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
     const karar: Verdict = haksiz ? VERDICT.HAKSIZ : VERDICT.HAKLI;
     const kararNotu = haksiz ? senaryo.haksizGerekce : senaryo.hakliGerekce;
 
-    await runAs(liderId, async () => {
+    await runAs(evrakId, async () => {
       const ek = await demoBelge("Karar tutanagi (imzali)", [
         "URUN DEGISIM-IADE TUTANAGI",
         `Sikayet no: ${created.complaintNo}`,
@@ -495,7 +498,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
     let hakliSonuc = !haksiz;
     if (haksiz && esik.required) {
       tk.itiraz = tk.karar;
-      await runAsRole(fid, ROLES.FABRIKA_MUDURU, async () => {
+      await runAs(evrakId, async () => {
         const ek = await demoBelge("Daire Baskanligina ust yazi", [
           "DAIRE BASKANLIGINA UST YAZI",
           `Sikayet no: ${created.complaintNo}`,
@@ -558,7 +561,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
       const islemNotu = degisim
         ? "Ürün değişimi tamamlanmış, yeni parti firma deposuna teslim edilmiştir."
         : "Ürün iadesi alınmış, fatura mahsuplaştırılmıştır.";
-      await runAsRole(fid, ROLES.AMBAR_SEFI, async () => {
+      await runAs(evrakId, async () => {
         const ek = await demoBelge("Iade-degisim irsaliyesi", [
           "IADE / DEGISIM IRSALIYESI",
           `Sikayet no: ${created.complaintNo}`,
@@ -583,7 +586,7 @@ export async function generateDemoData(opts: DemoOptions = {}): Promise<DemoResu
         "gönderilmiş, müşteri yazılı olarak bilgilendirilmiştir."
       : "İnceleme sonucu ve gerekçesi müşteriye yazılı olarak bildirilmiş, dosya ilgili Daire " +
         "Başkanlıklarına gönderilmiştir.";
-    await runAsRole(fid, ROLES.KALITE_SORUMLUSU, async () => {
+    await runAs(evrakId, async () => {
       const ek = await demoBelge("Resmi yazi ve musteri bilgilendirmesi", [
         "RESMI YAZI",
         `Sikayet no: ${created.complaintNo}`,

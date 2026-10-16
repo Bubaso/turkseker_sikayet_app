@@ -213,9 +213,9 @@ export function sorumluyuDegistir(taskId: number, userId: number, actor: Session
 /** Bir aşamaya atanabilecek fabrika personeli. */
 export function atanabilirPersonel(
   factoryId: number,
-): { id: number; full_name: string; title: string; role: string }[] {
+): { id: number; full_name: string; title: string }[] {
   return all(
-    `SELECT id, full_name, title, role FROM users
+    `SELECT id, full_name, title FROM users
       WHERE factory_id = ? AND is_active = 1 ORDER BY id`, factoryId,
   );
 }

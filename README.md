@@ -175,12 +175,12 @@ Dosyada en çok sekiz aşama vardır (`src/lib/asamalar.ts`):
 |---|---|---|---|---|---|
 | 1 | Şikâyet kaydı + Müşteri Şikâyet Formu (FR PASAT 007) | kayıtla birlikte otomatik | 0 | Fabrika / müşteri | md. 1 |
 | 2 | İnceleme ekibini oluştur **veya** daha yakın fabrikaya yönlendir | ekip kutularından | ≤ 1 | Fabrika Müdürü | md. 2-3 |
-| 3 | İnceleme ve analiz belgelerini yükle | **belge** | ≤ 3 | Ekip lideri | md. 4 |
-| 4 | Kararı ve imzalı tutanağı yükle | **belge** + haklı/haksız | ≤ 3 | Ekip lideri | md. 4 |
-| 5 | Haksız + eşik aşımı → itirazı Daire Başkanlığına gönder | **belge** | — | Fabrika Müdürü | md. 5 |
+| 3 | İnceleme ve analiz belgelerini yükle | **belge** | ≤ 3 | Evrak sorumlusu | md. 4 |
+| 4 | Kararı ve imzalı tutanağı yükle | **belge** + haklı/haksız | ≤ 3 | Evrak sorumlusu | md. 4 |
+| 5 | Haksız + eşik aşımı → itirazı Daire Başkanlığına gönder | **belge** | — | Evrak sorumlusu | md. 5 |
 | 6 | Daire Başkanlığı kararını kaydet | **belge** + kabul/ret | ≤ 5 | İlgili daire | md. 5 |
-| 7 | İade / değişim ve nakliye belgelerini yükle | **belge** | ≤ 5 | Ambar Şefi | md. 6 |
-| 8 | Resmî yazıyı ve müşteri bilgilendirmesini yükle | **belge** | işlemden ≤ 3 | Kalite Sorumlusu | md. 6-7 |
+| 7 | İade / değişim ve nakliye belgelerini yükle | **belge** | ≤ 5 | Evrak sorumlusu | md. 6 |
+| 8 | Resmî yazıyı ve müşteri bilgilendirmesini yükle | **belge** | işlemden ≤ 3 | Evrak sorumlusu | md. 6-7 |
 | 9 | Dosyayı kapat | kapanış notuyla | — | Fabrika Müdürü | md. 8 |
 | — | Aylık Müşteri Şikâyetleri Tablosu | aylık | aylık | Fabrika | md. 8 |
 
@@ -426,8 +426,9 @@ günlük işte gerekmediği için akışı bölmez.
 Yeni bir şikâyet Fabrika Müdürünün ekranına düştüğünde formun altında **ekip
 kurma düzeneği** çıkar: müdür ekibin kaç kişi olacağını seçer, o kadar kişi
 kutusu belirir, her kutuda önce unvan (fabrikanın kadrosundan otomatik
-listelenir), sonra o unvandaki isim seçilir. İlk sıradaki kişi ekip lideridir;
-inceleme ve karar aşamaları ona düşer.
+listelenir), sonra o unvandaki isim seçilir. Ardından ekip üyelerinden biri
+**evrak sorumlusu** seçilir: dosyanın fabrika tarafındaki bütün belgeli
+aşamaları ona düşer ve dosya müdür onayına kadar onun ekranında yürür.
 
 ### Hangi rol neyi görür
 
@@ -466,34 +467,39 @@ başlığındaki okta durur (`src/components/tablo-filtre.tsx`). Seçim adres
 satırına yazıldığı için filtrelenmiş liste paylaşılabilir ve tarayıcının geri
 tuşu çalışır.
 
-### Ekip ve aşama görevlendirmesi
+### Ekip ve evrak sorumlusu
 
-Fabrika Müdürü ekibi kurarken iki şey söyler: **kim var** ve **hangi aşama
-kimde**. İkinci kısım `stage_assignments` tablosunda saklanır ve aşama
-açıldığında oradan okunur (`asamalariAc` → `gorevlendirilen`). Bunun önemi şu:
+Fabrika Müdürü ekibi kurarken iki şey söyler: **kim var** ve **evrak kimde**.
+Ekibi seçer, sonra üyelerden birini **evrak sorumlusu** yapar. Dosyanın fabrika
+tarafındaki bütün belgeli aşamaları o kişiye düşer ve dosya, sürecin sonundaki
+müdür onayına kadar tek elden yürür.
+
+Evrak sorumlusuna düşen beş aşama vardır (`EVRAK_ASAMALARI`): inceleme, karar
+tutanağı, varsa itiraz gönderimi, iade/değişim, resmî yazı. Dışarıda kalan
+üçünün sorumlusu tartışmasızdır — ekip kurma müdürün kendi işi, daire kararı
+ilgili Daire Başkanlığının, dosya kapanışı ise sürecin sonundaki müdür onayı.
+
+Görevlendirme `stage_assignments` tablosunda saklanır ve aşama açıldığında
+oradan okunur (`asamalariAc` → `gorevlendirilen`). Bunun önemi şu:
 iade/değişim ve resmî yazı aşamaları ancak karar verildikten sonra açılır, yani
 ekip kurulurken henüz ortada bir görev satırı yoktur. Görevlendirme beklemede
-durur ve aşama açıldığı anda uygulanır — iş akışı unvana göre değil, dosyayı
-bilen müdürün dediğine göre kurulur.
+durur ve aşama açıldığı anda uygulanır. Böylece dosya, açılan her yeni aşamada
+yine aynı kişinin **Bana düşen aşamalar** listesinde belirir; kimsenin sırayı
+elden ele devretmesi gerekmez.
 
-Dağıtılabilen dört aşama vardır (`EKIP_ASAMALARI`): inceleme, karar tutanağı,
-iade/değişim, resmî yazı. Dışarıda kalanların sorumlusu tartışmasızdır — ekip
-kurma ve dosya kapanışı müdürün kendi işi, itiraz gönderimi yine müdürün, daire
-kararı ilgili Daire Başkanlığının.
+Evrak sorumlusu **ekip üyelerinden biri olmak zorundadır**; arayüz yalnızca
+ekiptekileri listeler, sunucu da aynı kuralı yeniden uygular ve ekip dışından
+gelen bir seçimi yok sayıp ilk üyeye döner (`ekibiKur`). Dosyada çalışan herkes
+ekiptedir, böylece "bu dosyaya kim baktı" sorusunun tek bir cevabı olur.
 
-Görevlendirme **ekiple sınırlıdır**: bir aşamayı birine vermek için önce o
-kişiyi ekibe almak gerekir. Dosyada çalışacak herkes ekiptedir, böylece "bu
-dosyaya kim baktı" sorusunun tek bir cevabı olur — iade/değişimi Ambar Şefi
-yapacaksa Ambar Şefi de inceleme ekibinde yer alır.
+Aşamalar bir dönem tek tek farklı kişilere dağıtılabiliyordu; bundan vazgeçildi.
+Dağıtım, dosyanın tamamını kimsenin izlemediği bir süreç üretiyordu: her aşama
+başka bir ekranda belirdiği için gecikme kimde olduğu ancak dosya açılınca
+görülüyordu. Tek sorumlu hem müdürün kurulum işini kısaltır hem de dosyanın
+nerede beklediğini tek bakışta gösterir.
 
-Varsayılan, unvanı aşamanın rolüne uyan ekip üyesidir; boş bırakılan aşama o
-kişiye, o unvan ekipte yoksa ekip liderine düşer. Unvan ekipte yoksa kutunun
-altında uyarısı çıkar, böylece müdür ya o kişiyi ekibe ekler ya da aşamayı
-bilerek başkasına verir. Sunucu aynı kuralı yeniden uygular: ekip dışından
-gelen bir seçim yok sayılır.
-
-Kurulan ekip dosya sayfasında kalıcı olarak durur: kim vardı, kim liderdi ve
-kim hangi aşamadan sorumluydu. "Bu dosyaya kim baktı" sorusu dosya kapandıktan
+Kurulan ekip dosya sayfasında kalıcı olarak durur: kim vardı, evrak kimdeydi ve
+hangi aşamalar onun üzerindeydi. "Bu dosyaya kim baktı" sorusu dosya kapandıktan
 sonra da sorulur; denetimde ilk sorulan budur.
 
 ### Kanıt görselleri
@@ -579,9 +585,10 @@ kaydedeceğini yetki değil, **aşamanın sorumlusu** belirler. Aşamalardan ba�
 altı yetki kalır — şikâyet kaydetme, sorumlu değiştirme, dosya kapatma, itiraz
 kararı, bildirim kutusu ve tanım yönetimi.
 
-- Aşamaların varsayılan sorumlusu unvana göre atanır: inceleme ve karar ekip
-  liderine, iade/değişim Ambar Şefine, resmî yazı Kalite Sorumlusuna, ekip
-  kurma ve kapanış Fabrika Müdürüne, daire kararı ilgili Daire Başkanlığına
+- Dosyanın fabrika tarafındaki belgeli aşamaları — inceleme, karar, itiraz
+  gönderimi, iade/değişim, resmî yazı — ekip kurulurken seçilen **evrak
+  sorumlusuna** düşer; ekip kurma ve kapanış Fabrika Müdürüne, daire kararı
+  ilgili Daire Başkanlığına
 - Daire Başkanı yalnızca **kendi dairesine** düşen itirazı karara bağlar
 - Fabrika personeli yalnızca **kendi fabrikasının** dosyalarını görür
 - Genel Müdürlük tüm fabrikaları görür; işlevi süreci izlemektir, fabrika
@@ -1098,8 +1105,9 @@ eklenen unsurlardır. Kurum onayıyla değiştirilebilirler.
 10. **Ekibin kaç kişi olacağına Fabrika Müdürü karar verir.** Talimat md. 3
     ekibin hangi birimlerden kurulacağını sayar ama kişi sayısını
     belirlemez. Düzenek 1-8 kişi arası serbest bırakılmıştır; unvan listesi
-    fabrikanın kadrosundan otomatik gelir, aynı kişi iki kez seçilemez ve ilk
-    sıradaki kişi ekip lideri olur.
+    fabrikanın kadrosundan otomatik gelir ve aynı kişi iki kez seçilemez.
+    Müdür ekibi kurduktan sonra üyelerden birini evrak sorumlusu yapar;
+    seçmezse ilk sıradaki kişi sorumlu olur.
 
 11. **Fabrika Müdürü bir aşamanın kaydını sorumlusu yerine girebilir.** İş
     fabrikada elle yapıldığı ve belge dışarıda hazırlandığı için, kaydın

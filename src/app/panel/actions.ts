@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { all, one } from "@/lib/db";
 import { CHANNEL, DEMAND, VERDICT, type Verdict } from "@/lib/domain";
-import { ASAMA, ASAMALAR, EKIP_ASAMALARI, type AsamaKodu } from "@/lib/asamalar";
+import { ASAMA, ASAMALAR, type AsamaKodu } from "@/lib/asamalar";
 import { PERMISSIONS, can, isGmRole } from "@/lib/roles";
 import { requireFactoryAccess, requirePermission, requireUser } from "@/server/auth";
 import {
@@ -89,13 +89,11 @@ export async function formTeamAction(_p: ActionResult, fd: FormData): Promise<Ac
       const unvan = s(fd, `unvan_${k.slice(4)}`);
       uyeler.push({ userId: uid, unvan: unvan || "—" });
     }
-    // Hangi aşamanın kime düştüğü: gorev_<AŞAMA KODU> alanları.
-    const gorevler = EKIP_ASAMALARI
-      .map((kod) => ({ kod, userId: Number(s(fd, `gorev_${kod}`)) }))
-      .filter((g) => Number.isFinite(g.userId) && g.userId > 0);
+    // Evrak sorumlusu: fabrika tarafındaki bütün belgeli aşamalar ona düşer.
+    const sorumlu = Number(s(fd, "evrakSorumlusu")) || undefined;
 
-    await ekibiKur(cid, uyeler, s(fd, "note") || null, gorevler);
-    return `${uyeler.length} kişilik ekip oluşturuldu ve aşamalar görevlendirildi.`;
+    await ekibiKur(cid, uyeler, s(fd, "note") || null, sorumlu);
+    return `${uyeler.length} kişilik ekip oluşturuldu, evrak sorumlusu belirlendi.`;
   }, detail(cid), s(fd, "returnTo"));
 }
 
