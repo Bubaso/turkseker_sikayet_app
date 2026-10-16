@@ -13,19 +13,14 @@ export const dynamic = "force-dynamic";
  * Başkanı kendi karar kuyruğunu ve alanını görür. Üçü aynı ekranı paylaşmaz;
  * bekledikleri bilgi aynı değildir.
  */
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ bas?: string; bit?: string }>;
-}) {
+export default async function DashboardPage() {
   const user = await requirePageUser();
-  const q = await searchParams;
 
   if (user.role === ROLES.GM_DAIRE && user.department_id) {
-    return <DairePano user={user} holidays={holidaySet()} q={q} />;
+    return <DairePano user={user} holidays={holidaySet()} />;
   }
   if (isGmRole(user.role) || user.role === ROLES.SISTEM_YONETICISI) {
-    return <UstYonetimPano user={user} q={q} />;
+    return <UstYonetimPano user={user} />;
   }
   return <FabrikaPano user={user} />;
 }

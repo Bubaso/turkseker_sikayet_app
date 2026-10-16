@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { all } from "@/lib/db";
+import { all, one } from "@/lib/db";
 import { isGmRole } from "@/lib/roles";
 import {
   PRODUCT_GROUP_LABEL, STATUS_LABEL, VERDICT_LABEL,
-  type ProductGroup, type Status, type Verdict,
+  type DeptCode, type ProductGroup, type Status, type Verdict,
 } from "@/lib/domain";
 import { addDays, today } from "@/lib/dates";
 import { requirePageUser } from "@/server/auth";
@@ -22,6 +22,8 @@ interface Q {
   ara?: string; durum?: string; grup?: string; karar?: string; urun?: string;
   kategori?: string; fabrika?: string; gecikme?: string; itiraz?: string; kapanis?: string;
   bas?: string; bit?: string; s?: string;
+  /* Daire merceği: panodaki kartların açtığı daraltılmış liste. */
+  daire?: string;
 }
 
 function qs(base: Q, patch: Partial<Q>): string {
@@ -38,6 +40,10 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
   const user = await requirePageUser();
   const gm = isGmRole(user.role) || user.role === "SISTEM_YONETICISI";
   const holidays = holidaySet();
+  const kendiDairesi = user.department_id
+    ? (one<{ code: string }>("SELECT code FROM departments WHERE id = ?", user.department_id)?.code
+        ?? null)
+    : null;
   const page = Math.max(1, Number(q.s ?? 1));
 
   const filter: ComplaintFilter = {
@@ -46,6 +52,9 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
     group: q.grup === "ACIK" ? "ACIK" : q.grup === "KAPALI" ? "KAPALI" : null,
     verdict: q.karar || null,
     productGroup: q.urun || null,
+    // Mercek yalnızca kendi dairesinin kullanıcısına uygulanır; adres satırına
+    // elle başka bir daire kodu yazmak kimseye yeni bir dosya açmaz.
+    deptCode: q.daire && q.daire === kendiDairesi ? (q.daire as DeptCode) : null,
     categoryId: q.kategori ? Number(q.kategori) : null,
     search: q.ara || null,
     from: q.bas || null,
@@ -159,6 +168,9 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
     ekle(categories.find((c) => c.id === Number(q.kategori))?.name ?? "Şikâyet türü", { kategori: "" });
   }
   if (q.urun) ekle(PRODUCT_GROUP_LABEL[q.urun as ProductGroup] ?? q.urun, { urun: "" });
+  if (q.daire && q.daire === kendiDairesi) {
+    ekle(`${user.department_name ?? "Dairem"} merceği`, { daire: "" });
+  }
   if (q.durum) ekle(STATUS_LABEL[q.durum as Status] ?? q.durum, { durum: "" });
   if (q.grup) ekle(q.grup === "ACIK" ? "Açık dosyalar" : "Kapanmış dosyalar", { grup: "" });
   if (q.karar) ekle(VERDICT_LABEL[q.karar as Verdict] ?? q.karar, { karar: "" });
@@ -187,7 +199,7 @@ export default async function ComplaintsPage({ searchParams }: { searchParams: P
           {/* Dar ekranda arama şeridi tam genişlikte durur; filtre rozetleri
               altına iner. Geniş ekranda ikisi yan yanadır. */}
           <form method="get" action="/panel/sikayetler" className="flex w-full items-center gap-2 sm:w-auto">
-            {(["durum", "grup", "karar", "urun", "kategori", "fabrika", "gecikme", "itiraz", "kapanis", "bas", "bit"] as const)
+            {(["durum", "grup", "karar", "urun", "kategori", "fabrika", "gecikme", "itiraz", "kapanis", "bas", "bit", "daire"] as const)
               .filter((k) => q[k])
               .map((k) => <input key={k} type="hidden" name={k} value={q[k]} />)}
             <input name="ara" defaultValue={q.ara}

@@ -6,7 +6,9 @@ import { all, one, run, scalar, tx } from "@/lib/db";
 import { addBusinessDays, now, today } from "@/lib/dates";
 import { normalizePhone } from "@/lib/format";
 import { randomToken } from "@/lib/password";
-import { CHANNEL, DEMAND, OPEN_STATUSES, SLA, STATUS, demandIncludesFreight } from "@/lib/domain";
+import { CHANNEL, DEMAND, OPEN_STATUSES, SLA, STATUS, demandIncludesFreight,
+         type DeptCode } from "@/lib/domain";
+import { mercekSuzgeci } from "@/lib/mercek";
 import { baslangicAsamalari } from "@/lib/asamalar";
 import type { Complaint, ComplaintView, Factory } from "@/lib/types";
 import { EVENT_TYPE, logEvent } from "./events";
@@ -250,6 +252,13 @@ export interface ComplaintFilter {
   group?: "ACIK" | "KAPALI" | null;
   verdict?: string | null;
   productGroup?: string | null;
+  /*
+   * Daire merceği. Daire Başkanının panosundaki kartlar kendi alanının
+   * sayısını gösterir; bağlantıları da aynı alanı açmalıdır. Mercek tek bir
+   * ürün grubuna indirgenemiyor (Üretim dairesi kategori ailesine bakar), bu
+   * yüzden süzgeç ortak tanımdan gelir.
+   */
+  deptCode?: DeptCode | null;
   categoryId?: number | null;
   search?: string | null;
   from?: string | null;
@@ -280,6 +289,11 @@ function buildWhere(f: ComplaintFilter): { sql: string; params: unknown[] } {
   }
   if (f.verdict) { w.push("c.verdict = ?"); p.push(f.verdict); }
   if (f.productGroup) { w.push("c.product_group = ?"); p.push(f.productGroup); }
+  if (f.deptCode) {
+    const m = mercekSuzgeci(f.deptCode);
+    // mercekSuzgeci " AND ..." döndürür; buradaki liste zaten AND ile birleşir.
+    if (m.sql) { w.push(m.sql.replace(/^\s*AND\s+/, "")); p.push(...m.params); }
+  }
   if (f.categoryId) { w.push("c.category_id = ?"); p.push(f.categoryId); }
   if (f.from) { w.push("c.received_at >= ?"); p.push(f.from); }
   if (f.to) { w.push("c.received_at <= ?"); p.push(f.to); }

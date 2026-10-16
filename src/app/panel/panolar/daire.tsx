@@ -9,13 +9,12 @@ import { kategoriAilesi } from "@/lib/category-labels";
 import type { SessionUser } from "@/server/auth";
 import {
   categoryBreakdown, factoryPerformance, milestoneSla, monthlyTrend,
-  productGroupBreakdown, totalRow, yonetimAraligi, type PerfRange,
+  productGroupBreakdown, totalRow, tumAralik, tumAySayisi,
 } from "@/server/stats";
-import { daireKararOzeti, daireSayilari, donemKiyasi, okunmamisYaziSayisi } from "@/server/yonetim";
-import { Card, Chip, EmptyState, PageHeader, SlaChip, Stat, StatDelta } from "@/components/ui";
+import { daireKararOzeti, daireSayilari, okunmamisYaziSayisi } from "@/server/yonetim";
+import { Card, Chip, EmptyState, PageHeader, SlaChip, Stat } from "@/components/ui";
 import { BarChartH, LineChart, Meter, StackedBarH } from "@/components/charts";
 import { Grafik } from "@/components/grafik";
-import { DonemSecici } from "@/components/donem-secici";
 
 interface BekleyenItiraz {
   id: number;
@@ -34,14 +33,16 @@ interface BekleyenItiraz {
    Üst yönetim panosunun bütün ölçülerini taşır; farkı, hepsinin dairenin
    merceğinden süzülmesi ve en üstte kendi karar kuyruğunun durmasıdır.
    Her ölçü ya grafik ya tablo olarak görünür, ikisi birden değil.
+
+   Üst yönetim panosu gibi burada da dönem süzgeci yoktur: sayılar dairenin
+   merceğine giren bütün dosyaları, ilk şikâyetten bugüne kapsar.
    =========================================================================== */
 
 export async function DairePano({
-  user, holidays, q,
+  user, holidays,
 }: {
   user: SessionUser;
   holidays: HolidaySet;
-  q: { bas?: string; bit?: string };
 }) {
   const deptId = user.department_id;
   const deptCode = (all<{ code: string }>(
@@ -49,10 +50,8 @@ export async function DairePano({
   )[0]?.code ?? null) as DeptCode | null;
   const mercek = deptCode ? DAIRE_MERCEGI[deptCode] : null;
 
-  const varsayilan = yonetimAraligi();
-  const aralik: PerfRange = { from: q.bas || varsayilan.from, to: q.bit || varsayilan.to };
+  const aralik = tumAralik();
 
-  const kiyas = donemKiyasi(aralik, deptCode);
   const sayilar = daireSayilari(deptCode);
   const ozet = deptId ? daireKararOzeti(deptId) : null;
   const okunmamis = deptId ? okunmamisYaziSayisi(deptId) : 0;
@@ -60,10 +59,14 @@ export async function DairePano({
   // Üst yönetimin gördüğü ölçülerin aynısı; hepsi dairenin merceğiyle süzülür.
   const perf = factoryPerformance(aralik, null, deptCode).filter((f) => f.total > 0);
   const toplam = totalRow(perf);
-  const trend = monthlyTrend(12, null, deptCode);
+  const trend = monthlyTrend(tumAySayisi(), null, deptCode);
   const kategoriler = categoryBreakdown(aralik, null, deptCode);
   const gruplar = productGroupBreakdown(aralik, null, deptCode);
   const asamalar = milestoneSla(aralik, null, deptCode);
+
+  const hakliOrani = toplam.justified + toplam.rejected > 0
+    ? Math.round((toplam.justified / (toplam.justified + toplam.rejected)) * 1000) / 10
+    : null;
 
   const bekleyenler = deptId
     ? all<BekleyenItiraz>(
@@ -96,8 +99,14 @@ export async function DairePano({
   const siraliPerf = [...perf].sort((a, b) => b.total - a.total);
   const slaSirali = [...perf].sort((a, b) => (a.sla_rate ?? 101) - (b.sla_rate ?? 101));
 
-  const alanHref = mercek && mercek.productGroups.length === 1
-    ? `/panel/sikayetler?urun=${mercek.productGroups[0]}`
+  /*
+   * Kartların açtığı liste, kartın saydığı dosyaları göstermelidir. Mercek tek
+   * bir ürün grubuna indirgenemediği için (Üretim dairesi kategori ailesine
+   * bakar, Pazarlama üç ürün grubuna) liste dairenin kendi süzgecini kurar.
+   * Merceği olmayan dairelerde (Mali İşler, Strateji) alan kurum genelidir.
+   */
+  const alanHref = deptCode && mercek && (mercek.productGroups.length > 0 || mercek.odak === "uretim")
+    ? `/panel/sikayetler?daire=${deptCode}`
     : "/panel/sikayetler";
   const alanEk = (ek: string) => `${alanHref}${alanHref.includes("?") ? "&" : "?"}${ek}`;
 
@@ -116,7 +125,7 @@ export async function DairePano({
             <Link href="/panel/resmi-yazilar" className="btn btn-secondary btn-sm">
               Resmî yazılar{okunmamis > 0 && ` (${okunmamis})`}
             </Link>
-            <Link href={`/panel/ozet?bas=${aralik.from}&bit=${aralik.to}`}
+            <Link href="/panel/ozet"
                   className="btn btn-secondary btn-sm">Yönetim özeti</Link>
             <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
           </div>
@@ -180,30 +189,23 @@ export async function DairePano({
               hint="Süresi aşılmış aşaması olan dosya" href={alanEk("gecikme=1")} />
       </div>
 
-      <section className="card-pad">
-        <h2 className="mb-3 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
-          Dönem: {fmtDate(aralik.from)} – {fmtDate(aralik.to)}
-        </h2>
-        <DonemSecici bas={aralik.from} bit={aralik.to} hedef="/panel" />
-      </section>
-
+      {/* Alanın performansı — kayıtlı bütün dosyalar üzerinden */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatDelta label="Dönemde gelen" value={kiyas.simdi.gelen}
-                   current={kiyas.simdi.gelen} previous={kiyas.onceki.gelen} iyiYon="azalis" />
-        <StatDelta label="SLA uyumu"
-                   value={toplam.sla_rate == null ? "—" : fmtPct(toplam.sla_rate, 1)}
-                   current={kiyas.simdi.slaOrani} previous={kiyas.onceki.slaOrani}
-                   iyiYon="artis" hint="Hedef %95" />
-        <StatDelta label="Ortalama kapanma"
-                   value={toplam.avg_close_days == null ? "—" : toplam.avg_close_days}
-                   unit="iş günü"
-                   current={kiyas.simdi.ortKapanma} previous={kiyas.onceki.ortKapanma}
-                   iyiYon="azalis" />
-        <StatDelta label="Alanımın maliyeti"
-                   value={fmtTl(kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli)}
-                   current={kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli}
-                   previous={kiyas.onceki.iadeBedeli + kiyas.onceki.nakliyeBedeli}
-                   iyiYon="azalis" format={(v) => fmtTl(v)} />
+        <Stat label="Haklı bulunan" value={toplam.justified}
+              hint={hakliOrani == null
+                ? "Karara bağlanmış dosya yok"
+                : `Karara bağlanan dosyaların ${fmtPct(hakliOrani, 1)}'i`}
+              href={alanEk("karar=HAKLI")} />
+        <Stat label="SLA uyumu"
+              value={toplam.sla_rate == null ? "—" : fmtPct(toplam.sla_rate, 1)}
+              tone={toplam.sla_rate != null && toplam.sla_rate < 95 ? "warn" : "ok"}
+              hint="Süresinde tamamlanan aşamalar · hedef %95" />
+        <Stat label="Ortalama kapanma"
+              value={toplam.avg_close_days == null ? "—" : `${toplam.avg_close_days} iş günü`}
+              hint="Şikâyet kaydından dosya kapanışına" />
+        <Stat label="Alanımın maliyeti"
+              value={fmtTl(toplam.refund_amount + toplam.freight_amount)}
+              hint="İade/mahsup + nakliye bedeli" />
       </div>
 
       {/* Dairenin kendi karar performansı — üst yönetimde karşılığı yok */}
@@ -222,7 +224,7 @@ export async function DairePano({
       </div>
 
       <Grafik
-        baslik="Alanımın 12 aylık seyri"
+        baslik="Alanımın aylara göre seyri"
         tablo={{
           headers: ["Ay", "Gelen", "Haklı", "Kapanan"],
           rows: trend.map((t, i) => [trendEtiket[i]!, t.total, t.justified, t.closed]),
@@ -265,7 +267,7 @@ export async function DairePano({
               p.sla_rate == null ? "—" : `%${p.sla_rate}`}`,
           }))}
           unit="şikâyet"
-          caption="Seçilen dönemde dairenizin alanında her fabrikaya düşen şikâyet sayısı."
+          caption="Dairenizin alanında her fabrikaya düşen toplam şikâyet sayısı."
         />
       </Grafik>
 
@@ -274,7 +276,7 @@ export async function DairePano({
         aciklama="Süresinde tamamlanan aşamaların tüm aşamalara oranı. Hedef: %95 ve üzeri. En zayıf fabrika başta."
       >
         {slaSirali.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-500">Seçilen dönemde veri yok.</p>
+          <p className="py-6 text-center text-sm text-ink-500">Henüz veri yok.</p>
         ) : (
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {slaSirali.map((p) => (
@@ -284,7 +286,7 @@ export async function DairePano({
                   rate={p.sla_rate}
                   hint={p.total_tasks > 0
                     ? `${p.total_tasks - p.overdue_tasks} / ${p.total_tasks} aşama süresinde · ${p.total} dosya`
-                    : "Bu dönemde aşama yok"}
+                    : "Dosyası olmayan fabrika"}
                 />
               </Link>
             ))}
@@ -301,7 +303,7 @@ export async function DairePano({
           }}
         >
           <BarChartH rows={kategoriCubuk} unit="şikâyet" labelWidth={170}
-                     caption="Seçilen dönemde dairenizin alanında en çok bildirilen şikâyet türleri." />
+                     caption="Dairenizin alanında en çok bildirilen şikâyet türleri." />
         </Grafik>
 
         <Grafik
@@ -366,8 +368,9 @@ export async function DairePano({
             {". "}
           </>
         )}
-        SLA hesapları iş günü bazlıdır. Kıyas dönemi:{" "}
-        {fmtDate(kiyas.oncekiAralik.from)} – {fmtDate(kiyas.oncekiAralik.to)}.
+        Bu ekrandaki bütün sayılar dairenizin merceğine giren dosyaların tamamını kapsar:
+        ilk şikâyet ({fmtDate(aralik.from)}) ile bugün arası, dönem süzgeci uygulanmadan.
+        SLA hesapları iş günü bazlıdır. Dönem kıyası isteyen Yönetim özeti çıktısına bakabilir.
       </p>
     </div>
   );

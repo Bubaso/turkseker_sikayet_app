@@ -7,39 +7,35 @@ import { kategoriAilesi } from "@/lib/category-labels";
 import type { SessionUser } from "@/server/auth";
 import {
   categoryBreakdown, dashboardStats, factoryPerformance, milestoneSla, monthlyTrend,
-  productGroupBreakdown, totalRow, yonetimAraligi, type PerfRange,
+  productGroupBreakdown, totalRow, tumAralik, tumAySayisi,
 } from "@/server/stats";
-import { donemKiyasi } from "@/server/yonetim";
 import { countComplaints } from "@/server/complaints";
-import { PageHeader, Stat, StatDelta } from "@/components/ui";
+import { PageHeader, Stat } from "@/components/ui";
 import { BarChartH, LineChart, Meter, StackedBarH } from "@/components/charts";
 import { Grafik } from "@/components/grafik";
-import { DonemSecici } from "@/components/donem-secici";
 
 /* ===========================================================================
    Genel Müdür Yardımcısı panosu.
 
-   Tek ekran: üç net sayı (toplam, devam eden, geciken), dönem göstergeleri ve
-   fabrika karşılaştırmasıyla performans panosunun tamamı. Her ölçü ya grafik
-   ya tablo olarak görünür; başlıktaki düğme geçişi yapar.
+   Tek ekran: üç net sayı (toplam, devam eden, geciken), performans ölçüleri ve
+   fabrika karşılaştırmasıyla panonun tamamı. Her ölçü ya grafik ya tablo
+   olarak görünür; başlıktaki düğme geçişi yapar.
+
+   Burada dönem süzgeci yoktur. Genel Müdürlük tarafı kurumun tamamına bakar:
+   bütün sayılar ilk şikâyetten bugüne kayıtlı her dosyayı kapsar. Dönem
+   seçtirmek, iki kişinin aynı ekrana bakıp farklı sayı okumasına yol açıyordu;
+   dönem kıyası isteyen Yönetim özeti çıktısına gider.
    =========================================================================== */
 
-export async function UstYonetimPano({
-  user, q,
-}: {
-  user: SessionUser;
-  q: { bas?: string; bit?: string };
-}) {
-  const varsayilan = yonetimAraligi();
-  const aralik: PerfRange = { from: q.bas || varsayilan.from, to: q.bit || varsayilan.to };
+export async function UstYonetimPano({ user }: { user: SessionUser }) {
+  const aralik = tumAralik();
 
-  const kiyas = donemKiyasi(aralik);
   const stats = dashboardStats(null);
   const toplamDosya = countComplaints({});
 
   const perf = factoryPerformance(aralik).filter((f) => f.total > 0);
   const toplam = totalRow(perf);
-  const trend = monthlyTrend(12, null);
+  const trend = monthlyTrend(tumAySayisi(), null);
   const kategoriler = categoryBreakdown(aralik);
   const gruplar = productGroupBreakdown(aralik);
   const asamalar = milestoneSla(aralik);
@@ -47,8 +43,7 @@ export async function UstYonetimPano({
   const hakliOrani = toplam.justified + toplam.rejected > 0
     ? Math.round((toplam.justified / (toplam.justified + toplam.rejected)) * 1000) / 10
     : null;
-  const maliyetSimdi = kiyas.simdi.iadeBedeli + kiyas.simdi.nakliyeBedeli;
-  const maliyetOnceki = kiyas.onceki.iadeBedeli + kiyas.onceki.nakliyeBedeli;
+  const maliyet = toplam.refund_amount + toplam.freight_amount;
 
   const trendEtiket = trend.map((t) => {
     const [y, m] = t.ym.split("-");
@@ -77,14 +72,13 @@ export async function UstYonetimPano({
         subtitle={`${user.department_name ?? "Genel Müdürlük"} — 14 fabrikanın tüm şikâyet dosyaları`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link href={`/panel/ozet?bas=${aralik.from}&bit=${aralik.to}`}
-                  className="btn btn-secondary btn-sm">Yönetim özeti</Link>
+            <Link href="/panel/ozet" className="btn btn-secondary btn-sm">Yönetim özeti</Link>
             <a href="/api/rapor/aylik" className="btn btn-secondary btn-sm">Aylık tablo (Excel)</a>
           </div>
         }
       />
 
-      {/* 1. Üç net sayı — dönemden bağımsız, sistemin o anki hâli */}
+      {/* 1. Üç net sayı — sistemin o anki hâli */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Toplam şikâyet" value={toplamDosya}
               hint="Sistemdeki bütün dosyalar" href="/panel/sikayetler" />
@@ -95,34 +89,27 @@ export async function UstYonetimPano({
               hint="Süresi aşılmış aşaması olan dosya" href="/panel/sikayetler?gecikme=1" />
       </div>
 
-      {/* 2. Dönem — seçili aralığın göstergeleri, önceki dönemle kıyaslı */}
-      <section className="card-pad">
-        <h2 className="mb-3 text-baslik font-semibold tracking-wide text-ink-700 uppercase">
-          Dönem: {fmtDate(aralik.from)} – {fmtDate(aralik.to)}
-        </h2>
-        <DonemSecici bas={aralik.from} bit={aralik.to} hedef="/panel" />
-      </section>
-
+      {/* 2. Performans ölçüleri — kayıtlı bütün dosyalar üzerinden */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatDelta label="Dönemde gelen" value={kiyas.simdi.gelen}
-                   current={kiyas.simdi.gelen} previous={kiyas.onceki.gelen} iyiYon="azalis" />
-        <StatDelta label="SLA uyumu"
-                   value={toplam.sla_rate == null ? "—" : fmtPct(toplam.sla_rate, 1)}
-                   current={kiyas.simdi.slaOrani} previous={kiyas.onceki.slaOrani}
-                   iyiYon="artis" hint="Hedef %95" />
-        <StatDelta label="Ortalama kapanma"
-                   value={toplam.avg_close_days == null ? "—" : toplam.avg_close_days}
-                   unit="iş günü"
-                   current={kiyas.simdi.ortKapanma} previous={kiyas.onceki.ortKapanma}
-                   iyiYon="azalis" />
-        <StatDelta label="Toplam maliyet" value={fmtTl(maliyetSimdi)}
-                   current={maliyetSimdi} previous={maliyetOnceki} iyiYon="azalis"
-                   hint="İade/mahsup + nakliye" format={(v) => fmtTl(v)} />
+        <Stat label="Haklı bulunan" value={toplam.justified}
+              hint={hakliOrani == null
+                ? "Karara bağlanmış dosya yok"
+                : `Karara bağlanan dosyaların ${fmtPct(hakliOrani, 1)}'i`}
+              href="/panel/sikayetler?karar=HAKLI" />
+        <Stat label="SLA uyumu"
+              value={toplam.sla_rate == null ? "—" : fmtPct(toplam.sla_rate, 1)}
+              tone={toplam.sla_rate != null && toplam.sla_rate < 95 ? "warn" : "ok"}
+              hint="Süresinde tamamlanan aşamalar · hedef %95" />
+        <Stat label="Ortalama kapanma"
+              value={toplam.avg_close_days == null ? "—" : `${toplam.avg_close_days} iş günü`}
+              hint="Şikâyet kaydından dosya kapanışına" />
+        <Stat label="Toplam maliyet" value={fmtTl(maliyet)}
+              hint="İade/mahsup + nakliye bedeli" />
       </div>
 
       {/* 3. Seyir */}
       <Grafik
-        baslik="Son 12 ayın seyri"
+        baslik="Aylara göre seyir"
         tablo={{
           headers: ["Ay", "Gelen", "Haklı", "Kapanan"],
           rows: trend.map((t, i) => [trendEtiket[i]!, t.total, t.justified, t.closed]),
@@ -165,7 +152,7 @@ export async function UstYonetimPano({
               p.sla_rate == null ? "—" : `%${p.sla_rate}`}`,
           }))}
           unit="şikâyet"
-          caption="Seçilen dönemde her fabrikaya düşen şikâyet dosyası sayısı."
+          caption="Her fabrikaya düşen toplam şikâyet dosyası sayısı."
         />
       </Grafik>
 
@@ -175,7 +162,7 @@ export async function UstYonetimPano({
         aciklama="Süresinde tamamlanan aşamaların tüm aşamalara oranı. Hedef: %95 ve üzeri. En zayıf fabrika başta."
       >
         {slaSirali.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-500">Seçilen dönemde veri yok.</p>
+          <p className="py-6 text-center text-sm text-ink-500">Henüz veri yok.</p>
         ) : (
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {slaSirali.map((p) => (
@@ -185,7 +172,7 @@ export async function UstYonetimPano({
                   rate={p.sla_rate}
                   hint={p.total_tasks > 0
                     ? `${p.total_tasks - p.overdue_tasks} / ${p.total_tasks} aşama süresinde · ${p.total} dosya`
-                    : "Bu dönemde aşama yok"}
+                    : "Dosyası olmayan fabrika"}
                 />
               </Link>
             ))}
@@ -259,8 +246,10 @@ export async function UstYonetimPano({
       </Grafik>
 
       <p className="text-xs text-ink-500">
-        SLA hesapları iş günü bazlıdır; hafta sonları ve Tanımlar sayfasında kayıtlı resmî
-        tatiller düşülür. Kıyas dönemi: {fmtDate(kiyas.oncekiAralik.from)} – {fmtDate(kiyas.oncekiAralik.to)}.
+        Bu ekrandaki bütün sayılar kayıtlı dosyaların tamamını kapsar: ilk şikâyet
+        ({fmtDate(aralik.from)}) ile bugün arası, dönem süzgeci uygulanmadan. SLA hesapları
+        iş günü bazlıdır; hafta sonları ve Tanımlar sayfasında kayıtlı resmî tatiller düşülür.
+        Dönem kıyası isteyen Yönetim özeti çıktısına bakabilir.
       </p>
     </div>
   );

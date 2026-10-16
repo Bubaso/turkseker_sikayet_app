@@ -267,16 +267,32 @@ rapor, fabrika karşılaştırma, dikkat listesi ya da aylık tablo ekranı yokt
 hepsi gösterge panelinde toplanmıştır.
 
 - Üç net sayı: **toplam şikâyet**, **işlemi devam eden**, **geciken**
-- Dönem seçici ve önceki dönemle kıyaslı göstergeler: gelen, SLA uyumu,
-  ortalama kapanma, toplam maliyet
-- Grafikler: 12 aylık seyir, fabrika karşılaştırma, fabrikalara göre SLA
+- Dört performans ölçüsü: haklı bulunan, SLA uyumu, ortalama kapanma,
+  toplam maliyet
+- Grafikler: aylara göre seyir, fabrika karşılaştırma, fabrikalara göre SLA
   uyumu, şikâyet türü ve ürün grubu dağılımı, aşama bazında süre uyumu
 - Çıktılar: A4 yönetim özeti ve aylık şikâyet tablosu (Excel)
+
+**Burada dönem süzgeci yoktur.** Genel Müdürlük tarafı kurumun tamamına bakar:
+her sayı, her grafik ve her tablo ilk şikâyetten bugüne kayıtlı bütün dosyaları
+kapsar. Dönem seçtirmek, aynı ekrana bakan iki kişinin farklı sayı okumasına
+yol açıyordu — "geçen ay SLA %91'di" ile "SLA %87" aynı ekrandan çıkabiliyordu.
+Dönem kıyası isteyen A4 **Yönetim özeti** çıktısına gider; orası zaten seçilen
+dönemi bir öncekiyle yan yana koymak için vardır. Fabrika tarafındaki
+**Performans panosu** dönem seçicisini korur: fabrika personeli kendi ayına
+bakar.
 
 Daire Başkanı panosu **aynı ölçülerin tamamını** taşır; farkı, hepsinin
 dairenin merceğinden süzülmesi ve en üstte kendi karar kuyruğunun durmasıdır.
 Üstüne dört ölçü daha gelir: kararım bekleniyor, karara bağladığım, ortalama
 karar sürem, okunmamış resmî yazı.
+
+Kartların her biri kendi dosyalarını açar. Mercek tek bir ürün grubuna
+indirgenemediği için (Üretim dairesi kategori ailesine, Pazarlama üç ürün
+grubuna bakar) şikâyet listesi `?daire=<kod>` ile dairenin kendi süzgecini
+kurar — kartın saydığı sayı ile listenin başlığındaki sayı birbirini tutar.
+Parametre yalnızca kullanıcının kendi dairesi için geçerlidir; adres satırına
+başka bir daire kodu yazmak hiçbir dosya açmaz.
 
 **Raporlama**
 

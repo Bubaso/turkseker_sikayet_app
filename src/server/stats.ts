@@ -246,6 +246,31 @@ export function defaultRange(): PerfRange {
  * üç ay. Yılbaşından bugüne aralığında kıyas dönemi bir önceki yıla düştüğü
  * için karşılaştırma anlamsızlaşıyordu.
  */
+/*
+ * Kayıtlı bütün dosyaları kapsayan aralık.
+ *
+ * Genel Müdürlük tarafı dönem süzmez: Genel Müdür Yardımcısı ve Daire Başkanı
+ * kurumun tamamına, ilk şikâyetten bugüne bakar. Aralık sorguların imzasında
+ * zaten var olduğu için, süzgeci kaldırmak yerine her şeyi kapsayan bir aralık
+ * üretilir; böylece tek bir yerden "tüm zamanlar" denebilir.
+ *
+ * Hiç kayıt yoksa bugüne düşen boş bir aralık döner; sorgular boş sonuç verir.
+ */
+export function tumAralik(): PerfRange {
+  const ilk = scalar<string>("SELECT MIN(received_at) FROM complaints");
+  return { from: ilk ?? today(), to: today() };
+}
+
+/** Kayıtlı en eski dosyadan bugüne kaç ay geçtiği — seyir grafiğinin boyu. */
+export function tumAySayisi(): number {
+  const r = tumAralik();
+  const bas = new Date(`${r.from}T00:00:00Z`);
+  const bit = new Date(`${r.to}T00:00:00Z`);
+  const ay = (bit.getUTCFullYear() - bas.getUTCFullYear()) * 12
+    + (bit.getUTCMonth() - bas.getUTCMonth());
+  return Math.max(1, ay + 1);
+}
+
 export function yonetimAraligi(): PerfRange {
   const t = today();
   const d = new Date(`${t}T00:00:00Z`);
