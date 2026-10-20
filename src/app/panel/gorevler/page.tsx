@@ -6,6 +6,7 @@ import { requirePageUser } from "@/server/auth";
 import { benimAsamalarim, fabrikaAcikAsamalari } from "@/server/asamalar-db";
 import { holidaySet } from "@/server/settings";
 import { Card, Chip, EmptyState, PageHeader, SlaChip, StatusChip } from "@/components/ui";
+import { TiklanabilirSatir } from "@/components/tiklanabilir-satir";
 import type { TaskView } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +87,8 @@ export default async function TasksPage({
             </thead>
             <tbody>
               {list.map((t) => (
-                <tr key={t.id}>
+                /* Satırın tamamı dosyaya götürür. */
+                <TiklanabilirSatir key={t.id} href={`/panel/sikayet/${t.complaint_id}`}>
                   <td className="max-w-[20rem]">
                     <Link href={`/panel/sikayet/${t.complaint_id}`}
                           className="font-medium text-ink-800 hover:text-brand-700 hover:underline">
@@ -109,7 +111,7 @@ export default async function TasksPage({
                   <td className="tnum whitespace-nowrap">{fmtDate(t.due_at)}</td>
                   <td><SlaChip sla={slaInfo(t.due_at, null, holidays)} compact /></td>
                   <td><StatusChip status={t.complaint_status} /></td>
-                </tr>
+                </TiklanabilirSatir>
               ))}
             </tbody>
           </table>

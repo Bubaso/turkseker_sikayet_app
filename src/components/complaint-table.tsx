@@ -4,6 +4,7 @@ import { fmtQuantity } from "@/lib/format";
 import type { ComplaintView } from "@/lib/types";
 import { Chip, EmptyState, SlaChip, StatusChip, VerdictChip } from "./ui";
 import { BaslikFiltre, type FiltreSecenegi } from "./tablo-filtre";
+import { TiklanabilirSatir } from "./tiklanabilir-satir";
 
 export interface TableRowExtra {
   nextDue: string | null;
@@ -215,7 +216,9 @@ export function ComplaintTable({
               const e = extras[c.id] ?? { nextDue: null, nextTitle: null };
               const sla = slaInfo(e.nextDue, null, holidays);
               return (
-                <tr key={c.id}>
+                /* Satırın tamamı dosyaya götürür; numara bağlantısı klavye
+                   ve yeni sekme için yerinde kalır. */
+                <TiklanabilirSatir key={c.id} href={`/panel/sikayet/${c.id}`}>
                   <td>
                     <Link href={`/panel/sikayet/${c.id}`}
                           className="font-mono text-xs font-semibold whitespace-nowrap text-brand-700 hover:underline">
@@ -267,7 +270,7 @@ export function ComplaintTable({
                       <span className="text-xs text-ink-400">Açık görev yok</span>
                     )}
                   </td>
-                </tr>
+                </TiklanabilirSatir>
               );
             })}
           </tbody>
